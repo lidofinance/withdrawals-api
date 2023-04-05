@@ -8,10 +8,10 @@ import { SWAGGER_URL } from './common/swagger';
 import { ThrottlerModule, ThrottlerBehindProxyGuard } from './common/throttler';
 import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
 import { CacheModule, CacheWithHeadersInterceptor } from './common/cache';
-import { StatisticModule } from './statistic';
+import { RequestTimeModule } from './request-time';
 
 @Module({
-  imports: [StatisticModule, CacheModule, ThrottlerModule],
+  imports: [RequestTimeModule, CacheModule, ThrottlerModule],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheWithHeadersInterceptor },

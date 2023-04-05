@@ -26,6 +26,30 @@ export class PrometheusService {
     prefix: false,
     name: 'build_info',
     help: 'Build information',
-    labelNames: ['name', 'version', 'env'],
+    labelNames: ['name', 'version', 'env', 'network', 'startSlot'],
+  });
+
+  public clApiRequestDuration = this.getOrCreateMetric('Histogram', {
+    prefix: false,
+    name: 'cl_api_requests_duration_seconds',
+    help: 'CL API request duration',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
+    labelNames: ['result', 'status'],
+  });
+
+  public jobDuration = this.getOrCreateMetric('Histogram', {
+    prefix: true,
+    name: 'job_duration_seconds',
+    help: 'Job execution duration',
+    buckets: [0.2, 0.6, 1, 2, 3, 5, 8, 13, 30, 60],
+    labelNames: ['result', 'job'],
+  });
+
+  public elRpcRequestDuration = this.getOrCreateMetric('Histogram', {
+    prefix: false,
+    name: 'el_rpc_requests_duration_seconds',
+    help: 'EL RPC request duration',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
+    labelNames: ['result'],
   });
 }

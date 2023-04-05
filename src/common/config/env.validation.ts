@@ -1,5 +1,6 @@
+import { CronExpression } from '@nestjs/schedule';
 import { plainToClass, Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min, IsArray, ArrayMinSize } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
 
 const toNumber =
@@ -54,6 +55,28 @@ export class EnvironmentVariables {
   @IsEnum(LogFormat)
   @Transform(({ value }) => value || LogFormat.json)
   LOG_FORMAT: LogFormat;
+
+  @IsOptional()
+  @IsString()
+  JOB_INTERVAL_VALIDATORS = CronExpression.EVERY_10_HOURS;
+
+  @IsOptional()
+  @IsString()
+  JOB_INTERVAL_QUEUE_INFO = CronExpression.EVERY_10_MINUTES;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @Transform(({ value }) => value.split(','))
+  CL_API_URLS!: string[];
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @Transform(({ value }) => value.split(','))
+  EL_RPC_URLS!: string[];
+
+  @IsNumber()
+  @Transform(({ value }) => Number(value))
+  CHAIN_ID!: number;
 }
 
 export function validate(config: Record<string, unknown>) {
