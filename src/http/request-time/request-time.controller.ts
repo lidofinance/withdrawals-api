@@ -26,7 +26,7 @@ export class RequestTimeController {
   @CacheTTL(10)
   @CacheControlHeaders({ maxAge: 10 })
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
-  async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto> {
+  async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     return await this.requestTimeService.getRequestTime(requestTimeOptions);
   }
 }

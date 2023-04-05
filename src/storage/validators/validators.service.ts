@@ -2,15 +2,24 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ValidatorsStorageService {
-  protected validators: string[];
+  protected maxExitEpoch: string;
+  protected total: number;
   protected lastUpdate: number;
 
   /**
-   * Get all validators
-   * @returns array of validators
+   * Get max exit epoch for all validators
+   * @returns max exit epoch string
    */
-  public get(): any[] | null {
-    return this.validators;
+  public getMaxExitEpoch(): string {
+    return this.maxExitEpoch;
+  }
+
+  /**
+   * Get total validators
+   * @returns total validators number
+   */
+  public getTotal(): number {
+    return this.total;
   }
 
   /**
@@ -22,11 +31,19 @@ export class ValidatorsStorageService {
   }
 
   /**
-   * Updates all validators
-   * @param validators - validators to save
+   * Updates max exit epoch for all validators
+   * @param maxExitEpoch - max exit epoch string
    */
-  public set(validators: any[]): void {
-    this.validators = validators;
+  public setMaxExitEpoch(maxExitEpoch: string): void {
+    this.maxExitEpoch = maxExitEpoch;
+  }
+
+  /**
+   * Updates total validators
+   * @param total - total validators number
+   */
+  public setTotal(total: number): void {
+    this.total = total;
   }
 
   /**

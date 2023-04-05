@@ -1,7 +1,7 @@
 {
-  "name": "lido-api-template",
+  "name": "withdrawals-api",
   "version": "0.0.1",
-  "description": "Lido API Template",
+  "description": "Withdrawals API",
   "author": "Lido team",
   "private": true,
   "license": "MIT",
