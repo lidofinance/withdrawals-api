@@ -47,7 +47,7 @@ export class NFTService {
           from="0 0 0"
           to="360 0 0"
           begin="0s"
-          dur="10s"
+          dur="15s"
           repeatCount="indefinite"
         />
       </svg>
