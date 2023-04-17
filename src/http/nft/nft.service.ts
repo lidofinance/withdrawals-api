@@ -3,7 +3,7 @@ import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/c
 import { ConfigService } from 'common/config';
 
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
-import { glyphNumbers, simpleNumbers, phrase } from './assets/nft.parts';
+import { glyphNumbers, simpleNumbers, phrase, crystalls } from './assets/nft.parts';
 import { gray } from './assets/nft.background';
 import { formatUnits } from 'ethers';
 
@@ -87,6 +87,23 @@ export class NFTService {
     return { line, size };
   }
 
+  private generateCrystallSvg(
+    scrystall: string,
+    animatonPath: string,
+    position: { x: number; y: number },
+    color: string,
+  ) {
+    return `
+    <g transform="matrix(1,0.04,-0.04,1,${position.x},${position.y})" opacity="1" style="display: block;" fill="${color}">
+      <animateMotion
+        dur="10s"
+        repeatCount="indefinite"
+        path="${animatonPath}" />
+      ${scrystall}
+    </g>
+    `;
+  }
+
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
     // TODO: implement svg generation
     const { status, amount, created_at } = query;
@@ -98,8 +115,14 @@ export class NFTService {
     const right = this.generateAmountLineSvg(convertedAmount, 1880);
 
     const lineAnimationDuration = 14;
+    // TODO: change real color by status
     const textColor = status === 'pending' ? 'gray' : 'red';
 
+    // TODO: choose bg by status
+    // TODO: add token id and time to svg
+
+    // TODO: change crystalls by amount
+    // TODO: update animation for crystalls
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
   preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
@@ -120,6 +143,30 @@ export class NFTService {
       <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
         ${phrase}
       </g>
+      ${this.generateCrystallSvg(
+        crystalls[1],
+        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
+        { x: 300, y: 1300 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[2],
+        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
+        { x: 1300, y: 1100 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[3],
+        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
+        { x: 300, y: -700 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[0],
+        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
+        { x: 1300, y: -800 },
+        textColor,
+      )}
     </svg>
     `;
 
