@@ -3,8 +3,8 @@ import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/c
 import { ConfigService } from 'common/config';
 
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
-import { glyphNumbers, simpleNumbers } from './nft.assets';
-import { gray } from './nft.background';
+import { glyphNumbers, simpleNumbers, phrase } from './assets/nft.parts';
+import { gray } from './assets/nft.background';
 import { formatUnits } from 'ethers';
 
 @Injectable()
@@ -43,7 +43,50 @@ export class NFTService {
     }
   }
 
-  // svg mock
+  // function for generate amount on svg by glyphNumbers
+  private generateAmountSvg(amount: string) {
+    let result = '';
+    let space = 0;
+    for (let i = 0; i < amount.length; i++) {
+      result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
+        glyphNumbers[amount[i]]
+      }</g>`;
+      if (amount[i] === '1' || amount[i] === '.') space += 100;
+      else space += 200;
+    }
+    return { result, size: space };
+  }
+
+  private generateAmountLineSvg(amount: string, x: number) {
+    const { result, size } = this.generateAmountSvg(amount);
+    let line = '';
+
+    line += `
+      <g transform="matrix(0,-1,1,0,${x},0)" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${size + 200})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${size * 2 + 200 * 2})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${-size - 200})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      `;
+
+    return { line, size };
+  }
+
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
     // TODO: implement svg generation
     const { status, amount, created_at } = query;
@@ -51,55 +94,33 @@ export class NFTService {
 
     const convertedAmount = this.convertFromWei(amount);
 
-    // function for generate amount on svg throw glyphNumbers
-    const generateAmount = (amount: string) => {
-      const amountString = amount.toString();
-      let result = '';
-      let space = 0;
-      for (let i = 0; i < amountString.length; i++) {
-        if (amountString[i - 1] === '1') space += 100;
-        else space += 200;
-        result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
-          glyphNumbers[amountString[i]]
-        }</g>`;
-      }
-      return result;
-    };
+    const left = this.generateAmountLineSvg(convertedAmount, 0);
+    const right = this.generateAmountLineSvg(convertedAmount, 1880);
+
+    const lineAnimationDuration = 14;
+    const textColor = status === 'pending' ? 'gray' : 'red';
 
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
-  preserveAspectRatio="xMidYMid meet"
-  style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
-  <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" xlink:href="${gray}"></image>
-  <g clip-path="url(#__lottie_element_172)"
-  opacity="1" style="display: block;">
-         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 2000" to="0 0" begin="0s" dur="8s" repeatCount="indefinite"></animateTransform>
-         <g transform="matrix(0,-1,1,0,0,0)" opacity="1" style="display: block;">
-          <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
-          ${generateAmount(convertedAmount)}
-          </g>
-          </g>
-          <g transform="matrix(0,-1,1,0,0,2000)" opacity="1" style="display: block;">
-          <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
-          ${generateAmount(convertedAmount)}
-          </g>
-          </g>
-         </g>
-  <g clip-path="url(#__lottie_element_172)"
-  opacity="1" style="display: block;">
-         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 2000" begin="0s" dur="8s" repeatCount="indefinite"></animateTransform>
-         <g transform="matrix(0,-1,1,0,1880,0)" opacity="1" style="display: block;">
-          <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
-          ${generateAmount(convertedAmount)}
-          </g>
-          </g>
-          <g transform="matrix(0,-1,1,0,1880,2000)" opacity="1" style="display: block;">
-          <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
-          ${generateAmount(convertedAmount)}
-          </g>
-          </g>
-         </g>
-         </svg>
+  preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
+      <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" xlink:href="${gray}"></image>
+      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
+          left.size * 2 + 200 * 2
+        }"
+         to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"></animateTransform>
+        ${left.line}
+      </g>
+      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 ${
+          right.size * 2 + 200 * 2
+        }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"></animateTransform>
+          ${right.line}
+      </g>
+      <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
+        ${phrase}
+      </g>
+    </svg>
     `;
 
     return svgString;
