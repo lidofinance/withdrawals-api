@@ -98,7 +98,7 @@ export class NFTService {
       <animateMotion
         dur="10s"
         repeatCount="indefinite"
-        path="${animatonPath}" />
+        path="${animatonPath}"/>
       ${scrystall}
     </g>
     `;
@@ -126,18 +126,18 @@ export class NFTService {
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
   preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
-      <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" xlink:href="${gray}"></image>
+      <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" href="${gray}"></image>
       <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
           left.size * 2 + 200 * 2
         }"
-         to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"></animateTransform>
+         to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
         ${left.line}
       </g>
       <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 ${
           right.size * 2 + 200 * 2
-        }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"></animateTransform>
+        }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
           ${right.line}
       </g>
       <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
