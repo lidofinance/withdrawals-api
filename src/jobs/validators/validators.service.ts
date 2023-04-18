@@ -1,5 +1,4 @@
 import { CronJob } from 'cron';
-import { BigNumber } from 'ethers';
 import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -9,6 +8,7 @@ import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import { BigNumber } from '@ethersproject/bignumber';
 
 export class ValidatorsService {
   constructor(

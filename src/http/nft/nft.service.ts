@@ -3,7 +3,9 @@ import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/c
 import { ConfigService } from 'common/config';
 
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
-import { glyphNumbers, simpleNumbers } from './nft.assets';
+import { glyphNumbers, simpleNumbers, phrase, crystalls } from './assets/nft.parts';
+import { gray } from './assets/nft.background';
+import { formatUnits } from 'ethers';
 
 @Injectable()
 export class NFTService {
@@ -28,25 +30,144 @@ export class NFTService {
     return this.generateSvgImage(params, query);
   }
 
-  // svg mock
+  convertFromWei(amountInWei): string {
+    const amountInGwei = parseFloat(formatUnits(amountInWei.toString(), 'gwei'));
+    const amountInEth = parseFloat(formatUnits(amountInWei.toString(), 'ether'));
+
+    if (amountInEth >= 1) {
+      return parseFloat(amountInEth.toFixed(6)) + ' ETH';
+    } else if (amountInGwei >= 1) {
+      return parseFloat(amountInGwei.toFixed(2)) + ' GWEI';
+    } else {
+      return amountInWei + ' WEI';
+    }
+  }
+
+  // function for generate amount on svg by glyphNumbers
+  private generateAmountSvg(amount: string) {
+    let result = '';
+    let space = 0;
+    for (let i = 0; i < amount.length; i++) {
+      result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
+        glyphNumbers[amount[i]]
+      }</g>`;
+      if (amount[i] === '1' || amount[i] === '.') space += 100;
+      else space += 200;
+    }
+    return { result, size: space };
+  }
+
+  private generateAmountLineSvg(amount: string, x: number) {
+    const { result, size } = this.generateAmountSvg(amount);
+    let line = '';
+
+    line += `
+      <g transform="matrix(0,-1,1,0,${x},0)" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${size + 200})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${size * 2 + 200 * 2})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      <g transform="matrix(0,-1,1,0,${x},${-size - 200})" opacity="1" style="display: block;">
+        <g transform="matrix(1,0,0,1,14,0)" opacity="1" style="display: block;">
+          ${result}
+        </g>
+      </g>
+      `;
+
+    return { line, size };
+  }
+
+  private generateCrystallSvg(
+    scrystall: string,
+    animatonPath: string,
+    position: { x: number; y: number },
+    color: string,
+  ) {
+    return `
+    <g transform="matrix(1,0.04,-0.04,1,${position.x},${position.y})" opacity="1" style="display: block;" fill="${color}">
+      <animateMotion
+        dur="10s"
+        repeatCount="indefinite"
+        path="${animatonPath}"/>
+      ${scrystall}
+    </g>
+    `;
+  }
+
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
     // TODO: implement svg generation
     const { status, amount, created_at } = query;
     const tokenId = Number(params.tokenId);
 
+    const convertedAmount = this.convertFromWei(amount);
+
+    const left = this.generateAmountLineSvg(convertedAmount, 0);
+    const right = this.generateAmountLineSvg(convertedAmount, 1880);
+
+    const lineAnimationDuration = 14;
+    // TODO: change real color by status
+    const textColor = status === 'pending' ? 'gray' : 'red';
+
+    // TODO: choose bg by status
+    // TODO: add token id and time to svg
+
+    // TODO: change crystalls by amount
+    // TODO: update animation for crystalls
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
-  preserveAspectRatio="xMidYMid meet"
-  style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
-  <g clip-path="url(#__lottie_element_172)"
-  opacity="1" style="display: block;">
-         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 2000" begin="0s" dur="5s" repeatCount="indefinite"></animateTransform>
-         <g transform="matrix(1,0,0,1,14,120)" opacity="1" style="display: block;">
-         ${glyphNumbers[tokenId % 10]}
-</g>
-         ${simpleNumbers[tokenId % 10]}
-         </g>
-         </svg>
+  preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
+      <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" href="${gray}"></image>
+      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
+          left.size * 2 + 200 * 2
+        }"
+         to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
+        ${left.line}
+      </g>
+      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 ${
+          right.size * 2 + 200 * 2
+        }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
+          ${right.line}
+      </g>
+      <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
+        ${phrase}
+      </g>
+      ${this.generateCrystallSvg(
+        crystalls[1],
+        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
+        { x: 300, y: 1300 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[2],
+        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
+        { x: 1300, y: 1100 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[3],
+        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
+        { x: 300, y: -700 },
+        textColor,
+      )}
+      ${this.generateCrystallSvg(
+        crystalls[0],
+        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
+        { x: 1300, y: -800 },
+        textColor,
+      )}
+    </svg>
     `;
 
     return svgString;

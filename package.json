@@ -44,6 +44,7 @@
     "cache-manager": "^5.1.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "ethers": "^6.3.0",
     "fastify-swagger": "^5.2.0",
     "node-abort-controller": "^3.0.1",
     "prom-client": "^14.1.1",
