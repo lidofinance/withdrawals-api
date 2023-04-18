@@ -7,6 +7,8 @@ import { QueueInfoStorageService } from 'storage';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 import { glyphNumbers, simpleNumbers, phrase, crystalls, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
 
+const ALLOWED_ID_LIST = [74, 415, 82, 92, 93];
+
 @Injectable()
 export class NFTService {
   constructor(
@@ -19,10 +21,14 @@ export class NFTService {
     const name = this.queueInfo.getTokenName();
     const symbol = this.queueInfo.getTokenSymbol();
 
+    const image = ALLOWED_ID_LIST.includes(Number(params.tokenId))
+      ? `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`
+      : null;
+
     const meta = {
       name: name,
       description: symbol,
-      image: `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`,
+      image,
     };
     return meta;
   }
