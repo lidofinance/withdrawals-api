@@ -24,23 +24,28 @@ export class QueueInfoService {
   public async initialize(): Promise<void> {
     await this.updateQueueInfo();
 
-    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
-    const job = new CronJob(cronTime, () => this.updateQueueInfo());
-    job.start();
+    const cronTimeQueueInfo = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
 
-    this.logger.log('Service initialized', { service: 'queue info', cronTime });
+    const jobQueueInfo = new CronJob(cronTimeQueueInfo, () => this.updateQueueInfo());
+    jobQueueInfo.start();
+
+    this.logger.log('Service initialized', { service: 'queue info', cronTimeQueueInfo });
   }
 
   @OneAtTime()
   protected async updateQueueInfo(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update queue info' }, async () => {
-      const [unfinalizedStETH, unfinalizedRequests] = await Promise.all([
+      const [unfinalizedStETH, unfinalizedRequests, name, symbol] = await Promise.all([
         this.contract.unfinalizedStETH(),
         this.contract.unfinalizedRequestNumber(),
+        this.contract.name(),
+        this.contract.symbol(),
       ]);
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
       this.queueInfoStorageService.setRequests(unfinalizedRequests);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+      this.queueInfoStorageService.setTokenName(name);
+      this.queueInfoStorageService.setTokenSymbol(symbol);
     });
   }
 }

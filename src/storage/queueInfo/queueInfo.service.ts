@@ -6,6 +6,8 @@ export class QueueInfoStorageService {
   protected unfinalizedStETH: BigNumber;
   protected unfinalizedRequests: BigNumber;
   protected lastUpdate: number;
+  protected tokenName: string;
+  protected tokenSymbol: string;
 
   /**
    * Get unfinalized ETH
@@ -32,6 +34,22 @@ export class QueueInfoStorageService {
   }
 
   /**
+   * Get token name
+   * @returns token name
+   */
+  public getTokenName(): string | undefined {
+    return this.tokenName;
+  }
+
+  /**
+   * Get token symbol
+   * @returns token symbol
+   */
+  public getTokenSymbol(): string | undefined {
+    return this.tokenSymbol;
+  }
+
+  /**
    * Updates unfinalized stETH
    * @param unfinalizedEth - BigNumber stETH to save
    */
@@ -51,8 +69,23 @@ export class QueueInfoStorageService {
    * Updates last update timestamp
    * @param lastUpdate - timestamp to save
    * */
-
   public setLastUpdate(lastUpdate: number): void {
     this.lastUpdate = lastUpdate;
+  }
+
+  /**
+   * Updates token name
+   * @param tokenName - token name to save
+   * */
+  public setTokenName(tokenName: string): void {
+    this.tokenName = tokenName;
+  }
+
+  /**
+   * Updates token symbol
+   * @param tokenSymbol - token symbol to save
+   * */
+  public setTokenSymbol(tokenSymbol: string): void {
+    this.tokenSymbol = tokenSymbol;
   }
 }

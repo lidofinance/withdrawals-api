@@ -1,27 +1,34 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { formatUnits } from 'ethers';
 import { ConfigService } from 'common/config';
+import { QueueInfoStorageService } from 'storage';
 
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
-import { glyphNumbers, simpleNumbers, phrase, crystalls } from './assets/nft.parts';
-import { gray } from './assets/nft.background';
-import { formatUnits } from 'ethers';
+import { glyphNumbers, simpleNumbers, phrase, crystalls, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
+
+const ALLOWED_ID_LIST = [74, 415, 82, 92, 93];
 
 @Injectable()
 export class NFTService {
   constructor(
     protected readonly configService: ConfigService,
+    protected readonly queueInfo: QueueInfoStorageService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contract: WithdrawalQueue,
   ) {}
 
   async getNftMeta(params: NFTParamsDto, query: NFTOptionsDto): Promise<NFTDto | null> {
-    const name = await this.contract.name();
-    const symbol = await this.contract.symbol();
+    const name = this.queueInfo.getTokenName();
+    const symbol = this.queueInfo.getTokenSymbol();
+
+    const image = ALLOWED_ID_LIST.includes(Number(params.tokenId))
+      ? `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`
+      : null;
 
     const meta = {
       name: name,
       description: symbol,
-      image: `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`,
+      image,
     };
     return meta;
   }
@@ -30,16 +37,16 @@ export class NFTService {
     return this.generateSvgImage(params, query);
   }
 
-  convertFromWei(amountInWei): string {
+  convertFromWei(amountInWei: string, prefix?: string): string {
     const amountInGwei = parseFloat(formatUnits(amountInWei.toString(), 'gwei'));
     const amountInEth = parseFloat(formatUnits(amountInWei.toString(), 'ether'));
 
     if (amountInEth >= 1) {
-      return parseFloat(amountInEth.toFixed(6)) + ' ETH';
+      return `${parseFloat(amountInEth.toFixed(6))} ${prefix ? prefix : ''}ETH`;
     } else if (amountInGwei >= 1) {
-      return parseFloat(amountInGwei.toFixed(2)) + ' GWEI';
+      return `${parseFloat(amountInGwei.toFixed(2))} GWEI${prefix ? '(STETH)' : ''}`;
     } else {
-      return amountInWei + ' WEI';
+      return `${amountInWei} WEI${prefix ? '(STETH)' : ''}`;
     }
   }
 
@@ -51,7 +58,8 @@ export class NFTService {
       result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
         glyphNumbers[amount[i]]
       }</g>`;
-      if (amount[i] === '1' || amount[i] === '.') space += 100;
+      if (amount[i] === '1' || amount[i] === '.' || amount[i] === ' ' || amount[i] === '(' || amount[i + 1] === '(')
+        space += 100;
       else space += 200;
     }
     return { result, size: space };
@@ -108,17 +116,21 @@ export class NFTService {
     // TODO: implement svg generation
     const { status, amount, created_at } = query;
     const tokenId = Number(params.tokenId);
+    const isPending = status === 'pending';
+    const prefix = isPending ? 'ST' : '';
 
-    const convertedAmount = this.convertFromWei(amount);
+    const token = isPending ? lidoGray : ethColor;
+    const bg = isPending ? bgTwo : bgOne;
+    // TODO: change real color by status
+    const textColor = isPending ? 'gray' : 'red';
+
+    const convertedAmount = this.convertFromWei(amount, prefix);
 
     const left = this.generateAmountLineSvg(convertedAmount, 0);
     const right = this.generateAmountLineSvg(convertedAmount, 1880);
 
     const lineAnimationDuration = 14;
-    // TODO: change real color by status
-    const textColor = status === 'pending' ? 'gray' : 'red';
 
-    // TODO: choose bg by status
     // TODO: add token id and time to svg
 
     // TODO: change crystalls by amount
@@ -126,7 +138,8 @@ export class NFTService {
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
   preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
-      <image width="2000px" height="2000px" preserveAspectRatio="xMidYMid slice" href="${gray}"></image>
+      ${bg}
+      ${token}
       <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
         <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
           left.size * 2 + 200 * 2
