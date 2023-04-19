@@ -114,15 +114,16 @@ export class NFTService {
 
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
     // TODO: implement svg generation
-    const { status, amount, created_at } = query;
+    const { requested, created_at, finalized } = query;
     const tokenId = Number(params.tokenId);
-    const isPending = status === 'pending';
+    const isPending = !finalized;
     const prefix = isPending ? 'ST' : '';
 
     const token = isPending ? lidoGray : ethColor;
     const bg = isPending ? bgTwo : bgOne;
     // TODO: change real color by status
     const textColor = isPending ? 'gray' : 'red';
+    const amount = isPending ? requested : finalized;
 
     const convertedAmount = this.convertFromWei(amount, prefix);
 
