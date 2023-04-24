@@ -7,7 +7,7 @@ import { QueueInfoStorageService } from 'storage';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 import { glyphNumbers, simpleNumbers, phrase, bgTwo, bgOne, lidoGray, ethColor, crystallMap } from './assets/nft.parts';
 
-const ALLOWED_ID_LIST = [74, 415, 82, 92, 93];
+const ALLOWED_ID_LIST = [74, 415, 82, 92, 93, 489, 415, 414, 413, 210];
 
 @Injectable()
 export class NFTService {
