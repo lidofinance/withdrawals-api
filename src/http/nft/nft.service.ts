@@ -5,7 +5,7 @@ import { ConfigService } from 'common/config';
 import { QueueInfoStorageService } from 'storage';
 
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
-import { glyphNumbers, simpleNumbers, phrase, crystalls, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
+import { glyphNumbers, simpleNumbers, phrase, bgTwo, bgOne, lidoGray, ethColor, crystallMap } from './assets/nft.parts';
 
 const ALLOWED_ID_LIST = [74, 415, 82, 92, 93];
 
@@ -41,7 +41,7 @@ export class NFTService {
     const amountInGwei = parseFloat(formatUnits(amountInWei.toString(), 'gwei'));
     const amountInEth = parseFloat(formatUnits(amountInWei.toString(), 'ether'));
 
-    if (amountInEth >= 1) {
+    if (amountInEth >= 0.00009) {
       return `${parseFloat(amountInEth.toFixed(6))} ${prefix ? prefix : ''}ETH`;
     } else if (amountInGwei >= 1) {
       return `${parseFloat(amountInGwei.toFixed(2))} GWEI${prefix ? '(STETH)' : ''}`;
@@ -61,6 +61,46 @@ export class NFTService {
       if (amount[i] === '1' || amount[i] === '.' || amount[i] === ' ' || amount[i] === '(' || amount[i + 1] === '(')
         space += 100;
       else space += 200;
+    }
+    return { result, size: space };
+  }
+
+  // function for generate id on svg by simpleNumber
+  private generateIdSvg(id: string) {
+    let result = '';
+    let space = 0;
+    for (let i = 0; i < id.length; i++) {
+      result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
+        simpleNumbers[id[i]]
+      }</g>`;
+      if (id[i] === '1') space += 15;
+      else space += 30;
+    }
+    return { result, size: space };
+  }
+
+  // function for generate id on svg by simpleNumber
+  private generateDateSvg(timestamp: number) {
+    const date = new Date(timestamp * 1000);
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2); // JS months are 0 indexed, 0 = January, 11 = December
+    const day = ('0' + date.getDate()).slice(-2);
+
+    const dateString = `${day}.${month}.${year}`;
+
+    let result = '';
+    let space = 0;
+    let height = 0;
+    for (let i = 0; i < dateString.length; i++) {
+      result += `<g transform="matrix(1,0,0,1,${space},${height})" opacity="1" style="display: block;">${
+        simpleNumbers[dateString[i]]
+      }</g>`;
+      if (dateString[i] === '.') {
+        height += 70;
+        space = -30;
+      }
+      if (dateString[i] === '1' || dateString[i] === ' ') space += 15;
+      else space += 30;
     }
     return { result, size: space };
   }
@@ -100,16 +140,35 @@ export class NFTService {
     animatonPath: string,
     position: { x: number; y: number },
     color: string,
+    a = 1,
+    d = 1,
   ) {
     return `
-    <g transform="matrix(1,0.04,-0.04,1,${position.x},${position.y})" opacity="1" style="display: block;" fill="${color}">
+    <g transform="matrix(${a},0,0,${d},${position.x},${position.y})" opacity="1" style="display: block;" fill="${color}">
       <animateMotion
-        dur="10s"
+        dur="7s"
         repeatCount="indefinite"
         path="${animatonPath}"/>
       ${scrystall}
     </g>
     `;
+  }
+
+  private getCrystallSvgByAmount(amount: string): {
+    svg: string;
+    positions: { x: number; y: number }[];
+    claimedColor: string;
+  } {
+    const amountInEth = parseFloat(formatUnits(amount.toString(), 'ether'));
+    const crystallKeys = Object.keys(crystallMap);
+
+    for (let i = 0; i < crystallKeys.length; i++) {
+      if (!crystallKeys[i + 1]) return crystallMap[crystallKeys[i]];
+      if (amountInEth > Number(crystallKeys[i]) && amountInEth > Number(crystallKeys[i + 1])) continue;
+      if (amountInEth >= Number(crystallKeys[i])) return crystallMap[crystallKeys[i]];
+    }
+
+    return crystallMap[crystallKeys[0]];
   }
 
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
@@ -118,69 +177,56 @@ export class NFTService {
     const tokenId = Number(params.tokenId);
     const isPending = !finalized;
     const prefix = isPending ? 'ST' : '';
+    const amount = isPending ? requested : finalized;
+
+    const crystall = this.getCrystallSvgByAmount(amount);
+    const convertedAmount = this.convertFromWei(amount, prefix);
 
     const token = isPending ? lidoGray : ethColor;
     const bg = isPending ? bgTwo : bgOne;
-    // TODO: change real color by status
-    const textColor = isPending ? 'gray' : 'red';
-    const amount = isPending ? requested : finalized;
-
-    const convertedAmount = this.convertFromWei(amount, prefix);
+    const textColor = isPending ? '#8393AC' : crystall.claimedColor;
 
     const left = this.generateAmountLineSvg(convertedAmount, 0);
     const right = this.generateAmountLineSvg(convertedAmount, 1880);
+    const id = this.generateIdSvg(tokenId.toString());
+    const date = this.generateDateSvg(created_at);
 
-    const lineAnimationDuration = 14;
+    const lineAnimationDuration = 22;
 
-    // TODO: add token id and time to svg
-
-    // TODO: change crystalls by amount
-    // TODO: update animation for crystalls
     const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
   preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
-      ${bg}
-      ${token}
-      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
-        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
-          left.size * 2 + 200 * 2
-        }"
-         to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
-        ${left.line}
+      <defs>
+        <clipPath id="content"><rect width="2000" height="2000" x="0" y="0"></rect></clipPath>
+      </defs>
+      <g clip-path="url(#content)">
+        ${bg}
+        ${token}
+        <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+          <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 ${
+            left.size * 2 + 200 * 2
+          }"
+          to="0 0" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
+          ${left.line}
+        </g>
+        <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
+          <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 ${
+            right.size * 2 + 200 * 2
+          }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
+            ${right.line}
+        </g>
+        <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
+          ${phrase}
+        </g>
+        ${this.generateCrystallSvg(crystall.svg, 'M 150 -300 50 -50 z', crystall.positions[0], textColor)}
+        ${this.generateCrystallSvg(crystall.svg, 'M 200 -200 0 -0 z', crystall.positions[1], textColor)}
+        ${this.generateCrystallSvg(crystall.svg, 'M 0 0 -150 -200 z', crystall.positions[2], textColor, -1, -1)}
+        ${this.generateCrystallSvg(crystall.svg, 'M 0 0 150 -350 z', crystall.positions[3], textColor, -1)}
+        <g transform="matrix(1,0,0,1,301,899)" opacity="1" style="display: block;" fill="${textColor}">${id.result}</g>
+        <g transform="matrix(1,0,0,1,1194,96)" opacity="1" style="display: block;" fill="${textColor}">${
+      date.result
+    }</g>
       </g>
-      <g clip-path="url(#__lottie_element_172)" opacity="1" style="display: block;" fill="${textColor}">
-        <animateTransform attributeName="transform" attributeType="XML" type="translate" from="0 0" to="0 ${
-          right.size * 2 + 200 * 2
-        }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
-          ${right.line}
-      </g>
-      <g transform="matrix(1,0,0,1,1025,1500)" opacity="1" style="display: block;" fill="${textColor}">
-        ${phrase}
-      </g>
-      ${this.generateCrystallSvg(
-        crystalls[1],
-        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
-        { x: 300, y: 1300 },
-        textColor,
-      )}
-      ${this.generateCrystallSvg(
-        crystalls[2],
-        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
-        { x: 1300, y: 1100 },
-        textColor,
-      )}
-      ${this.generateCrystallSvg(
-        crystalls[3],
-        'M0,0,-50 50,-150 150,-250 250,-150 150,-50 50,0, 0z',
-        { x: 300, y: -700 },
-        textColor,
-      )}
-      ${this.generateCrystallSvg(
-        crystalls[0],
-        'M0,0,-50 -50,-150 -150,-250 -250,-150 -150,-50 -50,0, 0z',
-        { x: 1300, y: -800 },
-        textColor,
-      )}
     </svg>
     `;
 
