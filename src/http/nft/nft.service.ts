@@ -73,7 +73,7 @@ export class NFTService {
       result += `<g transform="matrix(1,0,0,1,${space},0)" opacity="1" style="display: block;">${
         simpleNumbers[id[i]]
       }</g>`;
-      if (id[i] === '1') space += 15;
+      if (id[i] === '1') space += 25;
       else space += 30;
     }
     return { result, size: space };
@@ -99,7 +99,7 @@ export class NFTService {
         height += 70;
         space = -30;
       }
-      if (dateString[i] === '1' || dateString[i] === ' ') space += 15;
+      if (dateString[i] === '1' || dateString[i] === ' ') space += 25;
       else space += 30;
     }
     return { result, size: space };
