@@ -7,3 +7,4 @@ export const MAX_EFFECTIVE_BALANCE = parseEther('32'); // ETH
 
 export const MAX_WITHDRAWALS_PER_PAYLOAD = 2 ** 4;
 // const MIN_VALIDATOR_WITHDRAWABILITY_DELAY = 256;
+export const MAX_VALID_NUMBER = Number.MAX_SAFE_INTEGER;

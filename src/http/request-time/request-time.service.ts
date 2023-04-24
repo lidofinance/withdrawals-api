@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ValidatorsStorageService, QueueInfoStorageService } from 'storage';
 import { BigNumber } from '@ethersproject/bignumber';
+import { parseEther, formatEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
@@ -10,8 +11,8 @@ import {
   MAX_EFFECTIVE_BALANCE,
   MAX_WITHDRAWALS_PER_PAYLOAD,
 } from './request-time.constants';
+import { maxMinNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
-import { parseEther } from '@ethersproject/units';
 
 @Injectable()
 export class RequestTimeService {
@@ -22,7 +23,10 @@ export class RequestTimeService {
     protected readonly genesisTimeService: GenesisTimeService,
   ) {}
 
-  async getRequestTime({ amount }: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
+  async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
+    const minAmount = formatEther(this.queueInfo.getMinStethAmount());
+    const amount = maxMinNumberValidation(params.amount, minAmount);
+
     const validatorsLastUpdate = this.validators.getLastUpdate();
     if (!validatorsLastUpdate) return null;
 
