@@ -186,10 +186,10 @@ export const crystallMap = {
   5: {
     svg: crystallTwo,
     positions: [
-      { x: 1050, y: -200 },
-      { x: 1000, y: 1200 },
-      { x: 1050, y: 2700 },
-      { x: 800, y: -200 },
+      { x: 1050, y: -500 },
+      { x: 1000, y: 1400 },
+      { x: 1050, y: 2900 },
+      { x: 800, y: -600 },
     ],
     claimedColor: '#03C5D1',
   },
