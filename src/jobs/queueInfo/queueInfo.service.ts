@@ -35,19 +35,15 @@ export class QueueInfoService {
   @OneAtTime()
   protected async updateQueueInfo(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update queue info' }, async () => {
-      const [unfinalizedStETH, unfinalizedRequests, name, symbol, minStethAmount, maxStethAmount] = await Promise.all([
+      const [unfinalizedStETH, unfinalizedRequests, minStethAmount, maxStethAmount] = await Promise.all([
         this.contract.unfinalizedStETH(),
         this.contract.unfinalizedRequestNumber(),
-        this.contract.name(),
-        this.contract.symbol(),
         this.contract.MIN_STETH_WITHDRAWAL_AMOUNT(),
         this.contract.MAX_STETH_WITHDRAWAL_AMOUNT(),
       ]);
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
       this.queueInfoStorageService.setRequests(unfinalizedRequests);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
-      this.queueInfoStorageService.setTokenName(name);
-      this.queueInfoStorageService.setTokenSymbol(symbol);
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
     });

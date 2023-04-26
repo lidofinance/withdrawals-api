@@ -1,11 +1,11 @@
 import { formatUnits } from 'ethers';
 
 import { glyphNumbers, simpleNumbers, crystallMap } from './assets/nft.parts';
+import { SVG_ID_LENGTH } from './nft.constants';
 
 export const generateIdSvg = (id: string) => {
-  const ID_LENGTH = 17;
-  // fill id with zeros to ID_LENGTH
-  const drawable_id = id.padStart(ID_LENGTH, '0');
+  // fill id with zeros to SVG_ID_LENGTH
+  const drawable_id = id.padStart(SVG_ID_LENGTH, '0');
 
   let result = '';
   let space = 0;
