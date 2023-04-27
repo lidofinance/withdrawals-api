@@ -87,7 +87,7 @@ export class NFTService {
           }" begin="0s" dur="${lineAnimationDuration}s" repeatCount="indefinite"/>
             ${right.line}
         </g>
-        <g transform="matrix(1,0,0,1,1025,1500)" fill="${textColor}">
+        <g transform="matrix(1,0,0,1,950,1630)" fill="${textColor}">
           ${phrase}
         </g>
         ${generateCrystallSvg(crystall.svg, 'M 150 -300 50 -50 z', crystall.positions[0], textColor)}

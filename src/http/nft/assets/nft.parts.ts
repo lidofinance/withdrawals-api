@@ -178,7 +178,7 @@ export const crystallMap = {
     positions: [
       { x: 1050, y: -500 },
       { x: 1000, y: 1500 },
-      { x: 1050, y: 3000 },
+      { x: 1030, y: 3000 },
       { x: 800, y: -600 },
     ],
     claimedColor: '#548CFF',
@@ -188,7 +188,7 @@ export const crystallMap = {
     positions: [
       { x: 1050, y: -500 },
       { x: 1000, y: 1400 },
-      { x: 1050, y: 2900 },
+      { x: 1030, y: 2900 },
       { x: 800, y: -600 },
     ],
     claimedColor: '#03C5D1',
