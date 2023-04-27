@@ -80,7 +80,7 @@ export const generateCrystallSvg = (
   return `
     <g transform="matrix(${a},0,0,${d},${position.x},${position.y})" opacity="1" style="display: block;" fill="${color}">
       <animateMotion
-        dur="7s"
+        dur="8s"
         repeatCount="indefinite"
         path="${animatonPath}"/>
       ${scrystall}
