@@ -178,7 +178,7 @@ export const crystallMap = {
     positions: [
       { x: 1050, y: -500 },
       { x: 1000, y: 1500 },
-      { x: 1050, y: 3000 },
+      { x: 1030, y: 3000 },
       { x: 800, y: -600 },
     ],
     claimedColor: '#548CFF',
@@ -188,7 +188,7 @@ export const crystallMap = {
     positions: [
       { x: 1050, y: -500 },
       { x: 1000, y: 1400 },
-      { x: 1050, y: 2900 },
+      { x: 1030, y: 2900 },
       { x: 800, y: -600 },
     ],
     claimedColor: '#03C5D1',
@@ -253,7 +253,9 @@ export const bgOne = `
   <rect width="2000" height="2000" fill="url(#paint4_radial_88_750)" fill-opacity="0.8"/>
   <defs>
     <radialGradient id="paint0_radial_88_750" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1000 931) rotate(-90) scale(931)">
-      <stop stop-color="white"/>
+      <stop stop-color="white">
+        <animate attributeName="stop-color" values="#C7CAF8; #FFECF9; #F3FEE1; #DBE3EE; #10FFD8; #94FDE5; #C7CAF8;" dur="8s" repeatCount="indefinite"></animate>
+      </stop>
       <stop offset="1" stop-color="#F1EAFB"/>
     </radialGradient>
     <radialGradient id="paint1_radial_88_750" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(-51 51.5) rotate(58.9035) scale(1443.42)">
@@ -283,7 +285,9 @@ export const bgTwo = `
   <rect width="2000" height="2000" fill="url(#paint1_radial_88_678)" fill-opacity="0.8"/>
   <defs>
     <radialGradient id="paint0_radial_88_678" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1000 931) rotate(-90) scale(931)">
-      <stop offset="0.652703" stop-color="#E2E6EF"/>
+      <stop offset="0.652703" stop-color="#E2E6EF">
+        <animate attributeName="stop-color" values="#E2E6EF; #DBE3EE; #E2E6EF; #FCFCFC; #DBE3EE; #E2E6EF;" dur="8s" repeatCount="indefinite"></animate>
+      </stop>
       <stop offset="1" stop-color="#DBE3EE"/>
     </radialGradient>
     <radialGradient id="paint1_radial_88_678" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(571.5 1570) rotate(-9.21764) scale(1039.42)">
