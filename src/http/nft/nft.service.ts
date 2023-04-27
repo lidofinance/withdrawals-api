@@ -69,7 +69,7 @@ export class NFTService {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000"
   preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; transform: translate3d(0px, 0px, 0px);">
       <defs>
-        <clipPath id="content"><rect width="2000" height="2000" x="0" y="0"></rect></clipPath>
+        <clipPath id="content"><rect width="2000" height="2000" x="0" y="0" rx="20"></rect></clipPath>
       </defs>
       <g clip-path="url(#content)">
         ${bg}
