@@ -62,7 +62,7 @@ export const getCrystallSvgByAmount = (
 
   for (let i = 0; i < crystallKeys.length; i++) {
     if (!crystallKeys[i + 1]) return crystallMap[crystallKeys[i]];
-    if (amountInEth > Number(crystallKeys[i]) && amountInEth > Number(crystallKeys[i + 1])) continue;
+    if (amountInEth > Number(crystallKeys[i]) && amountInEth >= Number(crystallKeys[i + 1])) continue;
     if (amountInEth >= Number(crystallKeys[i])) return crystallMap[crystallKeys[i]];
   }
 
