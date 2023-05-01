@@ -15,7 +15,7 @@ export class PrometheusService {
   }
 
   public httpRequestDuration = this.getOrCreateMetric('Histogram', {
-    name: 'http_requests_duration_seconds',
+    name: METRICS_PREFIX + 'http_requests_duration_seconds',
     help: 'Duration of http requests',
     buckets: [0.01, 0.1, 0.2, 0.5, 1, 1.5, 2, 5],
     labelNames: ['statusCode', 'method', 'route', 'version'],
@@ -28,21 +28,21 @@ export class PrometheusService {
   });
 
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {
-    name: 'cl_api_requests_duration_seconds',
+    name: METRICS_PREFIX + 'cl_api_requests_duration_seconds',
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
     labelNames: ['result', 'status'],
   });
 
   public jobDuration = this.getOrCreateMetric('Histogram', {
-    name: 'job_duration_seconds',
+    name: METRICS_PREFIX + 'job_duration_seconds',
     help: 'Job execution duration',
     buckets: [0.2, 0.6, 1, 2, 3, 5, 8, 13, 30, 60],
     labelNames: ['result', 'job'],
   });
 
   public elRpcRequestDuration = this.getOrCreateMetric('Histogram', {
-    name: 'el_rpc_requests_duration_seconds',
+    name: METRICS_PREFIX + 'el_rpc_requests_duration_seconds',
     help: 'EL RPC request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
     labelNames: ['result'],
