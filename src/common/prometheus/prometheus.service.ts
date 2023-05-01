@@ -18,7 +18,7 @@ export class PrometheusService {
     name: 'http_requests_duration_seconds',
     help: 'Duration of http requests',
     buckets: [0.01, 0.1, 0.2, 0.5, 1, 1.5, 2, 5],
-    labelNames: ['statusCode', 'method'],
+    labelNames: ['statusCode', 'method', 'route', 'version'],
   });
 
   public buildInfo = this.getOrCreateMetric('Gauge', {
