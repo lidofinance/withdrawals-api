@@ -13,10 +13,11 @@ import {
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CacheControlHeaders } from 'http/common/cache';
+import { HTTP_PATHS } from 'http/http.constants';
 import { NFTService } from './nft.service';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 
-@Controller('nft')
+@Controller(HTTP_PATHS[1].nft)
 @ApiTags('NFT')
 @UseInterceptors(ClassSerializerInterceptor)
 export class NFTController {

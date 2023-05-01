@@ -11,10 +11,12 @@ import {
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CacheControlHeaders } from 'http/common/cache';
+import { HTTP_PATHS } from 'http/http.constants';
+
 import { RequestTimeService } from './request-time.service';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 
-@Controller('request-time')
+@Controller(HTTP_PATHS[1]['request-time'])
 @ApiTags('Request Time')
 @UseInterceptors(ClassSerializerInterceptor)
 export class RequestTimeController {
