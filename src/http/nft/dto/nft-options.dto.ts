@@ -1,22 +1,30 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
-import { ToLowerCase } from 'common/transforms';
+import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 
 export class NFTOptionsDto {
-  @ApiPropertyOptional({
-    type: 'bigint',
+  @ApiProperty({
+    type: 'string',
     minimum: 0,
     example: '25000000000000000000',
     description: 'Requested token amount',
+    required: true,
   })
-  @ToLowerCase()
-  readonly requested: 'finalized' | 'pending';
+  @IsNotEmpty()
+  @Type(() => BigInt)
+  readonly requested: string;
 
-  @ApiPropertyOptional({ type: 'timestamp', example: 1658650005, minimum: 0, description: 'Created timestamp' })
+  @ApiProperty({
+    type: 'number',
+    example: 1658650005,
+    minimum: 0,
+    description: 'Created timestamp',
+    required: true,
+  })
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @IsNotEmpty()
   readonly created_at: number;
 
   @ApiPropertyOptional({
@@ -26,8 +34,6 @@ export class NFTOptionsDto {
     description: 'Claimable token amount',
   })
   @Type(() => BigInt)
-  @IsInt()
-  @Min(0)
   @IsOptional()
   readonly finalized?: string;
 }
