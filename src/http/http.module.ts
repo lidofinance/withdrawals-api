@@ -10,9 +10,10 @@ import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
 import { CacheModule, CacheWithHeadersInterceptor } from './common/cache';
 import { RequestTimeModule } from './request-time';
 import { NFTModule } from './nft';
+import { EstimateModule } from './estimate';
 
 @Module({
-  imports: [RequestTimeModule, NFTModule, CacheModule, ThrottlerModule],
+  imports: [RequestTimeModule, NFTModule, EstimateModule, CacheModule, ThrottlerModule],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheWithHeadersInterceptor },
