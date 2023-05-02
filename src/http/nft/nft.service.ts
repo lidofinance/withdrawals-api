@@ -1,7 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { ConfigService } from 'common/config';
-import { QueueInfoStorageService } from 'storage';
 
 import { phrase, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
 import { convertFromWei } from './nft.utils';
@@ -15,13 +14,12 @@ import {
 import { META_DATA_DESC, META_DATA_NAME } from './nft.constants';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 
-const ALLOWED_ID_LIST = [74, 415, 82, 92, 93, 489, 415, 414, 413, 210];
+const ALLOWED_ID_LIST = [74, 415, 82, 92, 93, 489, 415, 414, 413, 210, 582];
 
 @Injectable()
 export class NFTService {
   constructor(
     protected readonly configService: ConfigService,
-    protected readonly queueInfo: QueueInfoStorageService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contract: WithdrawalQueue,
   ) {}
 

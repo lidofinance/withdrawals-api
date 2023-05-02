@@ -24,12 +24,11 @@ export class QueueInfoService {
   public async initialize(): Promise<void> {
     await this.updateQueueInfo();
 
-    const cronTimeQueueInfo = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
+    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
+    const job = new CronJob(cronTime, () => this.updateQueueInfo());
+    job.start();
 
-    const jobQueueInfo = new CronJob(cronTimeQueueInfo, () => this.updateQueueInfo());
-    jobQueueInfo.start();
-
-    this.logger.log('Service initialized', { service: 'queue info', cronTimeQueueInfo });
+    this.logger.log('Service initialized', { service: 'queue info', cronTime });
   }
 
   @OneAtTime()
