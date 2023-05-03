@@ -9,3 +9,9 @@ export class NFTParamsDto {
   @Min(0)
   readonly tokenId: string;
 }
+export class NFTImageParamsDto {
+  @ApiProperty({ type: 'number', description: 'NFT token id' })
+  @Type(() => Number)
+  @IsInt()
+  readonly tokenId: string;
+}
