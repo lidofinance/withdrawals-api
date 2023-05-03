@@ -1,9 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { ConfigService } from 'common/config';
 
 import { phrase, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
-import { convertFromWei } from './nft.utils';
+import { convertFromWei, validateWeiAmount } from './nft.utils';
 import {
   generateCrystallSvg,
   getCrystallSvgByAmount,
@@ -23,6 +23,7 @@ export class NFTService {
 
   async getNftMeta(params: NFTParamsDto, query: NFTOptionsDto): Promise<NFTDto | null> {
     const { tokenId } = params;
+    this.validate(params, query);
 
     const image = `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`;
     const meta = {
@@ -34,7 +35,12 @@ export class NFTService {
   }
 
   async getNftImage(params: NFTParamsDto, query): Promise<string> {
-    return this.generateSvgImage(params, query);
+    this.validate(params, query);
+    try {
+      return this.generateSvgImage(params, query);
+    } catch (error) {
+      throw new HttpException('Bad request', HttpStatus.BAD_REQUEST);
+    }
   }
 
   generateSvgImage(params: NFTParamsDto, query: NFTOptionsDto): string {
@@ -94,5 +100,33 @@ export class NFTService {
     `;
 
     return svgString;
+  }
+
+  validate(params: NFTParamsDto, query: NFTOptionsDto) {
+    const { tokenId } = params;
+    const { finalized, requested } = query;
+
+    if (Number.isNaN(Number(tokenId)) || tokenId === '0') {
+      throw new BadRequestException('TokenId is not valid', {
+        cause: new Error(),
+        description: 'Bad request',
+      });
+    }
+
+    const isValidRequested = validateWeiAmount(requested, 'requested');
+    if (!isValidRequested.isValid) {
+      throw new BadRequestException(isValidRequested.message, {
+        cause: new Error(),
+        description: 'Bad request',
+      });
+    }
+
+    const isValidFinalized = validateWeiAmount(finalized, 'finalized');
+    if (finalized && !isValidFinalized.isValid) {
+      throw new BadRequestException(isValidFinalized.message, {
+        cause: new Error(),
+        description: 'Bad request',
+      });
+    }
   }
 }
