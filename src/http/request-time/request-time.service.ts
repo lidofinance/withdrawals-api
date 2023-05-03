@@ -75,10 +75,7 @@ export class RequestTimeService {
     const isValidAmount = maxMinNumberValidation(params.amount, minAmount);
 
     if (params.amount && !isValidAmount.isValid) {
-      throw new BadRequestException(isValidAmount.message, {
-        cause: new Error(),
-        description: 'Bad request',
-      });
+      throw new BadRequestException(isValidAmount.message);
     }
   }
 }
