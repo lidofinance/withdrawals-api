@@ -26,8 +26,8 @@ export class NFTController {
   @Version('1')
   @Get('/:tokenId')
   @Throttle(600, 60)
-  @CacheTTL(86400)
-  @CacheControlHeaders({ maxAge: 86400 })
+  @CacheTTL(10)
+  @CacheControlHeaders({ maxAge: 43200 })
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   async nftMetaV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<NFTDto> {
     return await this.nftService.getNftMeta(nftParams, nftQuery);
