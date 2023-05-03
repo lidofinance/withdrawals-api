@@ -1,12 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { IsOptional } from 'class-validator';
 
 export class RequestTimeOptionsDto {
-  @ApiPropertyOptional({ type: 'int', minimum: 0, description: 'stETH amount' })
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
+  @ApiPropertyOptional({ type: 'number', minimum: 0, description: 'stETH amount' })
+  @Type(() => BigInt)
   @IsOptional()
-  readonly amount?: number;
+  readonly amount?: string;
 }

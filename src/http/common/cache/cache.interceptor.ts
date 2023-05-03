@@ -61,6 +61,9 @@ export class CacheWithHeadersInterceptor extends CacheInterceptor {
               // for requests with cache-control headers
               // need set new headers otherwise error will be cached
               setCacheControlHeaders(context, CACHE_DEFAULT_ERROR_HEADERS);
+              // for /image endpoint
+              const res = context.switchToHttp().getResponse();
+              res.header('Content-Type', 'application/json; charset=utf-8');
             }
           },
         }),
