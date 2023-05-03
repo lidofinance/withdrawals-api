@@ -8,5 +8,5 @@ export class RequestTimeOptionsDto {
   @IsInt()
   @Min(0)
   @IsOptional()
-  readonly amount?: string;
+  readonly amount?: number;
 }
