@@ -107,26 +107,17 @@ export class NFTService {
     const { finalized, requested } = query;
 
     if (Number.isNaN(Number(tokenId)) || tokenId === '0') {
-      throw new BadRequestException('TokenId is not valid', {
-        cause: new Error(),
-        description: 'Bad request',
-      });
+      throw new BadRequestException('TokenId is not valid');
     }
 
     const isValidRequested = validateWeiAmount(requested, 'requested');
     if (!isValidRequested.isValid) {
-      throw new BadRequestException(isValidRequested.message, {
-        cause: new Error(),
-        description: 'Bad request',
-      });
+      throw new BadRequestException(isValidRequested.message);
     }
 
     const isValidFinalized = validateWeiAmount(finalized, 'finalized');
     if (finalized && !isValidFinalized.isValid) {
-      throw new BadRequestException(isValidFinalized.message, {
-        cause: new Error(),
-        description: 'Bad request',
-      });
+      throw new BadRequestException(isValidFinalized.message);
     }
   }
 }
