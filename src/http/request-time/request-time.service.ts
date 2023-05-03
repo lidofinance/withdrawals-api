@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ValidatorsStorageService, QueueInfoStorageService } from 'storage';
 import { BigNumber } from '@ethersproject/bignumber';
 import { parseEther, formatEther } from '@ethersproject/units';
@@ -24,8 +24,7 @@ export class RequestTimeService {
   ) {}
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
-    const minAmount = formatEther(this.queueInfo.getMinStethAmount());
-    const amount = maxMinNumberValidation(params.amount, minAmount);
+    this.validate(params);
 
     const validatorsLastUpdate = this.validators.getLastUpdate();
     if (!validatorsLastUpdate) return null;
@@ -33,7 +32,7 @@ export class RequestTimeService {
     const unfinalizedETH = this.queueInfo.getStETH();
     if (!unfinalizedETH) return null;
 
-    const additionalStETH = parseEther(amount || '0');
+    const additionalStETH = parseEther(params.amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
@@ -69,5 +68,17 @@ export class RequestTimeService {
       .div(60 * 60 * 24);
 
     return Math.round(waitingTime.toNumber());
+  }
+
+  validate(params: RequestTimeOptionsDto) {
+    const minAmount = formatEther(this.queueInfo.getMinStethAmount());
+    const isValidAmount = maxMinNumberValidation(params.amount, minAmount);
+
+    if (!isValidAmount.isValid) {
+      throw new BadRequestException(isValidAmount.message, {
+        cause: new Error(),
+        description: 'Bad request',
+      });
+    }
   }
 }
