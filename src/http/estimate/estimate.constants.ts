@@ -50,4 +50,20 @@ export const ESTIMATE_ACCOUNT_PERMITS: {
       deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     },
   },
+  [CHAINS.Mainnet]: {
+    steth_permit: {
+      r: '0xTODO',
+      s: '0xTODO',
+      v: 27,
+      value: '1000000000000000',
+      deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    },
+    wsteth_permit: {
+      r: '0x9b2284498dd54606dc6fd86b14101ffa62d2bb1abb1058c0fec02cdeb29d3c93',
+      s: '0x4215b88db450e21e2418ff916c35e06ac6e75c493fa95b938e7b009efcc300f1',
+      v: 27,
+      value: '1000000000000000',
+      deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    },
+  },
 } as const;
