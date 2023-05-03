@@ -14,8 +14,6 @@ import {
 import { META_DATA_DESC, META_DATA_NAME } from './nft.constants';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 
-const ALLOWED_ID_LIST = [74, 415, 82, 92, 93, 489, 415, 414, 413, 210, 582];
-
 @Injectable()
 export class NFTService {
   constructor(
@@ -26,10 +24,7 @@ export class NFTService {
   async getNftMeta(params: NFTParamsDto, query: NFTOptionsDto): Promise<NFTDto | null> {
     const { tokenId } = params;
 
-    const image = ALLOWED_ID_LIST.includes(Number(params.tokenId))
-      ? `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`
-      : null;
-
+    const image = `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`;
     const meta = {
       name: `${META_DATA_NAME} #${tokenId}`,
       description: META_DATA_DESC,
