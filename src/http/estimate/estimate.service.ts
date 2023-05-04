@@ -20,6 +20,8 @@ export class EstimateService {
   ) {}
 
   async getEstimate(params: EstimateOptionsDto): Promise<EstimateDto | null> {
+    const isDisable = this.configService.get('HIDE_NFT');
+
     const { token, requestCount } = params;
     const chainId = this.configService.get('CHAIN_ID');
     const permits = ESTIMATE_ACCOUNT_PERMITS[chainId];
@@ -36,6 +38,8 @@ export class EstimateService {
         : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) *
       requestCount *
       10;
+
+    if (isDisable) return { gasLimit: helperGasLimit };
 
     const gasLimit = await method(Array(Number(requestCount)).fill(BigNumber.from(100)), ESTIMATE_ACCOUNT, permit, {
       from: ESTIMATE_ACCOUNT,

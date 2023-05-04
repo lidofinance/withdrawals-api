@@ -22,6 +22,12 @@ export class QueueInfoService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    const isDisableJob = this.configService.get('HIDE_NFT');
+    if (isDisableJob) {
+      this.logger.log('Service disabled', { service: 'queue info' });
+      return;
+    }
+
     await this.updateQueueInfo();
 
     const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
