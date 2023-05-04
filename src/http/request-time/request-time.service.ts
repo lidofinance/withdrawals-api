@@ -71,6 +71,8 @@ export class RequestTimeService {
   }
 
   validate(params: RequestTimeOptionsDto) {
+    if (!this.queueInfo.getMinStethAmount()) return;
+
     const minAmount = formatEther(this.queueInfo.getMinStethAmount());
     const isValidAmount = maxMinNumberValidation(params.amount, minAmount);
 
