@@ -7,6 +7,10 @@ export class SentryInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       catchError((error) => {
+        if ('status' in error && error.status >= 400 && error.status <= 499) {
+          return throwError(() => error);
+        }
+
         Sentry.captureException(error);
         return throwError(() => error);
       }),
