@@ -6,7 +6,7 @@ on:
     branches:
       - develop
     paths-ignore:
-      - ".github/**"
+      - '.github/**'
 
 permissions: {}
 
@@ -24,6 +24,6 @@ jobs:
         env:
           APP_ID: ${{ secrets.APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
-          TARGET_REPO: "lidofinance/infra-mainnet"
-          TARGET_WORKFLOW: "!! PUT CORRECT REFERENCE TO DEPLOY WF IN lidofinance/infra-mainnet HERE. EX. my_awesome_app.yml !!"
-          TARGET: "develop"
+          TARGET_REPO: 'lidofinance/infra-mainnet'
+          TARGET_WORKFLOW: 'deploy_testnet_withdrawals_api.yaml'
+          TARGET: 'develop'

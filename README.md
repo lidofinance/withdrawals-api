@@ -1,11 +1,4 @@
-## Lido API Template
-
-> 🚧 CI and deploy
-> 
-> After creating repo from the template make sure that you have correctly filled TARGET_WORKFLOW field in:
-> - .github/workflows/ci-dev.yml
-> - .github/workflows/ci-staging.yml
-> - .github/workflows/ci-prod.yml
+## Withdrawals API
 
 ## Installation
 

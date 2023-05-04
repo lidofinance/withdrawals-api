@@ -6,6 +6,8 @@ export class QueueInfoStorageService {
   protected unfinalizedStETH: BigNumber;
   protected unfinalizedRequests: BigNumber;
   protected lastUpdate: number;
+  protected minStethAmount: BigNumber;
+  protected maxStethAmount: BigNumber;
 
   /**
    * Get unfinalized ETH
@@ -32,6 +34,22 @@ export class QueueInfoStorageService {
   }
 
   /**
+   * Get min stETH amount
+   * @returns min stETH amount
+   */
+  public getMinStethAmount(): BigNumber | undefined {
+    return this.minStethAmount;
+  }
+
+  /**
+   * Get max stETH amount
+   * @returns max stETH amount
+   */
+  public getMaxStethAmount(): BigNumber | undefined {
+    return this.maxStethAmount;
+  }
+
+  /**
    * Updates unfinalized stETH
    * @param unfinalizedEth - BigNumber stETH to save
    */
@@ -51,8 +69,23 @@ export class QueueInfoStorageService {
    * Updates last update timestamp
    * @param lastUpdate - timestamp to save
    * */
-
   public setLastUpdate(lastUpdate: number): void {
     this.lastUpdate = lastUpdate;
+  }
+
+  /**
+   * Updates min stETH amount
+   * @param minStethAmount - min stETH amount to save
+   * */
+  public setMinStethAmount(minStethAmount: BigNumber): void {
+    this.minStethAmount = minStethAmount;
+  }
+
+  /**
+   * Updates max stETH amount
+   * @param minStethAmount - max stETH amount to save
+   * */
+  public setMaxStethAmount(maxStethAmount: BigNumber): void {
+    this.maxStethAmount = maxStethAmount;
   }
 }
