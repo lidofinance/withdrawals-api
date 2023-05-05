@@ -1082,10 +1082,10 @@
   resolved "https://registry.yarnpkg.com/@lido-nestjs/constants/-/constants-5.0.0.tgz#9f14aa918bea4c1e414b99f92f5dd23b29b4c385"
   integrity sha512-z8OtuqeuQXbzWzjtioH/xAqrSJILxe5o/bpmUpQzepf55TxwG6miGuG+5woBDlrmmKEC5oqkW70+WUBnsO7mNg==
 
-"@lido-nestjs/contracts@^6.0.0":
-  version "6.0.0"
-  resolved "https://registry.yarnpkg.com/@lido-nestjs/contracts/-/contracts-6.0.0.tgz#dad2b61274c9c3d00ba48b331a99953379427127"
-  integrity sha512-+3UjLi4r/Jiz6qj3mCnci1H7lGDWkEl29M9L+GCozBOxvB2waSwd/LX+HM+rBjuCAAc7UB6hHzUFFna5TS4hRw==
+"@lido-nestjs/contracts@^9.0.0":
+  version "9.0.0"
+  resolved "https://registry.yarnpkg.com/@lido-nestjs/contracts/-/contracts-9.0.0.tgz#05555ab4cbbe6e44f634cf1a7296dfb1419cca29"
+  integrity sha512-OAWu55VJJedOeUagQemCIqjpOTMJTUK39ikcs7/W6hoFInRCeTBn+EgGAt1d2C2VRAbsnPddcnPugr5v0q+TNg==
   dependencies:
     "@ethersproject/abi" "^5.5.0"
     "@ethersproject/providers" "^5.5.3"
