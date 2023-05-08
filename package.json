@@ -41,7 +41,7 @@
     "@nestjs/throttler": "^3.1.0",
     "@sentry/node": "^7.29.0",
     "@willsoto/nestjs-prometheus": "^5.1.0",
-    "cache-manager": "^5.1.4",
+    "cache-manager": "^3.6.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "ethers": "^6.3.0",
