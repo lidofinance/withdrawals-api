@@ -20,7 +20,7 @@ export const validateWeiAmount = (amount: string, key: string): { isValid: boole
   try {
     const amountInEth = parseFloat(formatUnits(amount.toString(), 'ether'));
 
-    if (amountInEth >= MAX_AMOUNT_IN_ETH) return { isValid: false, message: `${key} is too big` };
+    if (amountInEth > MAX_AMOUNT_IN_ETH) return { isValid: false, message: `${key} is too big` };
     else return { isValid: true };
   } catch (error) {
     return { isValid: false, message: `${key} is not valid` };
