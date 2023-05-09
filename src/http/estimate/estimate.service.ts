@@ -20,7 +20,7 @@ export class EstimateService {
   ) {}
 
   async getEstimate(params: EstimateOptionsDto): Promise<EstimateDto | null> {
-    const isDisable = this.configService.get('HIDE_NFT');
+    const isDisable = this.configService.get('DISABLE_V2');
 
     const { token, requestCount } = params;
     const chainId = this.configService.get('CHAIN_ID');

@@ -22,7 +22,7 @@ export class QueueInfoService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
-    const isDisableJob = this.configService.get('HIDE_NFT');
+    const isDisableJob = this.configService.get('DISABLE_V2');
     if (isDisableJob) {
       this.logger.log('Service disabled', { service: 'queue info' });
       return;
