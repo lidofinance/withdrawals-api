@@ -75,8 +75,9 @@ export class RequestTimeService {
 
     const minAmount = formatEther(this.queueInfo.getMinStethAmount());
     const isValidAmount = maxMinNumberValidation(params.amount, minAmount);
+    const isNeedValidate = params.amount && params.amount !== '0';
 
-    if (params.amount && !isValidAmount.isValid) {
+    if (isNeedValidate && !isValidAmount.isValid) {
       throw new BadRequestException(isValidAmount.message);
     }
   }
