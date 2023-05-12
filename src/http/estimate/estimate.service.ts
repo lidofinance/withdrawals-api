@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 
 import { ConfigService } from 'common/config';
@@ -11,10 +11,12 @@ import {
 } from './estimate.constants';
 import { EstimateDto, EstimateOptionsDto } from './dto';
 import { BigNumber } from '@ethersproject/bignumber';
+import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 @Injectable()
 export class EstimateService {
   constructor(
+    @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contract: WithdrawalQueue,
   ) {}
@@ -41,11 +43,17 @@ export class EstimateService {
 
     if (isDisable) return { gasLimit: helperGasLimit };
 
-    const gasLimit = await method(Array(Number(requestCount)).fill(BigNumber.from(100)), ESTIMATE_ACCOUNT, permit, {
-      from: ESTIMATE_ACCOUNT,
-      gasLimit: helperGasLimit,
-    }).then((r) => r.toNumber());
+    try {
+      const gasLimit = await method(Array(Number(requestCount)).fill(BigNumber.from(100)), ESTIMATE_ACCOUNT, permit, {
+        from: ESTIMATE_ACCOUNT,
+        gasLimit: helperGasLimit,
+      });
 
-    return { gasLimit };
+      return { gasLimit: gasLimit.toNumber() };
+    } catch (error) {
+      this.logger.error('Estimate error');
+
+      return { gasLimit: helperGasLimit };
+    }
   }
 }
