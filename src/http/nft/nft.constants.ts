@@ -4,3 +4,4 @@ export const META_DATA_DESC =
 export const SVG_ID_LENGTH = 17;
 
 export const MAX_AMOUNT_IN_ETH = 1000;
+export const MIN_AMOUNT_IN_WEI = 100;
