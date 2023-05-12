@@ -25,7 +25,7 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId')
-  @Throttle(600, 60)
+  @Throttle(600, 30)
   @CacheTTL(10)
   @CacheControlHeaders({ maxAge: 10 })
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
