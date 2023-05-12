@@ -5,7 +5,7 @@ import { MAX_AMOUNT_IN_ETH, MIN_AMOUNT_IN_WEI } from './nft.constants';
 export const convertFromWei = (amountInWei: string, prefix?: string): string => {
   const convertedInWei = parseFloat(formatUnits(amountInWei.toString(), 'wei'));
   const amountInGwei = Math.floor(Number(formatUnits(amountInWei.toString(), 'gwei')) * 10000) / 10000;
-  const amountInEth = Math.floor(Number(formatUnits(amountInWei.toString(), 'ether')) * 10000) / 10000;
+  const amountInEth = Math.floor(Number(formatUnits(amountInWei.toString(), 'ether').slice(0, 16)) * 10000) / 10000;
 
   if (amountInEth > 0.00009) {
     return `${parseFloat(String(amountInEth))} ${prefix ? prefix : ''}ETH`;
