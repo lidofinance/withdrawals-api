@@ -1,4 +1,15 @@
-# 0.1.0 (2023-05-12)
+## [0.1.1](https://github.com/lidofinance/withdrawals-api/compare/0.1.0...0.1.1) (2023-05-12)
+
+
+### Bug Fixes
+
+* fix convert amount ([86b8bb1](https://github.com/lidofinance/withdrawals-api/commit/86b8bb1c911cd4fee107ef4df22522610116369a))
+* fix rounding ([f9a41b4](https://github.com/lidofinance/withdrawals-api/commit/f9a41b4dbbf96040cedb1a4aa39242f380b9352b))
+* fix rounding for 1 eth ([499c0b3](https://github.com/lidofinance/withdrawals-api/commit/499c0b3ef131124208934df2028cf056247cc1d9))
+
+
+
+# [0.1.0](https://github.com/lidofinance/withdrawals-api/compare/9dcf446e6fc3a99ddf1eae6b8ad114026cedeae3...0.1.0) (2023-05-12)
 
 
 ### Bug Fixes
