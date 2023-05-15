@@ -24,7 +24,7 @@ export class EstimateController {
 
   @Version('1')
   @Get('/')
-  @Throttle(10, 30)
+  @Throttle(30, 30)
   @CacheTTL(10)
   @CacheControlHeaders({ maxAge: 10 })
   @ApiResponse({ status: HttpStatus.OK, type: EstimateDto })
