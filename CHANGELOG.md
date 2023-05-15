@@ -1,3 +1,18 @@
+# [0.2.0](https://github.com/lidofinance/withdrawals-api/compare/0.1.1...0.2.0) (2023-05-15)
+
+
+### Bug Fixes
+
+* value permit ([ffb685c](https://github.com/lidofinance/withdrawals-api/commit/ffb685ceadce080b50e6831ddda310dacf92d6b7))
+
+
+### Features
+
+* increase rate limit ([bef8fe7](https://github.com/lidofinance/withdrawals-api/commit/bef8fe7f376bdd482af702ac0136fe031cab5596))
+* steth permit ([fc87712](https://github.com/lidofinance/withdrawals-api/commit/fc87712be94cb87fc12d36ae69a2275716b2d037))
+
+
+
 ## [0.1.1](https://github.com/lidofinance/withdrawals-api/compare/0.1.0...0.1.1) (2023-05-12)
 
 
