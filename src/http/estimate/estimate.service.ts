@@ -30,12 +30,12 @@ export class EstimateService {
 
     const permit = token === 'WSTETH' ? permits.wsteth_permit : permits.steth_permit;
     const method =
-      token === 'WSTETH'
+      token === 'wsteth'
         ? this.contract.estimateGas.requestWithdrawalsWstETHWithPermit
         : this.contract.estimateGas.requestWithdrawalsWithPermit;
 
     const helperGasLimit =
-      (token === 'STETH'
+      (token === 'steth'
         ? WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT
         : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) * requestCount;
 
@@ -46,6 +46,8 @@ export class EstimateService {
         from: ESTIMATE_ACCOUNT,
         gasLimit: helperGasLimit,
       });
+
+      console.log('gasLimit', gasLimit.toNumber(), token);
 
       return { gasLimit: gasLimit.toNumber() };
     } catch (error) {
