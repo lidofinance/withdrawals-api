@@ -1,3 +1,15 @@
+## [0.2.1](https://github.com/lidofinance/withdrawals-api/compare/0.2.0...0.2.1) (2023-05-15)
+
+
+### Bug Fixes
+
+* clear logs ([157f8a6](https://github.com/lidofinance/withdrawals-api/commit/157f8a695b393ee1171f5fe855b59baaea3b0ad1))
+* fix detect token ([295eb4a](https://github.com/lidofinance/withdrawals-api/commit/295eb4a35c18dbfa0ac59ceda2de4ebb6b1842a7))
+* fix fallback ([6a9285b](https://github.com/lidofinance/withdrawals-api/commit/6a9285b1d2528fd20316e6d308211977c9e966b4))
+* fix token name ([a0a8dd9](https://github.com/lidofinance/withdrawals-api/commit/a0a8dd97a0f06e268ab929f0c15645064cca9438))
+
+
+
 # [0.2.0](https://github.com/lidofinance/withdrawals-api/compare/0.1.1...0.2.0) (2023-05-15)
 
 
