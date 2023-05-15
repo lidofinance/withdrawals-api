@@ -52,9 +52,9 @@ export const ESTIMATE_ACCOUNT_PERMITS: {
   },
   [CHAINS.Mainnet]: {
     steth_permit: {
-      r: '0xTODO',
-      s: '0xTODO',
-      v: 27,
+      r: '0xc0ccc03b150e93ad36c5a47fa2ee960527ec32e056e4fa16bb15939af8d65fb7',
+      s: '0x37c580eef3a664a321b7c8d14ee583fa3800735e738eff8c589996c974c90f9a',
+      v: 28,
       value: '1000000000000000',
       deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     },
