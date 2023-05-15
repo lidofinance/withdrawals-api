@@ -28,7 +28,7 @@ export class EstimateService {
     const chainId = this.configService.get('CHAIN_ID');
     const permits = ESTIMATE_ACCOUNT_PERMITS[chainId];
 
-    const permit = token === 'WSTETH' ? permits.wsteth_permit : permits.steth_permit;
+    const permit = token === 'wsteth' ? permits.wsteth_permit : permits.steth_permit;
     const method =
       token === 'wsteth'
         ? this.contract.estimateGas.requestWithdrawalsWstETHWithPermit
