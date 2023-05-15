@@ -29,10 +29,10 @@ export class EstimateService {
     const permits = ESTIMATE_ACCOUNT_PERMITS[chainId];
     const isSteth = token === 'steth';
 
-    const permit = isSteth ? permits.wsteth_permit : permits.steth_permit;
+    const permit = isSteth ? permits.steth_permit : permits.wsteth_permit;
     const method = isSteth
-      ? this.contract.estimateGas.requestWithdrawalsWstETHWithPermit
-      : this.contract.estimateGas.requestWithdrawalsWithPermit;
+      ? this.contract.estimateGas.requestWithdrawalsWithPermit
+      : this.contract.estimateGas.requestWithdrawalsWstETHWithPermit;
 
     const helperGasLimit =
       (isSteth
