@@ -37,9 +37,7 @@ export class EstimateService {
     const helperGasLimit =
       (token === 'STETH'
         ? WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT
-        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) *
-      requestCount *
-      10;
+        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) * requestCount;
 
     if (isDisable) return { gasLimit: helperGasLimit };
 
