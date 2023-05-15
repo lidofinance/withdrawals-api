@@ -47,8 +47,6 @@ export class EstimateService {
         gasLimit: helperGasLimit,
       });
 
-      console.log('gasLimit', gasLimit.toNumber(), token);
-
       return { gasLimit: gasLimit.toNumber() };
     } catch (error) {
       this.logger.error('Estimate error');
