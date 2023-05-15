@@ -1,3 +1,13 @@
+## [0.2.2](https://github.com/lidofinance/withdrawals-api/compare/0.2.1...0.2.2) (2023-05-15)
+
+
+### Bug Fixes
+
+* fix conditions ([8fc0865](https://github.com/lidofinance/withdrawals-api/commit/8fc0865ddbeb1acba9b070855fcc3fdcc780c17f))
+* fix steth gas limit ([d9fd85e](https://github.com/lidofinance/withdrawals-api/commit/d9fd85e0979848c0688ada11bb34b7fbea31bb0c))
+
+
+
 ## [0.2.1](https://github.com/lidofinance/withdrawals-api/compare/0.2.0...0.2.1) (2023-05-15)
 
 

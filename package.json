@@ -1,6 +1,6 @@
 {
   "name": "withdrawals-api",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Withdrawals API",
   "author": "Lido team",
   "private": true,
