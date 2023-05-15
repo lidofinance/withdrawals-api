@@ -87,16 +87,6 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   CHAIN_ID!: number;
-
-  @IsOptional()
-  @IsBoolean()
-  @Transform(({ value }) => value === 'true')
-  HIDE_NFT: boolean;
-
-  @IsOptional()
-  @IsBoolean()
-  @Transform(({ value }) => value === 'true')
-  DISABLE_V2: boolean;
 }
 
 export function validate(config: Record<string, unknown>) {
