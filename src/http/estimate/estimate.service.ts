@@ -28,18 +28,16 @@ export class EstimateService {
     const chainId = this.configService.get('CHAIN_ID');
     const permits = ESTIMATE_ACCOUNT_PERMITS[chainId];
 
-    const permit = token === 'WSTETH' ? permits.wsteth_permit : permits.steth_permit;
+    const permit = token === 'wsteth' ? permits.wsteth_permit : permits.steth_permit;
     const method =
-      token === 'WSTETH'
+      token === 'wsteth'
         ? this.contract.estimateGas.requestWithdrawalsWstETHWithPermit
         : this.contract.estimateGas.requestWithdrawalsWithPermit;
 
     const helperGasLimit =
-      (token === 'STETH'
+      (token === 'steth'
         ? WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT
-        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) *
-      requestCount *
-      10;
+        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) * requestCount;
 
     if (isDisable) return { gasLimit: helperGasLimit };
 
