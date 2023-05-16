@@ -1,3 +1,19 @@
+# [0.3.0](https://github.com/lidofinance/withdrawals-api/compare/0.2.2...0.3.0) (2023-05-16)
+
+
+### Bug Fixes
+
+* fix cache seconds ([89620bf](https://github.com/lidofinance/withdrawals-api/commit/89620bfbad5ce09c81cce935f4763e3b0039efbd))
+* fix min nft amount ([10f9dac](https://github.com/lidofinance/withdrawals-api/commit/10f9dac4ab9a0d16478804a75dd3f2e6e9e197ad))
+* increase cache control headers ([58d43c0](https://github.com/lidofinance/withdrawals-api/commit/58d43c0ea2b0909d38c322a0d873ccfcca719016))
+
+
+### Features
+
+* increase cache for estimate to 1 hour ([6943643](https://github.com/lidofinance/withdrawals-api/commit/69436439bb06979fc458ae4999097b7af13b1b68))
+
+
+
 ## [0.2.2](https://github.com/lidofinance/withdrawals-api/compare/0.2.1...0.2.2) (2023-05-15)
 
 
