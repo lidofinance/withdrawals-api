@@ -26,7 +26,7 @@ export class EstimateController {
   @Get('/')
   @Throttle(30, 30)
   @CacheTTL(36000) // 1 hour
-  @CacheControlHeaders({ maxAge: 10 })
+  @CacheControlHeaders({ maxAge: 36000 }) // 1 hour
   @ApiResponse({ status: HttpStatus.OK, type: EstimateDto })
   async requestTimeV1(@Query() estimateOptions: EstimateOptionsDto): Promise<EstimateDto | null> {
     return await this.estimateService.getEstimate(estimateOptions);
