@@ -34,7 +34,7 @@ export class NFTService {
     return meta;
   }
 
-  async getNftImage(params: NFTParamsDto, query): Promise<string> {
+  async getNftImage(params: NFTParamsDto, query: NFTOptionsDto): Promise<string> {
     this.validate(params, query);
     try {
       return this.generateSvgImage(params, query);
