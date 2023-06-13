@@ -23,12 +23,9 @@ export class NFTService {
 
   async getNftMeta(params: NFTParamsDto, query: NFTOptionsDto): Promise<NFTDto | null> {
     const { tokenId } = params;
-    const isHideNft = this.configService.get('HIDE_NFT');
     this.validate(params, query);
 
-    const image = isHideNft
-      ? null
-      : `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`;
+    const image = `data:image/svg+xml;base64,${Buffer.from(this.generateSvgImage(params, query)).toString('base64')}`;
     const meta = {
       name: `${META_DATA_NAME} #${tokenId}`,
       description: META_DATA_DESC,
@@ -37,10 +34,7 @@ export class NFTService {
     return meta;
   }
 
-  async getNftImage(params: NFTParamsDto, query): Promise<string> {
-    const isHideNft = this.configService.get('HIDE_NFT');
-    if (isHideNft) return '';
-
+  async getNftImage(params: NFTParamsDto, query: NFTOptionsDto): Promise<string> {
     this.validate(params, query);
     try {
       return this.generateSvgImage(params, query);

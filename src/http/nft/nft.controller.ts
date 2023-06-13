@@ -25,9 +25,9 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId')
-  @Throttle(600, 30)
-  @CacheTTL(10)
-  @CacheControlHeaders({ maxAge: 10 })
+  @Throttle(1000, 30)
+  @CacheTTL(20)
+  @CacheControlHeaders({ maxAge: 20 })
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   async nftMetaV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<NFTDto> {
     return await this.nftService.getNftMeta(nftParams, nftQuery);
@@ -36,8 +36,8 @@ export class NFTController {
   @Version('1')
   @Get('/:tokenId/image')
   @Throttle(10, 30)
-  @CacheTTL(10)
-  @CacheControlHeaders({ maxAge: 10 })
+  @CacheTTL(20)
+  @CacheControlHeaders({ maxAge: 20 })
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   @Header('Content-Type', 'image/svg+xml')
   async nftImageV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<string> {
