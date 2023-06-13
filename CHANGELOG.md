@@ -1,3 +1,12 @@
+# [0.4.0](https://github.com/lidofinance/withdrawals-api/compare/0.3.0...0.4.0) (2023-06-13)
+
+
+### Features
+
+* remove nft/v2 envs ([#58](https://github.com/lidofinance/withdrawals-api/issues/58)) ([#72](https://github.com/lidofinance/withdrawals-api/issues/72)) ([aa19a6d](https://github.com/lidofinance/withdrawals-api/commit/aa19a6da69f5a35833249f4f21975e1e8e8edaff))
+
+
+
 # [0.3.0](https://github.com/lidofinance/withdrawals-api/compare/0.2.2...0.3.0) (2023-05-16)
 
 
