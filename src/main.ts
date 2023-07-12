@@ -7,6 +7,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { SWAGGER_URL } from 'http/common/swagger';
 import { ConfigService } from 'common/config';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
+import { satanizer, commonPatterns } from '@lidofinance/satanizer';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
@@ -20,6 +21,8 @@ async function bootstrap() {
   const appPort = configService.get('PORT');
   const corsWhitelist = configService.get('CORS_WHITELIST_REGEXP');
   const sentryDsn = configService.get('SENTRY_DSN');
+  const clAPIUrls = configService.get('CL_API_URLS');
+  const elAPIUrls = configService.get('EL_RPC_URLS');
 
   // versions
   app.enableVersioning({ type: VersioningType.URI });
@@ -28,8 +31,30 @@ async function bootstrap() {
   app.useLogger(app.get(LOGGER_PROVIDER));
 
   // sentry
+  const keys = [...clAPIUrls, ...elAPIUrls].map((url) => {
+    const urlArr = url.split('/');
+    return urlArr[urlArr.length - 1];
+  });
+  const mask = satanizer([...commonPatterns, ...keys]);
   const release = `${APP_NAME}@${APP_VERSION}`;
-  Sentry.init({ dsn: sentryDsn, release, environment });
+  Sentry.init({
+    dsn: sentryDsn,
+    release,
+    environment,
+    beforeSend: (event) => {
+      /*
+       * We can only mask exact properties,
+       * because there are circular references in event,
+       * which breaks satanizer.
+       */
+      return {
+        ...event,
+        exception: mask(event.exception),
+        breadcrumbs: mask(event.breadcrumbs),
+        tags: mask(event.tags),
+      };
+    },
+  });
 
   // cors
   if (corsWhitelist !== '') {
