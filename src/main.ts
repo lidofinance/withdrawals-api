@@ -21,8 +21,7 @@ async function bootstrap() {
   const appPort = configService.get('PORT');
   const corsWhitelist = configService.get('CORS_WHITELIST_REGEXP');
   const sentryDsn = configService.get('SENTRY_DSN');
-  const clAPIUrls = configService.get('CL_API_URLS');
-  const elAPIUrls = configService.get('EL_RPC_URLS');
+  const secrets = configService.secrets;
 
   // versions
   app.enableVersioning({ type: VersioningType.URI });
@@ -31,11 +30,7 @@ async function bootstrap() {
   app.useLogger(app.get(LOGGER_PROVIDER));
 
   // sentry
-  const keys = [...clAPIUrls, ...elAPIUrls].map((url) => {
-    const urlArr = url.split('/');
-    return urlArr[urlArr.length - 1];
-  });
-  const mask = satanizer([...commonPatterns, ...keys]);
+  const mask = satanizer([...commonPatterns, ...secrets]);
   const release = `${APP_NAME}@${APP_VERSION}`;
   Sentry.init({
     dsn: sentryDsn,
