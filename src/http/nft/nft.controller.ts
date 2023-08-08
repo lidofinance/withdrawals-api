@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CacheControlHeaders } from 'http/common/cache';
 import { HTTP_PATHS } from 'http/http.constants';
 import { NFTService } from './nft.service';
 import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
@@ -26,8 +25,7 @@ export class NFTController {
   @Version('1')
   @Get('/:tokenId')
   @Throttle(1000, 30)
-  @CacheTTL(20)
-  @CacheControlHeaders({ maxAge: 20 })
+  @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   async nftMetaV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<NFTDto> {
     return await this.nftService.getNftMeta(nftParams, nftQuery);
@@ -36,8 +34,7 @@ export class NFTController {
   @Version('1')
   @Get('/:tokenId/image')
   @Throttle(10, 30)
-  @CacheTTL(20)
-  @CacheControlHeaders({ maxAge: 20 })
+  @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   @Header('Content-Type', 'image/svg+xml')
   async nftImageV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<string> {

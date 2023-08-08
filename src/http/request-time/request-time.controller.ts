@@ -24,7 +24,7 @@ export class RequestTimeController {
   @Version('1')
   @Get('/')
   @Throttle(30, 30)
-  @CacheTTL(10000)
+  @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
   async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     return await this.requestTimeService.getRequestTime(requestTimeOptions);
