@@ -22,8 +22,9 @@ export class CacheWithHeadersInterceptor extends CacheInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     const key = this.trackBy(context);
     const ttlValueOrFactory = this.reflector.get(CACHE_TTL_METADATA, context.getHandler()) ?? null;
+    const ttl = isFunction(ttlValueOrFactory) ? await ttlValueOrFactory(context) : ttlValueOrFactory;
     const {
-      maxAge = null,
+      maxAge = ttl,
       staleIfError = DEFAULT_STALE_IF_ERROR,
       staleWhileRevalidate = DEFAULT_STALE_WHILE_REVALIDATE,
     }: CacheControlHeadersData = this.reflector.get(CACHE_CONTROL_HEADERS_METADATA, context.getHandler()) ?? {};
@@ -40,7 +41,6 @@ export class CacheWithHeadersInterceptor extends CacheInterceptor {
         return of(value);
       }
 
-      const ttl = isFunction(ttlValueOrFactory) ? await ttlValueOrFactory(context) : ttlValueOrFactory;
       return next.handle().pipe(
         tap({
           next: async (response) => {

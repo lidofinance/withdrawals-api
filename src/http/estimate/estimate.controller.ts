@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CacheControlHeaders } from 'http/common/cache';
 import { HTTP_PATHS } from 'http/http.constants';
 
 import { EstimateService } from './estimate.service';
@@ -26,7 +25,6 @@ export class EstimateController {
   @Get('/')
   @Throttle(30, 30)
   @CacheTTL(3600) // 1 hour
-  @CacheControlHeaders({ maxAge: 3600 }) // 1 hour
   @ApiResponse({ status: HttpStatus.OK, type: EstimateDto })
   async requestTimeV1(@Query() estimateOptions: EstimateOptionsDto): Promise<EstimateDto | null> {
     return await this.estimateService.getEstimate(estimateOptions);
