@@ -17,6 +17,9 @@ import {
 } from './cache.constants';
 import { CacheControlHeadersData } from './cache.interface';
 
+/**
+ * @deprecated
+ */
 @Injectable()
 export class CacheWithHeadersInterceptor extends CacheInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
