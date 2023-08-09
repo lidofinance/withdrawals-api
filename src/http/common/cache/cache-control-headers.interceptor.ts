@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext, CallHandler, NestInterceptor, CACHE_TTL_METADATA } from '@nestjs/common';
+import { Injectable, ExecutionContext, CallHandler, NestInterceptor } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { getCacheControlHeaders, isFunction, isNil, setCacheControlHeaders } from './cache.utils';
@@ -10,6 +10,7 @@ import {
 } from './cache.constants';
 import { CacheControlHeadersData } from './cache.interface';
 import { Reflector } from '@nestjs/core';
+import { CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 
 @Injectable()
 export class CacheControlHeadersInterceptor implements NestInterceptor {
@@ -23,7 +24,7 @@ export class CacheControlHeadersInterceptor implements NestInterceptor {
       staleIfError = DEFAULT_STALE_IF_ERROR,
       staleWhileRevalidate = DEFAULT_STALE_WHILE_REVALIDATE,
     }: CacheControlHeadersData = this.reflector.get(CACHE_CONTROL_HEADERS_METADATA, context.getHandler()) ??
-    ({} as any);
+    ({} as CacheControlHeadersData);
 
     const isNeedCacheControlHeaders = !isNil(maxAge);
 
@@ -31,19 +32,23 @@ export class CacheControlHeadersInterceptor implements NestInterceptor {
       setCacheControlHeaders(context, getCacheControlHeaders({ maxAge, staleIfError, staleWhileRevalidate }));
     }
 
-    return next.handle().pipe(
-      tap({
-        error: () => {
-          if (isNeedCacheControlHeaders) {
-            // for requests with cache-control headers
-            // need set new headers otherwise error will be cached
-            setCacheControlHeaders(context, CACHE_DEFAULT_ERROR_HEADERS);
-            // for /image endpoint
-            const res = context.switchToHttp().getResponse();
-            res.header('Content-Type', 'application/json; charset=utf-8');
-          }
-        },
-      }),
-    );
+    try {
+      return next.handle().pipe(
+        tap({
+          error: () => {
+            if (isNeedCacheControlHeaders) {
+              // for requests with cache-control headers
+              // need set new headers otherwise error will be cached
+              setCacheControlHeaders(context, CACHE_DEFAULT_ERROR_HEADERS);
+              // for /image endpoint
+              const res = context.switchToHttp().getResponse();
+              res.header('Content-Type', 'application/json; charset=utf-8');
+            }
+          },
+        }),
+      );
+    } catch (err) {
+      return next.handle();
+    }
   }
 }
