@@ -1,5 +1,6 @@
 import { Injectable, ExecutionContext, CallHandler, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { getCacheControlHeaders, isFunction, isNil, setCacheControlHeaders } from './cache.utils';
@@ -10,7 +11,6 @@ import {
   DEFAULT_STALE_WHILE_REVALIDATE,
 } from './cache.constants';
 import { CacheControlHeadersData } from './cache.interface';
-import { CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 
 @Injectable()
 export class CacheControlHeadersInterceptor implements NestInterceptor {
