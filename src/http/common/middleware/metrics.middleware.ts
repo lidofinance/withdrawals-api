@@ -37,6 +37,12 @@ export class MetricsMiddleware implements NestMiddleware {
     reply.on('finish', () => {
       const { statusCode } = reply;
       endTimer({ statusCode });
+
+      if (statusCode >= 200 && statusCode <= 299) {
+        this.prometheusService.httpRequests.inc({ statusCode });
+      } else {
+        this.prometheusService.httpFailedRequests.inc({ statusCode });
+      }
     });
 
     next();

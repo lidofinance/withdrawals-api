@@ -47,4 +47,18 @@ export class PrometheusService {
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
     labelNames: ['result'],
   });
+
+  public httpRequests = this.getOrCreateMetric('Counter', {
+    prefix: true,
+    name: 'http_requests',
+    help: 'General requests',
+    labelNames: ['statusCode'],
+  });
+
+  public httpFailedRequests = this.getOrCreateMetric('Counter', {
+    prefix: true,
+    name: 'http_failed_requests',
+    help: 'Failed general requests',
+    labelNames: ['statusCode'],
+  });
 }
