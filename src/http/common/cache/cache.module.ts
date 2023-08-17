@@ -1,4 +1,4 @@
-import { CacheModule as CacheModuleSource } from '@nestjs/common';
+import { CacheModule as CacheModuleSource } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from 'common/config';
 
 export const CacheModule = CacheModuleSource.registerAsync({
