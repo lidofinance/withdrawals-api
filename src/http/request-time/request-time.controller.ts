@@ -5,12 +5,11 @@ import {
   HttpStatus,
   UseInterceptors,
   Version,
-  CacheTTL,
   Query,
 } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { CacheControlHeaders } from 'http/common/cache';
 import { HTTP_PATHS } from 'http/http.constants';
 
 import { RequestTimeService } from './request-time.service';
@@ -25,8 +24,7 @@ export class RequestTimeController {
   @Version('1')
   @Get('/')
   @Throttle(30, 30)
-  @CacheTTL(10)
-  @CacheControlHeaders({ maxAge: 10 })
+  @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
   async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     return await this.requestTimeService.getRequestTime(requestTimeOptions);
