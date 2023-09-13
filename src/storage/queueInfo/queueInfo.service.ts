@@ -8,6 +8,7 @@ export class QueueInfoStorageService {
   protected lastUpdate: number;
   protected minStethAmount: BigNumber;
   protected maxStethAmount: BigNumber;
+  protected depositableEther: BigNumber;
 
   /**
    * Get unfinalized ETH
@@ -87,5 +88,21 @@ export class QueueInfoStorageService {
    * */
   public setMaxStethAmount(maxStethAmount: BigNumber): void {
     this.maxStethAmount = maxStethAmount;
+  }
+
+  /**
+   * Updates depositable Ether amount
+   * @param depositableEther - ether amount in buffer to save
+   * */
+  public setDepositableEther(depositableEther: BigNumber): void {
+    this.depositableEther = depositableEther;
+  }
+
+  /**
+   * Get depositable Ether amount
+   * @returns depositable Ether amount
+   */
+  public getDepositableEther(): BigNumber | undefined {
+    return this.depositableEther;
   }
 }
