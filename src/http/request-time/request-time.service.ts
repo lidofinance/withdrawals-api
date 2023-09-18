@@ -45,12 +45,13 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
     const days = this.calculateRequestTime(queueStETH);
 
-    const mins = this.calculateWithdrawalTime(additionalStETH, queueStETH);
-    console.log(mins);
+    const mss = this.calculateWithdrawalTime(additionalStETH, queueStETH);
+    console.log(mss);
     const requestsCount = this.queueInfo.getRequests();
 
     return {
       days,
+      // mss,
       stethLastUpdate,
       validatorsLastUpdate,
       steth: unfinalizedETH.toString(),
@@ -63,22 +64,24 @@ export class RequestTimeService {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
 
+    console.log(`depositableEther=${depositableEther.toString()}\nwithdrawalEth=${withdrawalEth.toString()}`);
     // if enough depositable ether
     if (depositableEther.gt(withdrawalEth)) {
-      console.log('case depositableEther gt withdrawalEth', depositableEther.toString());
+      console.log(`case depositableEther gt withdrawalEth`);
       result = this.timeToWithdrawalFrame(currentFrame + 1);
     }
 
     // postpone withdrawal request which is too close to report
-    if (result !== null && result * 60 < REQUEST_TIMESTAMP_MARGIN) {
-      console.log('case result * 60 < REQUEST_TIMESTAMP_MARGIN');
+    if (result !== null && result < REQUEST_TIMESTAMP_MARGIN) {
+      console.log('case result < REQUEST_TIMESTAMP_MARGIN');
       result = this.timeToWithdrawalFrame(currentFrame + 2);
     }
 
     // if none of up cases worked use long period calculation
     if (result === null) {
-      console.log('case result === null');
-      result = this.calculateExitValidatorsCase(unfinalizedETH);
+      console.log('case calculateFrameExitValidatorsCase');
+      const nextFrame = this.calculateFrameExitValidatorsCase(unfinalizedETH);
+      result = this.timeToWithdrawalFrame(nextFrame);
     }
 
     return result + GAP_AFTER_REPORT;
@@ -89,12 +92,11 @@ export class RequestTimeService {
     const epochOfNextReport = this.genesisTimeService.getInitialEpoch() + frame * EPOCH_PER_FRAME;
     const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
 
-    console.log(genesisTime + timeToNextReport);
-    // in mins
-    return Math.round((genesisTime + timeToNextReport - Date.now() / 1000) / 60);
+    console.log('frame time start', genesisTime + timeToNextReport);
+    return Math.round(genesisTime + timeToNextReport - Date.now() / 1000) * 1000; // in ms
   }
 
-  calculateExitValidatorsCase(unfinalizedETH: BigNumber): number {
+  calculateFrameExitValidatorsCase(unfinalizedETH: BigNumber): number {
     // latest epoch of most late to exit validators
     const latestEpoch = this.validators.getMaxExitEpoch();
     const totalValidators = this.validators.getTotal();
@@ -111,9 +113,8 @@ export class RequestTimeService {
       .div(2);
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
-    const nextFrame = this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
-
-    return this.timeToWithdrawalFrame(nextFrame);
+    // should I rework all this to big int?
+    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 
   calculateRequestTime(unfinalizedETH: BigNumber): number {
