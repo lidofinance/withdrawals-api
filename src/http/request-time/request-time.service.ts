@@ -7,7 +7,6 @@ import {
   EPOCH_PER_FRAME,
   GAP_AFTER_REPORT,
   GenesisTimeService,
-  REQUEST_TIMESTAMP_MARGIN,
   SECONDS_PER_SLOT,
   SLOTS_PER_EPOCH,
 } from 'common/genesis-time';
@@ -61,6 +60,7 @@ export class RequestTimeService {
 
   calculateWithdrawalTime(withdrawalEth: BigNumber, unfinalizedETH: BigNumber) {
     const depositableEther = this.queueInfo.getDepositableEther();
+    const requestTimestampMargin = this.queueInfo.getRequestTimestampMargin();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
 
@@ -72,8 +72,8 @@ export class RequestTimeService {
     }
 
     // postpone withdrawal request which is too close to report
-    if (result !== null && result < REQUEST_TIMESTAMP_MARGIN) {
-      console.log('case result < REQUEST_TIMESTAMP_MARGIN');
+    if (result !== null && result < requestTimestampMargin) {
+      console.log('case result < REQUEST_TIMESTAMP_MARGIN', requestTimestampMargin);
       result = this.timeToWithdrawalFrame(currentFrame + 2);
     }
 
@@ -89,7 +89,7 @@ export class RequestTimeService {
 
   timeToWithdrawalFrame(frame: number) {
     const genesisTime = this.genesisTimeService.getGenesisTime();
-    const epochOfNextReport = this.genesisTimeService.getInitialEpoch() + frame * EPOCH_PER_FRAME;
+    const epochOfNextReport = this.queueInfo.getInitialEpoch().toNumber() + frame * EPOCH_PER_FRAME;
     const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
 
     console.log('frame time start', genesisTime + timeToNextReport);

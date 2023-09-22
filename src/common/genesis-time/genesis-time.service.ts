@@ -2,12 +2,14 @@ import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common'
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { EPOCH_PER_FRAME, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
+import { QueueInfoStorageService } from '../../storage';
 
 @Injectable()
 export class GenesisTimeService implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusService: ConsensusProviderService,
+    protected readonly queueInfoStorageService: QueueInfoStorageService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -58,16 +60,8 @@ export class GenesisTimeService implements OnModuleInit {
   }
 
   public getFrameOfEpoch(epoch: number) {
-    return Math.floor((epoch - this.getInitialEpoch()) / EPOCH_PER_FRAME);
+    return Math.floor((epoch - this.queueInfoStorageService.getInitialEpoch().toNumber()) / EPOCH_PER_FRAME);
   }
 
-  public getInitialEpoch() {
-    // https://goerli.etherscan.io/address/0x8d87A8BCF8d4e542fd396D1c50223301c164417b#readContract#F12
-    // need initial epoch
-    // todo: add contract to @lido-nestjs/contracts
-    return this.initialEpoch;
-  }
-
-  protected initialEpoch = 174520;
   protected genesisTime = -1;
 }

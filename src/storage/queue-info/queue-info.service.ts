@@ -1,6 +1,18 @@
 import { BigNumber } from '@ethersproject/bignumber';
 import { Injectable } from '@nestjs/common';
 
+type ChainConfig = [BigNumber, BigNumber, BigNumber] & {
+  slotsPerEpoch: BigNumber;
+  secondsPerSlot: BigNumber;
+  genesisTime: BigNumber;
+};
+
+type FrameConfig = [BigNumber, BigNumber, BigNumber] & {
+  initialEpoch: BigNumber;
+  epochsPerFrame: BigNumber;
+  fastLaneLengthSlots: BigNumber;
+};
+
 @Injectable()
 export class QueueInfoStorageService {
   protected unfinalizedStETH: BigNumber;
@@ -9,6 +21,10 @@ export class QueueInfoStorageService {
   protected minStethAmount: BigNumber;
   protected maxStethAmount: BigNumber;
   protected depositableEther: BigNumber;
+  protected initialEpoch: BigNumber;
+  protected requestTimestampMargin: number;
+  protected chainConfig: ChainConfig;
+  protected frameConfig: FrameConfig;
 
   /**
    * Get unfinalized ETH
@@ -52,7 +68,7 @@ export class QueueInfoStorageService {
 
   /**
    * Updates unfinalized stETH
-   * @param unfinalizedEth - BigNumber stETH to save
+   * @param unfinalizedStETH - BigNumber stETH to save
    */
   public setStETH(unfinalizedStETH: BigNumber): void {
     this.unfinalizedStETH = unfinalizedStETH;
@@ -104,5 +120,37 @@ export class QueueInfoStorageService {
    */
   public getDepositableEther(): BigNumber | undefined {
     return this.depositableEther;
+  }
+
+  public setRequestTimestampMargin(requestTimestampMargin: number): void {
+    this.requestTimestampMargin = requestTimestampMargin;
+  }
+
+  public getRequestTimestampMargin(): number | undefined {
+    return this.requestTimestampMargin;
+  }
+
+  public setInitialEpoch(initialEpoch: BigNumber): void {
+    this.initialEpoch = initialEpoch;
+  }
+
+  public getInitialEpoch(): BigNumber | undefined {
+    return this.initialEpoch;
+  }
+
+  public setFrameConfig(frameConfig: FrameConfig): void {
+    this.frameConfig = frameConfig;
+  }
+
+  public getFrameConfig(): FrameConfig | undefined {
+    return this.frameConfig;
+  }
+
+  public setChainConfig(chainConfig: ChainConfig): void {
+    this.chainConfig = chainConfig;
+  }
+
+  public getChainConfig(): ChainConfig | undefined {
+    return this.chainConfig;
   }
 }

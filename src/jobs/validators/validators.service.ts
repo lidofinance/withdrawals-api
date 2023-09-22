@@ -9,6 +9,7 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
+import { LidoKeysService } from './lido-keys';
 
 export class ValidatorsService {
   constructor(
@@ -19,6 +20,7 @@ export class ValidatorsService {
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
+    protected readonly lidoKeysService: LidoKeysService,
   ) {}
 
   /**
@@ -38,9 +40,9 @@ export class ValidatorsService {
   protected async updateValidators(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update validators' }, async () => {
       const { data } = await this.consensusProviderService.getStateValidators({ stateId: 'head' });
-
       const totalValidators = data.length;
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+
       const validatorsExitEpochs = data.map((v) => v.validator.exit_epoch);
       validatorsExitEpochs.push(`${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`);
 
@@ -56,6 +58,10 @@ export class ValidatorsService {
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+      // const lidoKeysData = await this.lidoKeysService.fetchLidoKeysData();
+      // this.validatorsStorageService.setLidoKeysData(lidoKeysData);
+      // const lidoValidators = await this.lidoKeysService.getLidoValidatorsByKeys(lidoKeysData.data, data);
     });
   }
 }

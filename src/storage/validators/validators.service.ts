@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { LidoKeysData, Validator } from '../../jobs/validators/lido-keys/lido-keys.types';
 
 @Injectable()
 export class ValidatorsStorageService {
   protected maxExitEpoch: string;
   protected total: number;
   protected lastUpdate: number;
+  protected lidoKeysData: LidoKeysData;
+  protected lidoValidators: Validator[];
 
   /**
    * Get max exit epoch for all validators
@@ -52,5 +55,21 @@ export class ValidatorsStorageService {
    */
   public setLastUpdate(lastUpdate: number): void {
     this.lastUpdate = lastUpdate;
+  }
+
+  public getLidoKeysData(): LidoKeysData {
+    return this.lidoKeysData;
+  }
+
+  public setLidoKeysData(lidoKeysData: LidoKeysData): void {
+    this.lidoKeysData = lidoKeysData;
+  }
+
+  public getLidoValidators(): Validator[] {
+    return this.lidoValidators;
+  }
+
+  public setLidoValidators(lidoValidators: Validator[]): void {
+    this.lidoValidators = lidoValidators;
   }
 }

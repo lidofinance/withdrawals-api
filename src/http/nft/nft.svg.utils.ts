@@ -1,7 +1,9 @@
-import { formatUnits } from 'ethers';
+import { utils } from 'ethers';
 
 import { glyphNumbers, simpleNumbers, crystallMap } from './assets/nft.parts';
 import { SVG_ID_LENGTH } from './nft.constants';
+
+const formatUnits = utils.formatUnits;
 
 export const generateIdSvg = (id: string) => {
   // fill id with zeros to SVG_ID_LENGTH
