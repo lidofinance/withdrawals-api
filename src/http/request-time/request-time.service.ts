@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ValidatorsStorageService, QueueInfoStorageService } from 'storage';
 import { BigNumber } from '@ethersproject/bignumber';
+
 import { parseEther, formatEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
 import {
@@ -115,6 +116,10 @@ export class RequestTimeService {
 
     // should I rework all this to big int?
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
+  }
+
+  calculateLastRewards() {
+    const LIDO_ELREWARDSRECEIVED_EVENT = 'event ELRewardsReceived(uint256 amount)';
   }
 
   calculateRequestTime(unfinalizedETH: BigNumber): number {

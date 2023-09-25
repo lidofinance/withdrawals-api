@@ -6,6 +6,8 @@ import { ConfigService } from 'common/config';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { QueueInfoStorageService } from 'storage';
 import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { SECONDS_PER_SLOT } from 'common/genesis-time';
 
 @Injectable()
 export class QueueInfoService {
@@ -13,6 +15,8 @@ export class QueueInfoService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
+
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
 
     protected readonly queueInfoStorageService: QueueInfoStorageService,
     protected readonly configService: ConfigService,
@@ -50,5 +54,22 @@ export class QueueInfoService {
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
       this.queueInfoStorageService.setDepositableEther(depositableEther);
     });
+  }
+
+  async get48HoursAgoBlock() {
+    const currentBlock = await this.provider.getBlockNumber();
+    return currentBlock - Math.ceil((2 * 24 * 60 * 60) / SECONDS_PER_SLOT);
+  }
+
+  async getLastElReward() {
+    const res = this.contractLido.filters.ELRewardsReceived();
+    const logs = await this.provider.getLogs({
+      topics: res.topics,
+      toBlock: 'latest',
+      fromBlock: await this.get48HoursAgoBlock(),
+      address: res.address,
+    });
+
+    return logs[logs.length - 1];
   }
 }
