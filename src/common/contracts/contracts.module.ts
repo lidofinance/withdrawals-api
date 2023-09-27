@@ -17,12 +17,6 @@ import { ExecutionProvider } from 'common/execution-provider';
       },
       inject: [ExecutionProvider],
     }),
-    LidoContractModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
   ],
 })
 export class ContractsModule {}
