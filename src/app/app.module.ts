@@ -11,6 +11,7 @@ import { ExecutionProviderModule } from 'common/execution-provider';
 import { ContractsModule } from 'common/contracts';
 import { AppService } from './app.service';
 import { HTTPModule } from '../http';
+import { EventsModule } from '../events';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { HTTPModule } from '../http';
     PrometheusModule,
     ConfigModule,
     JobsModule,
+    EventsModule,
     ContractsModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SentryInterceptor }, AppService],
