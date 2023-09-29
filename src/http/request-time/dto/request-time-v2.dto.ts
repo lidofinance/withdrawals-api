@@ -3,7 +3,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class RequestTimeV2Dto {
   @ApiProperty({
     example: 5,
-    description: 'Maximum waiting days',
+    description: 'Maximum waiting ms',
   })
   ms: number;
 
