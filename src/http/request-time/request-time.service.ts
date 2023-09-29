@@ -9,26 +9,19 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 import { parseEther, formatEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
-import {
-  EPOCH_PER_FRAME,
-  GAP_AFTER_REPORT,
-  GenesisTimeService,
-  REQUEST_TIMESTAMP_MARGIN,
-  SECONDS_PER_SLOT,
-  SLOTS_PER_EPOCH,
-} from 'common/genesis-time';
+import { GenesisTimeService, EPOCH_PER_FRAME, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import {
   MIN_PER_EPOCH_CHURN_LIMIT,
   CHURN_LIMIT_QUOTIENT,
   MAX_EFFECTIVE_BALANCE,
   MAX_WITHDRAWALS_PER_PAYLOAD,
+  GAP_AFTER_REPORT,
 } from './request-time.constants';
 import { maxMinNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { ContractConfigService } from '../../jobs/contract-config';
 
 @Injectable()
 export class RequestTimeService {
@@ -146,13 +139,12 @@ export class RequestTimeService {
     // number of epochs to finalize all eth
     const lidoQueueInEpoch = unfinalizedETH.div(MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch));
 
-    // time to find validators for removing (why calculate like this?)
+    // time to find validators for removing
     const sweepingMean = BigNumber.from(totalValidators)
       .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
       .div(2);
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
-    // should I rework all this to big int?
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 

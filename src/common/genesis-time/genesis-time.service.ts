@@ -63,6 +63,5 @@ export class GenesisTimeService implements OnModuleInit {
     return Math.floor((epoch - this.contractConfig.getInitialEpoch()) / EPOCH_PER_FRAME);
   }
 
-  protected initialEpoch = 174520;
   protected genesisTime = -1;
 }
