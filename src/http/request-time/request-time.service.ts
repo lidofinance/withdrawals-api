@@ -109,7 +109,7 @@ export class RequestTimeService {
 
     // postpone withdrawal request which is too close to report
     if (result !== null && result < this.contractConfig.getRequestTimestampMargin()) {
-      this.logger.debug('case result < REQUEST_TIMESTAMP_MARGIN');
+      this.logger.debug('case result < RequestTimestampMargin');
       result = this.timeToWithdrawalFrame(currentFrame + 2);
     }
 
