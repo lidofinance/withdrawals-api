@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { utils } from 'ethers';
+import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
   LIDO_ETH_DESTRIBUTED_EVENT,
@@ -72,9 +72,9 @@ export class RewardsService {
       address: res.address,
     });
     const lastLog = logs[logs.length - 1];
-    const parser = new utils.Interface([LIDO_EL_REWARDS_RECEIVED_EVENT]);
+    const parser = new Interface([LIDO_EL_REWARDS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
-    return parsedData.args.amount as BigNumber;
+    return BigNumber.from(parsedData.args.getValue('amount'));
   }
 
   protected async getEthDistributed(fromBlock: number) {
@@ -87,10 +87,11 @@ export class RewardsService {
     });
 
     const lastLog = logs[logs.length - 1];
-    const parser = new utils.Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
+    const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
-    const { preCLBalance, postCLBalance } = parsedData.args;
+    const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
+    const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
     return { preCLBalance, postCLBalance, blockNumber: lastLog.blockNumber } as {
       preCLBalance: BigNumber;
       postCLBalance: BigNumber;
@@ -108,9 +109,10 @@ export class RewardsService {
     });
 
     const lastLog = logs[logs.length - 1];
-    const parser = new utils.Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
+    const parser = new Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
-    return parsedData.args.amount as BigNumber;
+
+    return BigNumber.from(parsedData.args.getValue('amount'));
   }
 
   // reports can be skipped, so we need timeElapsed (time from last report)
@@ -126,12 +128,12 @@ export class RewardsService {
     });
 
     const lastLog = logs[logs.length - 1];
-    const parser = new utils.Interface([LIDO_TOKEN_REBASED_EVENT]);
+    const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
     return {
       blockNumber: lastLog.blockNumber,
-      frames: parsedData.args.timeElapsed.div(24 * 60 * 60),
+      frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(24 * 60 * 60),
     } as {
       blockNumber: number;
       frames: BigNumber;
