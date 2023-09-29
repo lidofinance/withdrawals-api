@@ -1,5 +1,10 @@
 import { BadRequestException, Inject, Injectable, LoggerService } from '@nestjs/common';
-import { ValidatorsStorageService, QueueInfoStorageService, RewardsStorageService } from 'storage';
+import {
+  ValidatorsStorageService,
+  QueueInfoStorageService,
+  RewardsStorageService,
+  ContractConfigStorageService,
+} from 'storage';
 import { BigNumber } from '@ethersproject/bignumber';
 
 import { parseEther, formatEther } from '@ethersproject/units';
@@ -23,6 +28,7 @@ import { maxMinNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { ContractConfigService } from '../../jobs/contract-config';
 
 @Injectable()
 export class RequestTimeService {
@@ -33,6 +39,7 @@ export class RequestTimeService {
     protected readonly configService: ConfigService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly rewardsStorage: RewardsStorageService,
+    protected readonly contractConfig: ContractConfigStorageService,
   ) {}
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
@@ -49,8 +56,6 @@ export class RequestTimeService {
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
     const days = this.calculateRequestTime(queueStETH);
-
-    const mss = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
 
     const requestsCount = this.queueInfo.getRequests();
 
@@ -103,7 +108,7 @@ export class RequestTimeService {
     }
 
     // postpone withdrawal request which is too close to report
-    if (result !== null && result < REQUEST_TIMESTAMP_MARGIN) {
+    if (result !== null && result < this.contractConfig.getRequestTimestampMargin()) {
       this.logger.debug('case result < REQUEST_TIMESTAMP_MARGIN');
       result = this.timeToWithdrawalFrame(currentFrame + 2);
     }
@@ -120,7 +125,7 @@ export class RequestTimeService {
 
   timeToWithdrawalFrame(frame: number) {
     const genesisTime = this.genesisTimeService.getGenesisTime();
-    const epochOfNextReport = this.genesisTimeService.getInitialEpoch() + frame * EPOCH_PER_FRAME;
+    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
     const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
 
     return Math.round(genesisTime + timeToNextReport - Date.now() / 1000) * 1000; // in ms

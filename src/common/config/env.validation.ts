@@ -64,6 +64,10 @@ export class EnvironmentVariables {
   @IsString()
   JOB_INTERVAL_QUEUE_INFO = CronExpression.EVERY_10_MINUTES;
 
+  @IsOptional()
+  @IsString()
+  JOB_INTERVAL_CONTRACT_CONFIG = CronExpression.EVERY_10_HOURS;
+
   @IsArray()
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
