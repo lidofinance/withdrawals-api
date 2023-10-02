@@ -42,11 +42,19 @@ export class RewardsService {
 
   protected async updateRewards(): Promise<void> {
     const rewardsPerFrame = await this.getLastTotalRewardsPerFrame();
-    this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame);
+    if (rewardsPerFrame) {
+      this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame);
+    }
   }
 
-  public async getLastTotalRewardsPerFrame() {
-    const { blockNumber, frames } = await this.getFramesFromLastReport();
+  public async getLastTotalRewardsPerFrame(): Promise<BigNumber | null> {
+    const framesFromLastReport = await this.getFramesFromLastReport();
+    if (framesFromLastReport === null) {
+      return null;
+    }
+
+    const { blockNumber, frames } = framesFromLastReport;
+
     const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
     const elRewards = (await this.getElRewards(blockNumber)) ?? BigNumber.from(0);
     const withdrawal = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
@@ -63,7 +71,7 @@ export class RewardsService {
     return currentBlock - Math.ceil((2 * 24 * 60 * 60) / SECONDS_PER_SLOT);
   }
 
-  protected async getElRewards(fromBlock: number) {
+  protected async getElRewards(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.ELRewardsReceived();
     const logs = await this.provider.getLogs({
       topics: res.topics,
@@ -77,7 +85,10 @@ export class RewardsService {
     return BigNumber.from(parsedData.args.getValue('amount'));
   }
 
-  protected async getEthDistributed(fromBlock: number) {
+  protected async getEthDistributed(fromBlock: number): Promise<{
+    preCLBalance: BigNumber;
+    postCLBalance: BigNumber;
+  }> {
     const res = this.contractLido.filters.ETHDistributed();
     const logs = await this.provider.getLogs({
       topics: res.topics,
@@ -92,14 +103,10 @@ export class RewardsService {
 
     const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
     const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
-    return { preCLBalance, postCLBalance, blockNumber: lastLog.blockNumber } as {
-      preCLBalance: BigNumber;
-      postCLBalance: BigNumber;
-      blockNumber: number;
-    };
+    return { preCLBalance, postCLBalance };
   }
 
-  protected async getWithdrawalsReceived(fromBlock: number) {
+  protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.WithdrawalsReceived();
     const logs = await this.provider.getLogs({
       topics: res.topics,
@@ -116,7 +123,10 @@ export class RewardsService {
   }
 
   // reports can be skipped, so we need timeElapsed (time from last report)
-  protected async getFramesFromLastReport() {
+  protected async getFramesFromLastReport(): Promise<{
+    blockNumber: number;
+    frames: BigNumber;
+  } | null> {
     const last48HoursAgoBlock = await this.get48HoursAgoBlock();
 
     const res = this.contractLido.filters.TokenRebased();
@@ -127,6 +137,10 @@ export class RewardsService {
       address: res.address,
     });
 
+    if (logs.length === 0) {
+      return null;
+    }
+
     const lastLog = logs[logs.length - 1];
     const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
@@ -134,9 +148,6 @@ export class RewardsService {
     return {
       blockNumber: lastLog.blockNumber,
       frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(24 * 60 * 60),
-    } as {
-      blockNumber: number;
-      frames: BigNumber;
     };
   }
 }

@@ -10,30 +10,17 @@ import { ExecutionProvider } from 'common/execution-provider';
 @Global()
 @Module({
   imports: [
-    WithdrawalQueueContractModule.forRootAsync({
+    WithdrawalQueueContractModule,
+    LidoContractModule,
+    OracleReportSanityCheckerModule,
+    AccountingOracleHashConsensusModule,
+  ].map((module) =>
+    module.forRootAsync({
       async useFactory(provider: ExecutionProvider) {
         return { provider };
       },
       inject: [ExecutionProvider],
     }),
-    LidoContractModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
-    OracleReportSanityCheckerModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
-    AccountingOracleHashConsensusModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
-  ],
+  ),
 })
 export class ContractsModule {}

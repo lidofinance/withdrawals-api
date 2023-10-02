@@ -88,7 +88,7 @@ export class RequestTimeService {
     };
   }
 
-  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber) {
+  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber): Promise<number> {
     const depositableEther = this.queueInfo.getDepositableEther();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
@@ -116,7 +116,7 @@ export class RequestTimeService {
     return result + GAP_AFTER_REPORT;
   }
 
-  timeToWithdrawalFrame(frame: number) {
+  timeToWithdrawalFrame(frame: number): number {
     const genesisTime = this.genesisTimeService.getGenesisTime();
     const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
     const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
