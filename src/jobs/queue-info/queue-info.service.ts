@@ -9,6 +9,7 @@ import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_T
 import { HashConsensus, OracleReportSanityChecker } from '../../common/contracts/generated';
 import { ORACLE_REPORT_SANITY_CHECKER_TOKEN } from 'common/contracts/oracle-report-sanity-checker/oracle-report-sanity-checker.constants';
 import { HASH_CONSENSUS_TOKEN } from '../../common/contracts/hash-consensus/hash-consensus.constants';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
 export class QueueInfoService {
@@ -20,6 +21,9 @@ export class QueueInfoService {
     protected readonly contractOracleReportSanityChecker: OracleReportSanityChecker,
     @Inject(HASH_CONSENSUS_TOKEN)
     protected readonly hashConsensus: HashConsensus,
+
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+
     protected readonly queueInfoStorageService: QueueInfoStorageService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,

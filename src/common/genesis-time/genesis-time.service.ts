@@ -3,6 +3,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { EPOCH_PER_FRAME, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
 import { QueueInfoStorageService } from '../../storage';
+import { ContractConfigStorageService } from '../../storage';
 
 @Injectable()
 export class GenesisTimeService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class GenesisTimeService implements OnModuleInit {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusService: ConsensusProviderService,
     protected readonly queueInfoStorageService: QueueInfoStorageService,
+    protected readonly contractConfig: ContractConfigStorageService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -60,7 +62,7 @@ export class GenesisTimeService implements OnModuleInit {
   }
 
   public getFrameOfEpoch(epoch: number) {
-    return Math.floor((epoch - this.queueInfoStorageService.getInitialEpoch().toNumber()) / EPOCH_PER_FRAME);
+    return Math.floor((epoch - this.contractConfig.getInitialEpoch()) / EPOCH_PER_FRAME);
   }
 
   protected genesisTime = -1;

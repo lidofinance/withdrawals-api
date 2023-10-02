@@ -1,7 +1,8 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ValidatorsService } from './validators';
-import { QueueInfoService } from './queueInfo';
+import { QueueInfoService } from './queue-info';
+import { ContractConfigService } from './contract-config';
 
 @Injectable()
 export class JobsService implements OnModuleInit {
@@ -10,6 +11,7 @@ export class JobsService implements OnModuleInit {
 
     protected readonly validatorsService: ValidatorsService,
     protected readonly queueInfoService: QueueInfoService,
+    protected readonly contractConfigService: ContractConfigService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -21,6 +23,10 @@ export class JobsService implements OnModuleInit {
    * Initializes jobs
    */
   protected async initialize(): Promise<void> {
-    await Promise.all([this.validatorsService.initialize(), this.queueInfoService.initialize()]);
+    await Promise.all([
+      this.validatorsService.initialize(),
+      this.queueInfoService.initialize(),
+      this.contractConfigService.initialize(),
+    ]);
   }
 }

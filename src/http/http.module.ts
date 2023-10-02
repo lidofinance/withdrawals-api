@@ -8,11 +8,10 @@ import { METRICS_URL } from 'common/prometheus';
 import { SWAGGER_URL } from './common/swagger';
 import { ThrottlerModule, ThrottlerBehindProxyGuard } from './common/throttler';
 import { LoggerMiddleware, MetricsMiddleware } from './common/middleware';
-import { CacheModule } from './common/cache';
+import { CacheModule, CacheControlHeadersInterceptor } from './common/cache';
 import { RequestTimeModule } from './request-time';
 import { NFTModule } from './nft';
 import { EstimateModule } from './estimate';
-import { CacheControlHeadersInterceptor } from './common/cache/cache-control-headers.interceptor';
 
 @Module({
   imports: [RequestTimeModule, NFTModule, EstimateModule, CacheModule, ThrottlerModule],
