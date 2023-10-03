@@ -3,7 +3,7 @@ import {
   LidoContractModule,
   OracleReportSanityCheckerModule,
   AccountingOracleHashConsensusModule,
-  LidoLocatorContractModule
+  LidoLocatorContractModule,
 } from '@lido-nestjs/contracts';
 import { Global, Module } from '@nestjs/common';
 import { ExecutionProvider } from 'common/execution-provider';
@@ -18,26 +18,17 @@ import { BurnerModule } from './burner/burner.module';
       LidoContractModule,
       OracleReportSanityCheckerModule,
       AccountingOracleHashConsensusModule,
+      BurnerModule,
+      AccountingOracleModule,
+      LidoLocatorContractModule,
     ].map((module) =>
-        module.forRootAsync({
-          async useFactory(provider: ExecutionProvider) {
-            return { provider };
-          },
-          inject: [ExecutionProvider],
-        }),
+      module.forRootAsync({
+        async useFactory(provider: ExecutionProvider) {
+          return { provider };
+        },
+        inject: [ExecutionProvider],
+      }),
     ),
-    LidoLocatorContractModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
-    BurnerModule.forRootAsync({
-      async useFactory(provider: ExecutionProvider) {
-        return { provider };
-      },
-      inject: [ExecutionProvider],
-    }),
   ],
 })
 export class ContractsModule {}

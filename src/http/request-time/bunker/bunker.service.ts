@@ -18,6 +18,7 @@ import { BlockStamp, LidoReportRebase, ReferenceBlockStamp } from './bunker.type
 import { ACCOUNTING_ORACLE_TOKEN } from '../../../common/contracts/accounting-oracle/accounting-oracle.constants';
 import { AccountingOracle, Burner } from '../../../common/contracts/generated';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { BURNER_TOKEN } from '../../../common/contracts/burner/burner.constants';
 
 @Injectable()
 export class BunkerService {
@@ -27,12 +28,12 @@ export class BunkerService {
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly lido: Lido,
     @Inject(ACCOUNTING_ORACLE_TOKEN) protected readonly accountingOracle: AccountingOracle,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
+    @Inject(BURNER_TOKEN) protected readonly burner: Burner,
     protected readonly configService: ConfigService,
     protected readonly validatorStorage: ValidatorsStorageService,
     protected readonly consensusProviderService: ConsensusProviderService,
     protected readonly queueInfoStorageService: QueueInfoStorageService,
     protected readonly simpleFallbackJsonRpcBatchProvider: SimpleFallbackJsonRpcBatchProvider,
-    protected readonly burner: Burner,
   ) {}
 
   // def is_bunker_mode(
@@ -212,7 +213,6 @@ export class BunkerService {
   }
 
   async getTotalSupply(blockstamp: BlockStamp) {
-    // todo check blockTag is what we need?
     return this.lido.totalSupply({ blockTag: blockstamp.block_hash });
   }
 

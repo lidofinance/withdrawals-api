@@ -5,10 +5,16 @@ import { JobService } from 'common/job';
 import { ConfigService } from 'common/config';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { QueueInfoStorageService } from 'storage';
-import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { HashConsensus, OracleReportSanityChecker } from '../../common/contracts/generated';
-import { ORACLE_REPORT_SANITY_CHECKER_TOKEN } from 'common/contracts/oracle-report-sanity-checker/oracle-report-sanity-checker.constants';
-import { HASH_CONSENSUS_TOKEN } from '../../common/contracts/hash-consensus/hash-consensus.constants';
+import {
+  WithdrawalQueue,
+  Lido,
+  OracleReportSanityChecker,
+  HashConsensus,
+  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
+  LIDO_CONTRACT_TOKEN,
+  ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
+  ORACLE_REPORT_SANITY_CHECKER_TOKEN,
+} from '@lido-nestjs/contracts';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
@@ -19,7 +25,7 @@ export class QueueInfoService {
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     @Inject(ORACLE_REPORT_SANITY_CHECKER_TOKEN)
     protected readonly contractOracleReportSanityChecker: OracleReportSanityChecker,
-    @Inject(HASH_CONSENSUS_TOKEN)
+    @Inject(ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN)
     protected readonly hashConsensus: HashConsensus,
 
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,

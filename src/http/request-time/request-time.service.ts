@@ -9,13 +9,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 import { parseEther, formatEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
-import {
-  EPOCH_PER_FRAME,
-  GAP_AFTER_REPORT,
-  GenesisTimeService,
-  SECONDS_PER_SLOT,
-  SLOTS_PER_EPOCH,
-} from 'common/genesis-time';
+import { EPOCH_PER_FRAME, GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import {
   MIN_PER_EPOCH_CHURN_LIMIT,
@@ -96,7 +90,6 @@ export class RequestTimeService {
 
   async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber): Promise<number> {
     const depositableEther = this.queueInfo.getDepositableEther();
-    const requestTimestampMargin = this.queueInfo.getRequestTimestampMargin();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
 

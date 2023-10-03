@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
-import { Interface } from 'ethers';
+import { utils } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
   LIDO_ETH_DESTRIBUTED_EVENT,
@@ -13,6 +13,12 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
 import { RewardsStorageService } from '../../storage';
+
+const Interface = utils.Interface;
+
+const getValue = (obj, key) => {
+  return obj[key];
+};
 
 @Injectable()
 export class RewardsService {
@@ -82,7 +88,7 @@ export class RewardsService {
     const lastLog = logs[logs.length - 1];
     const parser = new Interface([LIDO_EL_REWARDS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
-    return BigNumber.from(parsedData.args.getValue('amount'));
+    return BigNumber.from(getValue(parsedData.args, 'amount'));
   }
 
   protected async getEthDistributed(fromBlock: number): Promise<{
@@ -101,8 +107,8 @@ export class RewardsService {
     const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
-    const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
-    const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
+    const preCLBalance = BigNumber.from(getValue(parsedData.args, 'preCLBalance'));
+    const postCLBalance = BigNumber.from(getValue(parsedData.args, 'postCLBalance'));
     return { preCLBalance, postCLBalance };
   }
 
@@ -119,7 +125,7 @@ export class RewardsService {
     const parser = new Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
-    return BigNumber.from(parsedData.args.getValue('amount'));
+    return BigNumber.from(getValue(parsedData.args, 'amount'));
   }
 
   // reports can be skipped, so we need timeElapsed (time from last report)
@@ -147,7 +153,7 @@ export class RewardsService {
 
     return {
       blockNumber: lastLog.blockNumber,
-      frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(24 * 60 * 60),
+      frames: BigNumber.from(getValue(parsedData.args, 'timeElapsed')).div(24 * 60 * 60),
     };
   }
 }
