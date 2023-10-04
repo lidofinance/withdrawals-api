@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { QueueInfoStorageService } from './queueInfo.service';
+import { QueueInfoStorageService } from './queue-info.service';
 
 @Module({
   providers: [QueueInfoStorageService],

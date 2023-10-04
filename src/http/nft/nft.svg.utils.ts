@@ -1,5 +1,4 @@
 import { formatUnits } from 'ethers';
-
 import { glyphNumbers, simpleNumbers, crystallMap } from './assets/nft.parts';
 import { SVG_ID_LENGTH } from './nft.constants';
 

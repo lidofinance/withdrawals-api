@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JobModule } from 'common/job';
 import { QueueInfoStorageModule } from 'storage';
-import { QueueInfoService } from './queueInfo.service';
+import { QueueInfoService } from './queue-info.service';
 
 @Module({
   imports: [JobModule, QueueInfoStorageModule],
