@@ -36,4 +36,9 @@ export class RequestTimeV2Dto {
     description: 'Queue steth amount',
   })
   steth: string;
+
+  withVEBO: {
+    ms: number;
+    withdrawalAt: string;
+  };
 }

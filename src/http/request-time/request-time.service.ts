@@ -74,7 +74,7 @@ export class RequestTimeService {
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
 
-    const toTimeWithdrawal = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
+    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
 
     const requestsCount = this.queueInfo.getRequests();
 
@@ -85,13 +85,18 @@ export class RequestTimeService {
       validatorsLastUpdate,
       steth: unfinalizedETH.toString(),
       requests: requestsCount.toNumber(),
+      withVEBO: {
+        ms: toTimeWithdrawalVEBO,
+        withdrawalAt: new Date(Date.now() + toTimeWithdrawalVEBO).toISOString(),
+      },
     };
   }
 
-  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber): Promise<number> {
+  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber) {
     const depositableEther = this.queueInfo.getDepositableEther();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
+    let result2: null | number = null; // mins
 
     this.logger.debug({ depositableEther: depositableEther.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
@@ -110,10 +115,12 @@ export class RequestTimeService {
     if (result === null) {
       this.logger.debug('case calculateFrameExitValidatorsCase');
       const nextFrame = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
+      const nextFrameVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
       result = this.timeToWithdrawalFrame(nextFrame);
+      result2 = this.timeToWithdrawalFrame(nextFrameVEBO);
     }
 
-    return result + GAP_AFTER_REPORT;
+    return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
   }
 
   timeToWithdrawalFrame(frame: number): number {
@@ -145,21 +152,41 @@ export class RequestTimeService {
       .div(2);
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
+    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
+  }
+
+  async calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH: BigNumber): Promise<number> {
+    // latest epoch of most late to exit validators
+    const latestEpoch = this.validators.getMaxExitEpoch();
+    const totalValidators = this.validators.getTotal();
+
+    // calculate additional source of eth, rewards accumulated each epoch
+    const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
+    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+
+    // time to find validators for removing
+    const sweepingMean = BigNumber.from(totalValidators)
+      .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
+      .div(2);
+
     const rewardsPerValidatorExitReport = rewardsPerEpoch.mul(this.contractConfig.getEpochsPerFrameVEBO()); // each 8 hours
     const maxValidatorExitRequestsPerReport = this.contractConfig.getMaxValidatorExitRequestsPerReport();
+    const churnLimitPerReport = BigNumber.from(Math.floor(churnLimit)).mul(this.contractConfig.getEpochsPerFrameVEBO());
+    const limitValidators = Math.min(churnLimitPerReport.toNumber(), maxValidatorExitRequestsPerReport);
+
     const validatorsExitReportsCount = unfinalizedETH.div(
-      MAX_EFFECTIVE_BALANCE.mul(maxValidatorExitRequestsPerReport).add(rewardsPerValidatorExitReport),
+      MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerValidatorExitReport),
     );
     const potentialExitEpochWithVEBOLimit = BigNumber.from(latestEpoch)
       .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
       .add(sweepingMean);
 
     this.logger.debug({
-      potentialExitEpoch: potentialExitEpoch.toString(),
       potentialExitEpochWithVEBOLimit: potentialExitEpochWithVEBOLimit.toString(),
     });
 
-    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
+    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpochWithVEBOLimit.toNumber()) + 1;
   }
 
   calculateRequestTime(unfinalizedETH: BigNumber): number {
