@@ -34,7 +34,15 @@ export class BunkerService {
     protected readonly consensusProviderService: ConsensusProviderService,
     protected readonly queueInfoStorageService: QueueInfoStorageService,
     protected readonly simpleFallbackJsonRpcBatchProvider: SimpleFallbackJsonRpcBatchProvider,
-  ) {}
+  ) {
+    this.run();
+  }
+
+  async run() {
+    // const blockStamp = await this.receiveLastFinalizedSlot();
+    // const referenceBlockStamp =
+    // const r = await this.simulateClRebase(referenceBlockStamp);
+  }
 
   // def is_bunker_mode(
   //     self,
@@ -154,7 +162,7 @@ export class BunkerService {
       BigNumber.from(0),
     );
 
-    // tx.
+    console.log(tx);
   }
 
   // def _get_slots_elapsed_from_last_report(self, blockstamp: ReferenceBlockStamp):
@@ -230,3 +238,13 @@ export class BunkerService {
     return coverShares.add(nonCoverShares);
   }
 }
+
+///def get_reference_blockstamp(
+//     cc: ConsensusClient,
+//     ref_slot: SlotNumber,
+//     last_finalized_slot_number: SlotNumber,
+//     ref_epoch: EpochNumber,
+// ) -> ReferenceBlockStamp:
+//     """Get first non-missed slot header and generates reference blockstamp for it"""
+//     existed_slot = get_first_non_missed_slot(cc, ref_slot, last_finalized_slot_number)
+//     return build_reference_blockstamp(existed_slot, ref_slot, ref_epoch)
