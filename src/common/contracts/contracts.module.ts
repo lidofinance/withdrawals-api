@@ -3,6 +3,7 @@ import {
   LidoContractModule,
   OracleReportSanityCheckerModule,
   AccountingOracleHashConsensusModule,
+  ValidatorsExitBusOracleHashConsensusModule,
 } from '@lido-nestjs/contracts';
 import { Global, Module } from '@nestjs/common';
 import { ExecutionProvider } from 'common/execution-provider';
@@ -14,6 +15,7 @@ import { ExecutionProvider } from 'common/execution-provider';
     LidoContractModule,
     OracleReportSanityCheckerModule,
     AccountingOracleHashConsensusModule,
+    ValidatorsExitBusOracleHashConsensusModule,
   ].map((module) =>
     module.forRootAsync({
       async useFactory(provider: ExecutionProvider) {

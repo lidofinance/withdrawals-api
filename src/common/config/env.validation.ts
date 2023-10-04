@@ -58,7 +58,7 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  JOB_INTERVAL_VALIDATORS = CronExpression.EVERY_10_HOURS;
+  JOB_INTERVAL_VALIDATORS = CronExpression.EVERY_3_HOURS;
 
   @IsOptional()
   @IsString()
