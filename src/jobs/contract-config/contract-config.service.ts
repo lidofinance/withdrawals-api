@@ -9,6 +9,7 @@ import {
   ORACLE_REPORT_SANITY_CHECKER_TOKEN,
   HashConsensus,
   ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
+  VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN,
 } from '@lido-nestjs/contracts';
 import { ContractConfigStorageService } from 'storage';
 
@@ -17,7 +18,8 @@ export class ContractConfigService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(ORACLE_REPORT_SANITY_CHECKER_TOKEN) protected readonly oracleReportSanityChecker: OracleReportSanityChecker,
-    @Inject(ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly hashConsensus: HashConsensus,
+    @Inject(ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly accountingOracleHashConsensus: HashConsensus,
+    @Inject(VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly veboHashConsensus: HashConsensus,
 
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -40,12 +42,15 @@ export class ContractConfigService {
   @OneAtTime()
   protected async updateContractConfig(): Promise<void> {
     await this.jobService.wrapJob({ name: 'contract config' }, async () => {
-      const [limits, frameConfig] = await Promise.all([
+      const [limits, frameConfig, veboFrameConfig] = await Promise.all([
         this.oracleReportSanityChecker.getOracleReportLimits(),
-        this.hashConsensus.getFrameConfig(),
+        this.accountingOracleHashConsensus.getFrameConfig(),
+        this.veboHashConsensus.getFrameConfig(),
       ]);
       this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
+      this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
       this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
+      this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
     });
   }
 }
