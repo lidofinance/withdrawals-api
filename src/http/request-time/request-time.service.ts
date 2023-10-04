@@ -170,13 +170,15 @@ export class RequestTimeService {
       .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
       .div(2);
 
-    const rewardsPerValidatorExitReport = rewardsPerEpoch.mul(this.contractConfig.getEpochsPerFrameVEBO()); // each 8 hours
-    const maxValidatorExitRequestsPerReport = this.contractConfig.getMaxValidatorExitRequestsPerReport();
-    const churnLimitPerReport = BigNumber.from(Math.floor(churnLimit)).mul(this.contractConfig.getEpochsPerFrameVEBO());
-    const limitValidators = Math.min(churnLimitPerReport.toNumber(), maxValidatorExitRequestsPerReport);
+    const rewardsPerFrameVEBO = rewardsPerEpoch.mul(this.contractConfig.getEpochsPerFrameVEBO()); // each 8 hours
+    const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
+    const churnLimitPerFrameVEBO = BigNumber.from(Math.floor(churnLimit)).mul(
+      this.contractConfig.getEpochsPerFrameVEBO(),
+    );
+    const limitValidators = Math.min(churnLimitPerFrameVEBO.toNumber(), maxValidatorExitRequestsPerFrameVEBO);
 
     const validatorsExitReportsCount = unfinalizedETH.div(
-      MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerValidatorExitReport),
+      MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerFrameVEBO),
     );
     const potentialExitEpochWithVEBOLimit = BigNumber.from(latestEpoch)
       .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
