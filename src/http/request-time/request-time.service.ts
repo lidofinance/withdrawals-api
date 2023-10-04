@@ -151,7 +151,6 @@ export class RequestTimeService {
       .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
       .div(2);
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
-
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 
@@ -177,8 +176,12 @@ export class RequestTimeService {
     );
     const limitValidators = Math.min(churnLimitPerFrameVEBO.toNumber(), maxValidatorExitRequestsPerFrameVEBO);
 
-    const validatorsExitReportsCount = unfinalizedETH.div(
-      MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerFrameVEBO),
+    const validatorsExitReportsCountBigNumber = unfinalizedETH
+      .mul(10000)
+      .div(MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerFrameVEBO));
+
+    const validatorsExitReportsCount = BigNumber.from(
+      Math.ceil(validatorsExitReportsCountBigNumber.toNumber() / 10000),
     );
     const potentialExitEpochWithVEBOLimit = BigNumber.from(latestEpoch)
       .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
