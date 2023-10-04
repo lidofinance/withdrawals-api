@@ -1,5 +1,4 @@
 import { formatUnits } from 'ethers';
-
 import { MAX_AMOUNT_IN_ETH, MIN_AMOUNT_IN_WEI } from './nft.constants';
 
 export const convertFromWei = (amountInWei: string, prefix?: string): string => {
