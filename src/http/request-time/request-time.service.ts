@@ -145,6 +145,20 @@ export class RequestTimeService {
       .div(2);
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
+    const rewardsPerValidatorExitReport = rewardsPerEpoch.mul(this.contractConfig.getEpochsPerFrameVEBO()); // each 8 hours
+    const maxValidatorExitRequestsPerReport = this.contractConfig.getMaxValidatorExitRequestsPerReport();
+    const validatorsExitReportsCount = unfinalizedETH.div(
+      MAX_EFFECTIVE_BALANCE.mul(maxValidatorExitRequestsPerReport).add(rewardsPerValidatorExitReport),
+    );
+    const potentialExitEpochWithVEBOLimit = BigNumber.from(latestEpoch)
+      .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
+      .add(sweepingMean);
+
+    this.logger.debug({
+      potentialExitEpoch: potentialExitEpoch.toString(),
+      potentialExitEpochWithVEBOLimit: potentialExitEpochWithVEBOLimit.toString(),
+    });
+
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 
