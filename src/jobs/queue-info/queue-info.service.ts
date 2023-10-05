@@ -55,11 +55,8 @@ export class QueueInfoService {
         .reverse();
       const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIds);
       const requests = withdrawalStatuses.map((w, i) => ({ ...w, id: requestIds[i] } as WithdrawalRequest));
+
       this.queueInfoStorageService.setRequests(requests);
-
-      console.log(requestIds.map((i) => i.toString()));
-      console.log(requests.map((item) => new Date(item.timestamp.toNumber() * 1000).toISOString()));
-
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
       this.queueInfoStorageService.setUnfinalizedRequestsCount(unfinalizedRequests);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
