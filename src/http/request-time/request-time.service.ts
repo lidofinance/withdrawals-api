@@ -23,6 +23,7 @@ import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
+import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 
 @Injectable()
 export class RequestTimeService {
@@ -106,7 +107,7 @@ export class RequestTimeService {
     const validatorsLastUpdate = this.validators.getLastUpdate();
     if (!validatorsLastUpdate) return null;
 
-    const unfinalizedETH = this.calculateUnfinalizedEthForRequestId(request.id);
+    const unfinalizedETH = this.calculateUnfinalizedEthForRequestId(requests, request);
     if (!unfinalizedETH) return null;
 
     const additionalStETH = request.amountOfStETH;
@@ -125,21 +126,12 @@ export class RequestTimeService {
     };
   }
 
-  calculateUnfinalizedEthForRequestId(requestId: BigNumber) {
-    const requests = this.queueInfo.getRequests();
-    if (!requests.length) return null;
-
-    const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
-    if (!request) {
-      // throw 404
-      return null;
-    }
-
+  calculateUnfinalizedEthForRequestId(requests: WithdrawalRequest[], request: WithdrawalRequest) {
     let unfinalizedETH = BigNumber.from(0);
     for (const r of requests) {
       unfinalizedETH = unfinalizedETH.add(r.amountOfStETH);
 
-      if (r.id.eq(requestId)) {
+      if (r.id.eq(request.id)) {
         break;
       }
     }
