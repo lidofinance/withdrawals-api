@@ -89,7 +89,7 @@ export class RequestTimeService {
       requests: requestsCount.toNumber(),
       withVEBO: {
         ms: toTimeWithdrawalVEBO,
-        withdrawalAt: new Date(Date.now() + toTimeWithdrawalVEBO).toISOString(),
+        withdrawalAt: toTimeWithdrawalVEBO ? new Date(Date.now() + toTimeWithdrawalVEBO).toISOString() : null,
       },
     };
   }
@@ -110,7 +110,10 @@ export class RequestTimeService {
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
     if (!queueStETH) return null;
 
-    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(request.amountOfStETH, queueStETH);
+    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
+      request.amountOfStETH,
+      queueStETH,
+    );
 
     return {
       requestId: request.id.toString(),
@@ -118,7 +121,7 @@ export class RequestTimeService {
       withdrawalAt: new Date(Date.now() + toTimeWithdrawal).toISOString(),
       withVEBO: {
         ms: toTimeWithdrawalVEBO,
-        withdrawalAt: new Date(Date.now() + toTimeWithdrawalVEBO).toISOString(),
+        withdrawalAt: toTimeWithdrawalVEBO ? new Date(Date.now() + toTimeWithdrawalVEBO).toISOString() : null,
       },
     };
   }
