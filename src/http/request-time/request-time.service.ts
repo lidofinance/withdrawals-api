@@ -107,13 +107,10 @@ export class RequestTimeService {
     const validatorsLastUpdate = this.validators.getLastUpdate();
     if (!validatorsLastUpdate) return null;
 
-    const unfinalizedETH = this.calculateUnfinalizedEthForRequestId(requests, request);
-    if (!unfinalizedETH) return null;
+    const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
+    if (!queueStETH) return null;
 
-    const additionalStETH = request.amountOfStETH;
-    const queueStETH = unfinalizedETH.add(additionalStETH);
-
-    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
+    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(request.amountOfStETH, queueStETH);
 
     return {
       requestId: request.id.toString(),
