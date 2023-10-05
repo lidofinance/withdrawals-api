@@ -61,7 +61,7 @@ export class QueueInfoService {
       console.log(requests.map((item) => new Date(item.timestamp.toNumber() * 1000).toISOString()));
 
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
-      this.queueInfoStorageService.setUnfinalizedRequests(unfinalizedRequests);
+      this.queueInfoStorageService.setUnfinalizedRequestsCount(unfinalizedRequests);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);

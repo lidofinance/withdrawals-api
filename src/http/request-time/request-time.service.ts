@@ -51,7 +51,7 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
     const days = this.calculateRequestTime(queueStETH);
 
-    const requestsCount = this.queueInfo.getUnfinalizedRequests();
+    const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
 
     return {
       days,
@@ -77,7 +77,7 @@ export class RequestTimeService {
 
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
 
-    const requestsCount = this.queueInfo.getUnfinalizedRequests();
+    const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
 
     return {
       ms: toTimeWithdrawal,

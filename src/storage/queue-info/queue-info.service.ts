@@ -5,7 +5,7 @@ import { WithdrawalRequest } from './queue-info.types';
 @Injectable()
 export class QueueInfoStorageService {
   protected unfinalizedStETH: BigNumber;
-  protected unfinalizedRequests: BigNumber;
+  protected unfinalizedRequestsCount: BigNumber;
   protected lastUpdate: number;
   protected minStethAmount: BigNumber;
   protected maxStethAmount: BigNumber;
@@ -24,8 +24,8 @@ export class QueueInfoStorageService {
    * Get unfinalized requests
    * @returns big number
    */
-  public getUnfinalizedRequests(): BigNumber {
-    return this.unfinalizedRequests;
+  public getUnfinalizedRequestsCount(): BigNumber {
+    return this.unfinalizedRequestsCount;
   }
 
   /**
@@ -64,8 +64,8 @@ export class QueueInfoStorageService {
    * Updates unfinalized requests
    * @param unfinalizedRequests - BigNumber requests to save
    */
-  public setUnfinalizedRequests(unfinalizedRequests: BigNumber): void {
-    this.unfinalizedRequests = unfinalizedRequests;
+  public setUnfinalizedRequestsCount(unfinalizedRequestsCount: BigNumber): void {
+    this.unfinalizedRequestsCount = unfinalizedRequestsCount;
   }
 
   /**
