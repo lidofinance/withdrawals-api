@@ -7,6 +7,7 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { QueueInfoStorageService } from 'storage';
 import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 
 @Injectable()
 export class QueueInfoService {
@@ -38,16 +39,29 @@ export class QueueInfoService {
   @OneAtTime()
   protected async updateQueueInfo(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update queue info' }, async () => {
-      const [unfinalizedStETH, unfinalizedRequests, minStethAmount, maxStethAmount, depositableEther] =
+      const [unfinalizedStETH, unfinalizedRequests, minStethAmount, maxStethAmount, depositableEther, lastRequestId] =
         await Promise.all([
           this.contractWithdrawal.unfinalizedStETH(),
           this.contractWithdrawal.unfinalizedRequestNumber(),
           this.contractWithdrawal.MIN_STETH_WITHDRAWAL_AMOUNT(),
           this.contractWithdrawal.MAX_STETH_WITHDRAWAL_AMOUNT(),
           this.contractLido.getDepositableEther(),
+          this.contractWithdrawal.getLastRequestId(),
         ]);
+
+      const requestIds = new Array(unfinalizedRequests.toNumber())
+        .fill(true)
+        .map((_, i) => lastRequestId.sub(i))
+        .reverse();
+      const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIds);
+      const requests = withdrawalStatuses.map((w, i) => ({ ...w, id: requestIds[i] } as WithdrawalRequest));
+      this.queueInfoStorageService.setRequests(requests);
+
+      console.log(requestIds.map((i) => i.toString()));
+      console.log(requests.map((item) => new Date(item.timestamp.toNumber() * 1000).toISOString()));
+
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
-      this.queueInfoStorageService.setRequests(unfinalizedRequests);
+      this.queueInfoStorageService.setUnfinalizedRequests(unfinalizedRequests);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
