@@ -150,30 +150,51 @@ export class RequestTimeService {
 
   async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
-    let result: null | number = null; // mins
-    let result2: null | number = null; // mins
+    let frameByBuffer: null | number = null;
+    let frameByOnlyRewards: null | number = null;
+    let frameByExitValidators: null | number = null;
+    let frameByExitValidatorsWithVEBO: null | number = null;
 
     this.logger.debug({ buffer: buffer.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
     if (buffer.gt(withdrawalEth)) {
       this.logger.debug(`case buffer gt withdrawalEth`);
-      result = this.timeToWithdrawalFrame(currentFrame + 1);
+      frameByBuffer = currentFrame + 1;
+    } else {
+      const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
+      const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+
+      const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
+
+      if (onlyRewardPotentialEpoch) {
+        frameByOnlyRewards =
+          this.genesisTimeService.getFrameOfEpoch(
+            this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
+          ) + 1;
+      }
     }
 
     // postpone withdrawal request which is too close to report
-    if (result !== null && result < this.contractConfig.getRequestTimestampMargin()) {
+    if (
+      frameByBuffer !== null &&
+      this.timeToWithdrawalFrame(frameByBuffer) < this.contractConfig.getRequestTimestampMargin()
+    ) {
       this.logger.debug('case result < RequestTimestampMargin');
-      result = this.timeToWithdrawalFrame(currentFrame + 2);
+      frameByBuffer = currentFrame + 2;
     }
 
-    // if none of up cases worked use long period calculation
-    if (result === null) {
+    if (frameByBuffer === null) {
+      // if none of up cases worked use long period calculation
       this.logger.debug('case calculateFrameExitValidatorsCase');
-      const nextFrame = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
-      const nextFrameVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
-      result = this.timeToWithdrawalFrame(nextFrame);
-      result2 = this.timeToWithdrawalFrame(nextFrameVEBO);
+      frameByExitValidators = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
+      frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
     }
+
+    const result = this.timeToWithdrawalFrame(
+      Math.min(...[frameByBuffer, frameByOnlyRewards, frameByExitValidators].filter(Boolean)),
+    );
+
+    const result2 = this.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO);
 
     return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
   }
