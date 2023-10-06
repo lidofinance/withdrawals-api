@@ -116,7 +116,7 @@ export class RequestTimeService {
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
     if (!queueStETH) return null;
 
-    const buffer = this.queueInfo.getBufferedEther();
+    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
 
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
