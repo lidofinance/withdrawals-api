@@ -22,6 +22,8 @@ import { maxMinNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
+import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 
 @Injectable()
 export class RequestTimeService {
@@ -50,7 +52,7 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
     const days = this.calculateRequestTime(queueStETH);
 
-    const requestsCount = this.queueInfo.getRequests();
+    const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
 
     return {
       days,
@@ -76,7 +78,7 @@ export class RequestTimeService {
 
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
 
-    const requestsCount = this.queueInfo.getRequests();
+    const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
 
     return {
       ms: toTimeWithdrawal,
@@ -87,9 +89,54 @@ export class RequestTimeService {
       requests: requestsCount.toNumber(),
       withVEBO: {
         ms: toTimeWithdrawalVEBO,
-        withdrawalAt: new Date(Date.now() + toTimeWithdrawalVEBO).toISOString(),
+        withdrawalAt: toTimeWithdrawalVEBO ? new Date(Date.now() + toTimeWithdrawalVEBO).toISOString() : null,
       },
     };
+  }
+
+  async getTimeByRequestId(requestId: string): Promise<RequestTimeByRequestIdDto | null> {
+    const requests = this.queueInfo.getRequests();
+    if (!requests.length) return null;
+
+    const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
+    if (!request) {
+      // throw 404
+      return null;
+    }
+
+    const validatorsLastUpdate = this.validators.getLastUpdate();
+    if (!validatorsLastUpdate) return null;
+
+    const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
+    if (!queueStETH) return null;
+
+    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
+      request.amountOfStETH,
+      queueStETH,
+    );
+
+    return {
+      requestId: request.id.toString(),
+      ms: toTimeWithdrawal,
+      withdrawalAt: new Date(Date.now() + toTimeWithdrawal).toISOString(),
+      withVEBO: {
+        ms: toTimeWithdrawalVEBO,
+        withdrawalAt: toTimeWithdrawalVEBO ? new Date(Date.now() + toTimeWithdrawalVEBO).toISOString() : null,
+      },
+    };
+  }
+
+  calculateUnfinalizedEthForRequestId(requests: WithdrawalRequest[], request: WithdrawalRequest) {
+    let unfinalizedETH = BigNumber.from(0);
+    for (const r of requests) {
+      unfinalizedETH = unfinalizedETH.add(r.amountOfStETH);
+
+      if (r.id.eq(request.id)) {
+        break;
+      }
+    }
+
+    return unfinalizedETH;
   }
 
   async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber) {

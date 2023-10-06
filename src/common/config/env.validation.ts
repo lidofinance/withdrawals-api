@@ -62,7 +62,7 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  JOB_INTERVAL_QUEUE_INFO = CronExpression.EVERY_10_MINUTES;
+  JOB_INTERVAL_QUEUE_INFO = CronExpression.EVERY_5_MINUTES;
 
   @IsOptional()
   @IsString()

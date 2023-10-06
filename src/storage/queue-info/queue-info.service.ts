@@ -1,14 +1,16 @@
 import { BigNumber } from '@ethersproject/bignumber';
 import { Injectable } from '@nestjs/common';
+import { WithdrawalRequest } from './queue-info.types';
 
 @Injectable()
 export class QueueInfoStorageService {
   protected unfinalizedStETH: BigNumber;
-  protected unfinalizedRequests: BigNumber;
+  protected unfinalizedRequestsCount: BigNumber;
   protected lastUpdate: number;
   protected minStethAmount: BigNumber;
   protected maxStethAmount: BigNumber;
   protected depositableEther: BigNumber;
+  protected requests: WithdrawalRequest[];
 
   /**
    * Get unfinalized ETH
@@ -22,8 +24,8 @@ export class QueueInfoStorageService {
    * Get unfinalized requests
    * @returns big number
    */
-  public getRequests(): BigNumber {
-    return this.unfinalizedRequests;
+  public getUnfinalizedRequestsCount(): BigNumber {
+    return this.unfinalizedRequestsCount;
   }
 
   /**
@@ -62,8 +64,8 @@ export class QueueInfoStorageService {
    * Updates unfinalized requests
    * @param unfinalizedRequests - BigNumber requests to save
    */
-  public setRequests(unfinalizedRequests: BigNumber): void {
-    this.unfinalizedRequests = unfinalizedRequests;
+  public setUnfinalizedRequestsCount(unfinalizedRequestsCount: BigNumber): void {
+    this.unfinalizedRequestsCount = unfinalizedRequestsCount;
   }
 
   /**
@@ -104,5 +106,13 @@ export class QueueInfoStorageService {
    */
   public getDepositableEther(): BigNumber | undefined {
     return this.depositableEther;
+  }
+
+  public setRequests(requests: WithdrawalRequest[]): void {
+    this.requests = requests;
+  }
+
+  public getRequests(): WithdrawalRequest[] {
+    return this.requests;
   }
 }
