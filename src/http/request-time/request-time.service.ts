@@ -62,6 +62,7 @@ export class RequestTimeService {
       requests: requestsCount.toNumber(),
     };
   }
+
   async getRequestTimeV2(params: RequestTimeOptionsDto): Promise<RequestTimeV2Dto | null> {
     this.validate(params);
 
@@ -76,7 +77,12 @@ export class RequestTimeService {
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
 
-    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(additionalStETH, queueStETH);
+    const buffer = this.queueInfo.getDepositableEther();
+    const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
+      additionalStETH,
+      queueStETH,
+      buffer,
+    );
 
     const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
 
@@ -110,9 +116,12 @@ export class RequestTimeService {
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
     if (!queueStETH) return null;
 
+    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
+
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
       queueStETH,
+      buffer,
     );
 
     return {
@@ -139,16 +148,15 @@ export class RequestTimeService {
     return unfinalizedETH;
   }
 
-  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber) {
-    const depositableEther = this.queueInfo.getDepositableEther();
+  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let result: null | number = null; // mins
     let result2: null | number = null; // mins
 
-    this.logger.debug({ depositableEther: depositableEther.toString(), withdrawalEth: withdrawalEth.toString() });
+    this.logger.debug({ buffer: buffer.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
-    if (depositableEther.gt(withdrawalEth)) {
-      this.logger.debug(`case depositableEther gt withdrawalEth`);
+    if (buffer.gt(withdrawalEth)) {
+      this.logger.debug(`case buffer gt withdrawalEth`);
       result = this.timeToWithdrawalFrame(currentFrame + 1);
     }
 
