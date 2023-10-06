@@ -39,15 +39,23 @@ export class QueueInfoService {
   @OneAtTime()
   protected async updateQueueInfo(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update queue info' }, async () => {
-      const [unfinalizedStETH, unfinalizedRequests, minStethAmount, maxStethAmount, depositableEther, lastRequestId] =
-        await Promise.all([
-          this.contractWithdrawal.unfinalizedStETH(),
-          this.contractWithdrawal.unfinalizedRequestNumber(),
-          this.contractWithdrawal.MIN_STETH_WITHDRAWAL_AMOUNT(),
-          this.contractWithdrawal.MAX_STETH_WITHDRAWAL_AMOUNT(),
-          this.contractLido.getDepositableEther(),
-          this.contractWithdrawal.getLastRequestId(),
-        ]);
+      const [
+        unfinalizedStETH,
+        unfinalizedRequests,
+        minStethAmount,
+        maxStethAmount,
+        depositableEther,
+        bufferedEther,
+        lastRequestId,
+      ] = await Promise.all([
+        this.contractWithdrawal.unfinalizedStETH(),
+        this.contractWithdrawal.unfinalizedRequestNumber(),
+        this.contractWithdrawal.MIN_STETH_WITHDRAWAL_AMOUNT(),
+        this.contractWithdrawal.MAX_STETH_WITHDRAWAL_AMOUNT(),
+        this.contractLido.getDepositableEther(),
+        this.contractLido.getBufferedEther(),
+        this.contractWithdrawal.getLastRequestId(),
+      ]);
 
       const requestIds = new Array(unfinalizedRequests.toNumber())
         .fill(true)
@@ -63,6 +71,7 @@ export class QueueInfoService {
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
       this.queueInfoStorageService.setDepositableEther(depositableEther);
+      this.queueInfoStorageService.setBufferedEther(bufferedEther);
     });
   }
 }
