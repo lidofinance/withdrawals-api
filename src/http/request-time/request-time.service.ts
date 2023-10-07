@@ -150,7 +150,7 @@ export class RequestTimeService {
 
   async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
-    let frameByBuffer: null | number = null;
+    let frameByBuffer: number = null;
     let frameByOnlyRewards: null | number = null;
     let frameByExitValidators: null | number = null;
     let frameByExitValidatorsWithVEBO: null | number = null;
@@ -166,12 +166,10 @@ export class RequestTimeService {
 
       const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
 
-      if (onlyRewardPotentialEpoch) {
-        frameByOnlyRewards =
-          this.genesisTimeService.getFrameOfEpoch(
-            this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
-          ) + 1;
-      }
+      frameByOnlyRewards =
+        this.genesisTimeService.getFrameOfEpoch(
+          this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
+        ) + 1;
     }
 
     // postpone withdrawal request which is too close to report
