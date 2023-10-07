@@ -151,9 +151,9 @@ export class RequestTimeService {
   async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let frameByBuffer: number = null;
-    let frameByOnlyRewards: null | number = null;
-    let frameByExitValidators: null | number = null;
-    let frameByExitValidatorsWithVEBO: null | number = null;
+    let frameByOnlyRewards: number = null;
+    let frameByExitValidators: number = null;
+    let frameByExitValidatorsWithVEBO: number = null;
 
     this.logger.debug({ buffer: buffer.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
