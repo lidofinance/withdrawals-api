@@ -182,14 +182,6 @@ export class RequestTimeService {
 
     const requestTimestampFrame = this.genesisTimeService.getFrameByTimestamp(requestTimestamp) + 1;
 
-    this.logger.debug({
-      requestTimestamp,
-      currentFrame,
-      requestTimestampFrame,
-      beforeMargin: this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame),
-      getRequestTimestampMargin: this.contractConfig.getRequestTimestampMargin(),
-    });
-
     // postpone withdrawal request which is too close to report
     if (
       frameByBuffer !== null &&
