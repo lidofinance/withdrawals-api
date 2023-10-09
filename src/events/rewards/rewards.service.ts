@@ -80,6 +80,8 @@ export class RewardsService {
       address: res.address,
     });
     const lastLog = logs[logs.length - 1];
+
+    // check testnet error, not found events rewards
     const parser = new Interface([LIDO_EL_REWARDS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
     return BigNumber.from(parsedData.args.getValue('amount'));
