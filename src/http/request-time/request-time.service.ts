@@ -78,10 +78,12 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
 
     const buffer = this.queueInfo.getDepositableEther();
+
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       additionalStETH,
       queueStETH,
       buffer,
+      Date.now(),
     );
 
     const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
@@ -122,6 +124,7 @@ export class RequestTimeService {
       request.amountOfStETH,
       queueStETH,
       buffer,
+      request.timestamp.toNumber() * 1000,
     );
 
     return {
@@ -148,42 +151,61 @@ export class RequestTimeService {
     return unfinalizedETH;
   }
 
-  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
+  async calculateWithdrawalTimeV2(
+    withdrawalEth: BigNumber,
+    unfinalizedETH: BigNumber,
+    buffer: BigNumber,
+    requestTimestamp: number,
+  ) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
-    let result: null | number = null; // mins
-    let result2: null | number = null; // mins
+    let frameByBuffer: number = null;
+    let frameByOnlyRewards: number = null;
+    let frameByExitValidators: number = null;
+    let frameByExitValidatorsWithVEBO: number = null;
 
     this.logger.debug({ buffer: buffer.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
     if (buffer.gt(withdrawalEth)) {
       this.logger.debug(`case buffer gt withdrawalEth`);
-      result = this.timeToWithdrawalFrame(currentFrame + 1);
+      frameByBuffer = currentFrame + 1;
+    } else {
+      const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
+      const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+
+      const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
+
+      frameByOnlyRewards =
+        this.genesisTimeService.getFrameOfEpoch(
+          this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
+        ) + 1;
     }
 
+    const requestTimestampFrame = this.genesisTimeService.getFrameByTimestamp(requestTimestamp) + 1;
+
     // postpone withdrawal request which is too close to report
-    if (result !== null && result < this.contractConfig.getRequestTimestampMargin()) {
+    if (
+      frameByBuffer !== null &&
+      this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame) <
+        this.contractConfig.getRequestTimestampMargin()
+    ) {
       this.logger.debug('case result < RequestTimestampMargin');
-      result = this.timeToWithdrawalFrame(currentFrame + 2);
+      frameByBuffer = currentFrame + 2;
     }
 
     // if none of up cases worked use long period calculation
-    if (result === null) {
+    if (frameByBuffer === null) {
       this.logger.debug('case calculateFrameExitValidatorsCase');
-      const nextFrame = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
-      const nextFrameVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
-      result = this.timeToWithdrawalFrame(nextFrame);
-      result2 = this.timeToWithdrawalFrame(nextFrameVEBO);
+      frameByExitValidators = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
+      frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
     }
 
+    const result = this.genesisTimeService.timeToWithdrawalFrame(
+      Math.min(...[frameByBuffer, frameByOnlyRewards, frameByExitValidators].filter(Boolean)),
+    );
+
+    const result2 = this.genesisTimeService.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO);
+
     return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
-  }
-
-  timeToWithdrawalFrame(frame: number): number {
-    const genesisTime = this.genesisTimeService.getGenesisTime();
-    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
-    const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
-
-    return Math.round(genesisTime + timeToNextReport - Date.now() / 1000) * 1000; // in ms
   }
 
   async calculateFrameExitValidatorsCase(unfinalizedETH: BigNumber): Promise<number> {
