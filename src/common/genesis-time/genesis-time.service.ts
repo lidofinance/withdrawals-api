@@ -63,5 +63,20 @@ export class GenesisTimeService implements OnModuleInit {
     return Math.floor((epoch - this.contractConfig.getInitialEpoch()) / EPOCH_PER_FRAME);
   }
 
+  timeToWithdrawalFrame(frame: number): number {
+    const genesisTime = this.getGenesisTime();
+    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
+    const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
+
+    return Math.round(genesisTime + timeToNextReport - Date.now() / 1000) * 1000; // in ms
+  }
+
+  getFrameByTimestamp(timestamp: number): number {
+    const genesisTime = this.getGenesisTime();
+    const secondsFromInitialEpochToTimestamp =
+      timestamp / 1000 - (genesisTime + this.contractConfig.getInitialEpoch() * SECONDS_PER_SLOT * SLOTS_PER_EPOCH);
+    return Math.floor(secondsFromInitialEpochToTimestamp / (EPOCH_PER_FRAME * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
+  }
+
   protected genesisTime = -1;
 }
