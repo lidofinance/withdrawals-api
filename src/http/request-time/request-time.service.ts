@@ -78,10 +78,12 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
 
     const buffer = this.queueInfo.getDepositableEther();
+
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       additionalStETH,
       queueStETH,
       buffer,
+      Date.now(),
     );
 
     const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
@@ -122,6 +124,7 @@ export class RequestTimeService {
       request.amountOfStETH,
       queueStETH,
       buffer,
+      request.timestamp.toNumber() * 1000,
     );
 
     return {
@@ -148,7 +151,12 @@ export class RequestTimeService {
     return unfinalizedETH;
   }
 
-  async calculateWithdrawalTimeV2(withdrawalEth: BigNumber, unfinalizedETH: BigNumber, buffer: BigNumber) {
+  async calculateWithdrawalTimeV2(
+    withdrawalEth: BigNumber,
+    unfinalizedETH: BigNumber,
+    buffer: BigNumber,
+    requestTimestamp: number,
+  ) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let frameByBuffer: number = null;
     let frameByOnlyRewards: number = null;
@@ -172,37 +180,40 @@ export class RequestTimeService {
         ) + 1;
     }
 
+    const requestTimestampFrame = this.genesisTimeService.getFrameByTimestamp(requestTimestamp) + 1;
+
+    this.logger.debug({
+      requestTimestamp,
+      currentFrame,
+      requestTimestampFrame,
+      beforeMargin: this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame),
+      getRequestTimestampMargin: this.contractConfig.getRequestTimestampMargin(),
+    });
+
     // postpone withdrawal request which is too close to report
     if (
       frameByBuffer !== null &&
-      this.timeToWithdrawalFrame(frameByBuffer) < this.contractConfig.getRequestTimestampMargin()
+      this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame) <
+        this.contractConfig.getRequestTimestampMargin()
     ) {
       this.logger.debug('case result < RequestTimestampMargin');
       frameByBuffer = currentFrame + 2;
     }
 
+    // if none of up cases worked use long period calculation
     if (frameByBuffer === null) {
-      // if none of up cases worked use long period calculation
       this.logger.debug('case calculateFrameExitValidatorsCase');
       frameByExitValidators = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
       frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
     }
 
-    const result = this.timeToWithdrawalFrame(
+    const result = this.genesisTimeService.timeToWithdrawalFrame(
       Math.min(...[frameByBuffer, frameByOnlyRewards, frameByExitValidators].filter(Boolean)),
     );
 
-    const result2 = this.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO);
+    const result2 = this.genesisTimeService.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO);
 
     return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
-  }
-
-  timeToWithdrawalFrame(frame: number): number {
-    const genesisTime = this.genesisTimeService.getGenesisTime();
-    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
-    const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
-
-    return Math.round(genesisTime + timeToNextReport - Date.now() / 1000) * 1000; // in ms
   }
 
   async calculateFrameExitValidatorsCase(unfinalizedETH: BigNumber): Promise<number> {
