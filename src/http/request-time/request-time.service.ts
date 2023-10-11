@@ -120,20 +120,21 @@ export class RequestTimeService {
 
     const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
 
+    const requestTimestamp = request.timestamp.toNumber() * 1000;
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
       queueStETH,
       buffer,
-      request.timestamp.toNumber() * 1000,
+      requestTimestamp,
     );
 
     return {
       requestId: request.id.toString(),
       ms: toTimeWithdrawal,
-      withdrawalAt: new Date(Date.now() + toTimeWithdrawal).toISOString(),
+      withdrawalAt: new Date(requestTimestamp + toTimeWithdrawal).toISOString(),
       withVEBO: {
         ms: toTimeWithdrawalVEBO,
-        withdrawalAt: toTimeWithdrawalVEBO ? new Date(Date.now() + toTimeWithdrawalVEBO).toISOString() : null,
+        withdrawalAt: toTimeWithdrawalVEBO ? new Date(requestTimestamp + toTimeWithdrawalVEBO).toISOString() : null,
       },
     };
   }
@@ -166,18 +167,11 @@ export class RequestTimeService {
     this.logger.debug({ buffer: buffer.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
     if (buffer.gt(withdrawalEth)) {
-      this.logger.debug(`case buffer gt withdrawalEth`);
       frameByBuffer = currentFrame + 1;
+      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
     } else {
-      const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-      const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
-
-      const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
-
-      frameByOnlyRewards =
-        this.genesisTimeService.getFrameOfEpoch(
-          this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
-        ) + 1;
+      frameByOnlyRewards = this.calculateFrameByRewardsOnly(withdrawalEth, buffer);
+      this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
     }
 
     const requestTimestampFrame = this.genesisTimeService.getFrameByTimestamp(requestTimestamp) + 1;
@@ -185,7 +179,7 @@ export class RequestTimeService {
     // postpone withdrawal request which is too close to report
     if (
       frameByBuffer !== null &&
-      this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame) <
+      this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame, requestTimestamp) <
         this.contractConfig.getRequestTimestampMargin()
     ) {
       this.logger.debug('case result < RequestTimestampMargin');
@@ -199,11 +193,16 @@ export class RequestTimeService {
       frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
     }
 
+    this.logger.debug({ frameByBuffer, frameByOnlyRewards, frameByExitValidators, frameByExitValidatorsWithVEBO });
+
     const result = this.genesisTimeService.timeToWithdrawalFrame(
       Math.min(...[frameByBuffer, frameByOnlyRewards, frameByExitValidators].filter(Boolean)),
+      requestTimestamp,
     );
 
-    const result2 = this.genesisTimeService.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO);
+    const result2 = frameByExitValidatorsWithVEBO
+      ? this.genesisTimeService.timeToWithdrawalFrame(frameByExitValidatorsWithVEBO, requestTimestamp)
+      : null;
 
     return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
   }
@@ -264,14 +263,10 @@ export class RequestTimeService {
       .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
       .add(sweepingMean);
 
-    this.logger.debug({
-      potentialExitEpochWithVEBOLimit: potentialExitEpochWithVEBOLimit.toString(),
-    });
-
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpochWithVEBOLimit.toNumber()) + 1;
   }
 
-  calculateRequestTime(unfinalizedETH: BigNumber): number {
+  public calculateRequestTime(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const latestEpoch = this.validators.getMaxExitEpoch();
     const totalValidators = this.validators.getTotal();
@@ -293,7 +288,20 @@ export class RequestTimeService {
     return Math.round(waitingTime.toNumber());
   }
 
-  validate(params: RequestTimeOptionsDto) {
+  protected calculateFrameByRewardsOnly(withdrawalEth: BigNumber, buffer: BigNumber) {
+    const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
+    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+
+    const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
+
+    return (
+      this.genesisTimeService.getFrameOfEpoch(
+        this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
+      ) + 1
+    );
+  }
+
+  protected validate(params: RequestTimeOptionsDto) {
     if (!this.queueInfo.getMinStethAmount()) return;
 
     const minAmount = formatEther(this.queueInfo.getMinStethAmount());
