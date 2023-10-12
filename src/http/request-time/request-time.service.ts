@@ -236,34 +236,29 @@ export class RequestTimeService {
     const totalValidators = this.validators.getTotal();
 
     // calculate additional source of eth, rewards accumulated each epoch
+    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+
+    // calculate additional source of eth, rewards accumulated each epoch
     const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
     const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+
+    const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
+    const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
+
+    const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
+      MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
+    );
+
+    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
+    const VEBOFramesCount = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO);
+    const lidoQueueInEpoch = lidoQueueInEpochBeforeVEBOExitLimit.add(VEBOFramesCount.mul(epochsPerFrameVEBO));
 
     // time to find validators for removing
     const sweepingMean = BigNumber.from(totalValidators)
       .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
       .div(2);
-
-    const rewardsPerFrameVEBO = rewardsPerEpoch.mul(this.contractConfig.getEpochsPerFrameVEBO()); // each 8 hours
-    const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
-    const churnLimitPerFrameVEBO = BigNumber.from(Math.floor(churnLimit)).mul(
-      this.contractConfig.getEpochsPerFrameVEBO(),
-    );
-    const limitValidators = Math.min(churnLimitPerFrameVEBO.toNumber(), maxValidatorExitRequestsPerFrameVEBO);
-
-    const validatorsExitReportsCountBigNumber = unfinalizedETH
-      .mul(10000)
-      .div(MAX_EFFECTIVE_BALANCE.mul(limitValidators).add(rewardsPerFrameVEBO));
-
-    const validatorsExitReportsCount = BigNumber.from(
-      Math.ceil(validatorsExitReportsCountBigNumber.toNumber() / 10000),
-    );
-    const potentialExitEpochWithVEBOLimit = BigNumber.from(latestEpoch)
-      .add(validatorsExitReportsCount.mul(this.contractConfig.getEpochsPerFrameVEBO()))
-      .add(sweepingMean);
-
-    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpochWithVEBOLimit.toNumber()) + 1;
+    const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
+    return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 
   public calculateRequestTime(unfinalizedETH: BigNumber): number {
