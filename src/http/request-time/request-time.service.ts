@@ -243,14 +243,15 @@ export class RequestTimeService {
     const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
-    const validatorsLimitPerVEBOEpoch = BigNumber.from(maxValidatorExitRequestsPerFrameVEBO).div(
-      this.contractConfig.getEpochsPerFrameVEBO(),
-    );
-    const validatorsLimit = Math.min(churnLimit, validatorsLimitPerVEBOEpoch.toNumber());
+    const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
 
-    const lidoQueueInEpoch = unfinalizedETH.div(
-      MAX_EFFECTIVE_BALANCE.mul(Math.floor(validatorsLimit)).add(rewardsPerEpoch),
+    const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
+      MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
     );
+
+    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
+    const VEBOFramesCount = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO);
+    const lidoQueueInEpoch = lidoQueueInEpochBeforeVEBOExitLimit.add(VEBOFramesCount.mul(epochsPerFrameVEBO));
 
     // time to find validators for removing
     const sweepingMean = BigNumber.from(totalValidators)
