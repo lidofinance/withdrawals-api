@@ -169,7 +169,7 @@ export class RequestTimeService {
     if (buffer.gt(withdrawalEth)) {
       frameByBuffer = currentFrame + 1;
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
-    } else {
+    } else if (buffer.gt(unfinalizedETH)) {
       frameByOnlyRewards = this.calculateFrameByRewardsOnly(withdrawalEth, buffer);
       this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
     }
