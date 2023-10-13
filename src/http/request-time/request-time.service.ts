@@ -170,7 +170,7 @@ export class RequestTimeService {
       frameByBuffer = currentFrame + 1;
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
     } else {
-      frameByOnlyRewards = this.calculateFrameByRewardsOnly(withdrawalEth, buffer);
+      frameByOnlyRewards = this.calculateFrameByRewardsOnly(unfinalizedETH);
       this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
     }
 
@@ -283,11 +283,11 @@ export class RequestTimeService {
     return Math.round(waitingTime.toNumber());
   }
 
-  protected calculateFrameByRewardsOnly(withdrawalEth: BigNumber, buffer: BigNumber) {
+  protected calculateFrameByRewardsOnly(unfinilizedEth: BigNumber) {
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
     const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
 
-    const onlyRewardPotentialEpoch = withdrawalEth.sub(buffer).div(rewardsPerEpoch);
+    const onlyRewardPotentialEpoch = unfinilizedEth.div(rewardsPerEpoch);
 
     return (
       this.genesisTimeService.getFrameOfEpoch(
