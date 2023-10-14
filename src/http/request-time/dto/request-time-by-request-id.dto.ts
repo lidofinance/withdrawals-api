@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { RequestDto } from './request.dto';
 
 export class RequestTimeByRequestIdDto {
   @ApiProperty({
@@ -6,12 +7,6 @@ export class RequestTimeByRequestIdDto {
     description: 'Maximum waiting ms',
   })
   ms: number;
-
-  @ApiProperty({
-    example: 5,
-    description: 'Request Id',
-  })
-  requestId: string;
 
   @ApiProperty({
     example: '2023-10-04T15:14:24.202Z',
@@ -27,4 +22,17 @@ export class RequestTimeByRequestIdDto {
     ms: number;
     withdrawalAt: string;
   };
+
+  @ApiProperty({
+    example: {
+      id: '1',
+      amountOfStETH: '2',
+      amountOfShares: '2',
+      timestamp: '2023-10-04T15:14:24.202Z',
+      isFinalized: false,
+      isClaimed: false,
+    },
+    description: 'Request',
+  })
+  request: RequestDto;
 }

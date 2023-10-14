@@ -24,6 +24,7 @@ import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
 import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
+import { transformToRequestDto } from './dto/request.dto';
 
 @Injectable()
 export class RequestTimeService {
@@ -129,7 +130,7 @@ export class RequestTimeService {
     );
 
     return {
-      requestId: request.id.toString(),
+      request: transformToRequestDto(request),
       ms: toTimeWithdrawal,
       withdrawalAt: new Date(requestTimestamp + toTimeWithdrawal).toISOString(),
       withVEBO: {
