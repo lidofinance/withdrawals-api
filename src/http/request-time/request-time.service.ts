@@ -130,6 +130,7 @@ export class RequestTimeService {
     );
 
     return {
+      requestId: request.id.toString(),
       request: transformToRequestDto(request),
       ms: toTimeWithdrawal,
       withdrawalAt: new Date(requestTimestamp + toTimeWithdrawal).toISOString(),
