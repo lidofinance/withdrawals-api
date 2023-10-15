@@ -5,8 +5,6 @@ export class RequestDto {
   amountOfStETH: string;
   amountOfShares: string;
   timestamp: string;
-  isFinalized: boolean;
-  isClaimed: boolean;
 }
 
 export const transformToRequestDto = (request: WithdrawalRequest): RequestDto => {
@@ -15,7 +13,5 @@ export const transformToRequestDto = (request: WithdrawalRequest): RequestDto =>
     amountOfStETH: request.amountOfStETH.toString(),
     amountOfShares: request.amountOfStETH.toString(),
     timestamp: new Date(request.timestamp.toNumber() * 1000).toISOString(),
-    isFinalized: request.isFinalized,
-    isClaimed: request.isClaimed,
   };
 };

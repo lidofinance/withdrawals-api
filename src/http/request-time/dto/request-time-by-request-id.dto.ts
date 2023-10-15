@@ -24,13 +24,17 @@ export class RequestTimeByRequestIdDto {
   };
 
   @ApiProperty({
+    example: 5,
+    description: 'Request Id',
+  })
+  requestId: string;
+
+  @ApiProperty({
     example: {
       id: '1',
       amountOfStETH: '2',
       amountOfShares: '2',
       timestamp: '2023-10-04T15:14:24.202Z',
-      isFinalized: false,
-      isClaimed: false,
     },
     description: 'Request',
   })
