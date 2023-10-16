@@ -66,4 +66,20 @@ export const ESTIMATE_ACCOUNT_PERMITS: {
       deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     },
   },
+  [CHAINS.Holesky]: {
+    steth_permit: {
+      r: '0x534a4616e76f7172c1517e78e15764345247c6d3940db61886c2061f8f438151',
+      s: '0x7c91215cfc6ae41582168105980e4ce18e8a8f278e83c9dc3f1c386914e470e0',
+      v: 28,
+      value: '10000000000000000',
+      deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    },
+    wsteth_permit: {
+      r: '0xf130f058f1c3b701d674d93144369b0b018827f2d79802880d4fa3f18406eccd',
+      s: '0x58cdc0a79ef104186c57500971def125b3a07c846c3c132cc1bd66a476eb4153',
+      v: 27,
+      value: '10000000000000000',
+      deadline: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    },
+  },
 } as const;
