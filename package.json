@@ -25,7 +25,7 @@
     "@ethersproject/units": "^5.7.0",
     "@fastify/static": "^6.6.0",
     "@lido-nestjs/consensus": "^1.5.0",
-    "@lido-nestjs/constants": "^5.0.0",
+    "@lido-nestjs/constants": "^5.2.0",
     "@lido-nestjs/contracts": "^9.3.0",
     "@lido-nestjs/decorators": "^1.0.0",
     "@lido-nestjs/execution": "^1.9.3",
