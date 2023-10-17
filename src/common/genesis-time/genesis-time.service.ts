@@ -78,5 +78,15 @@ export class GenesisTimeService implements OnModuleInit {
     return Math.floor(secondsFromInitialEpochToTimestamp / (EPOCH_PER_FRAME * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
   }
 
+  getSlotByTimestamp(timestamp: number): number {
+    const currentSlotTime = Math.floor(timestamp);
+    const time = currentSlotTime - this.genesisTime;
+    return Math.floor(time / SECONDS_PER_SLOT);
+  }
+
+  getEpochByTimestamp(timestamp: number): number {
+    return Math.floor(this.getSlotByTimestamp(timestamp) / SLOTS_PER_EPOCH);
+  }
+
   protected genesisTime = -1;
 }
