@@ -84,7 +84,7 @@ export class GenesisTimeService implements OnModuleInit {
     return Math.floor(time / SECONDS_PER_SLOT);
   }
 
-  getEpochByTimeStamp(timestamp: number): number {
+  getEpochByTimestamp(timestamp: number): number {
     return Math.floor(this.getSlotByTimestamp(timestamp) / SLOTS_PER_EPOCH);
   }
 
