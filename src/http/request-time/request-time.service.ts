@@ -129,7 +129,7 @@ export class RequestTimeService {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const latestEpoch =
-      this.genesisTimeService.getEpochByTimeStamp(request.timestamp.toNumber()) + currentExitValidatorsDiffEpochs;
+      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber()) + currentExitValidatorsDiffEpochs;
 
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
