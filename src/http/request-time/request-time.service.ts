@@ -79,12 +79,14 @@ export class RequestTimeService {
     const stethLastUpdate = this.queueInfo.getLastUpdate();
 
     const buffer = this.queueInfo.getDepositableEther();
+    const latestEpoch = this.validators.getMaxExitEpoch();
 
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       additionalStETH,
       queueStETH,
       buffer,
       Date.now(),
+      latestEpoch,
     );
 
     const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
@@ -122,11 +124,19 @@ export class RequestTimeService {
     const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
 
     const requestTimestamp = request.timestamp.toNumber() * 1000;
+
+    const maxExitEpoch = this.validators.getMaxExitEpoch();
+    const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+    const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
+    const latestEpoch =
+      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber()) + currentExitValidatorsDiffEpochs;
+
     const [toTimeWithdrawal, toTimeWithdrawalVEBO] = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
       queueStETH,
       buffer,
       requestTimestamp,
+      latestEpoch.toString(),
     );
 
     return {
@@ -159,6 +169,7 @@ export class RequestTimeService {
     unfinalizedETH: BigNumber,
     buffer: BigNumber,
     requestTimestamp: number,
+    latestEpoch: string,
   ) {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let frameByBuffer: number = null;
@@ -191,8 +202,8 @@ export class RequestTimeService {
     // if none of up cases worked use long period calculation
     if (frameByBuffer === null) {
       this.logger.debug('case calculateFrameExitValidatorsCase');
-      frameByExitValidators = await this.calculateFrameExitValidatorsCase(unfinalizedETH);
-      frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH);
+      frameByExitValidators = await this.calculateFrameExitValidatorsCase(unfinalizedETH, latestEpoch);
+      frameByExitValidatorsWithVEBO = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH, latestEpoch);
     }
 
     this.logger.debug({ frameByBuffer, frameByOnlyRewards, frameByExitValidators, frameByExitValidatorsWithVEBO });
@@ -209,9 +220,8 @@ export class RequestTimeService {
     return [result + GAP_AFTER_REPORT, result2 ? result2 + GAP_AFTER_REPORT : null];
   }
 
-  async calculateFrameExitValidatorsCase(unfinalizedETH: BigNumber): Promise<number> {
+  async calculateFrameExitValidatorsCase(unfinalizedETH: BigNumber, latestEpoch: string): Promise<number> {
     // latest epoch of most late to exit validators
-    const latestEpoch = this.validators.getMaxExitEpoch();
     const totalValidators = this.validators.getTotal();
 
     // max number limit of create or remove validators per epoch
@@ -232,9 +242,8 @@ export class RequestTimeService {
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
 
-  async calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH: BigNumber): Promise<number> {
+  async calculateFrameExitValidatorsCaseWithVEBO(unfinalizedETH: BigNumber, latestEpoch: string): Promise<number> {
     // latest epoch of most late to exit validators
-    const latestEpoch = this.validators.getMaxExitEpoch();
     const totalValidators = this.validators.getTotal();
 
     // calculate additional source of eth, rewards accumulated each epoch
