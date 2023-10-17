@@ -57,8 +57,6 @@ export class ValidatorsService {
         return acc;
       }, '0');
 
-      console.log(latestEpoch);
-
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
