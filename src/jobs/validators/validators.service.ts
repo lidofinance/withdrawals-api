@@ -40,7 +40,6 @@ export class ValidatorsService {
     await this.jobService.wrapJob({ name: 'update validators' }, async () => {
       const { data } = await this.consensusProviderService.getStateValidators({
         stateId: 'head',
-        status: ['withdrawal_possible', 'exited_slashed', 'exited_unslashed', 'active_exiting'],
       });
 
       const totalValidators = data.length;
