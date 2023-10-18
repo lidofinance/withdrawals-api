@@ -39,4 +39,10 @@ export class RequestTimeByRequestIdDto {
     description: 'Request',
   })
   request: RequestDto;
+
+  @ApiProperty({
+    example: 'buffer',
+    description: 'Case of calculation',
+  })
+  type: string;
 }
