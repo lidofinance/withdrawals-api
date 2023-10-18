@@ -36,7 +36,6 @@ export class RequestTimeV2Dto {
     description: 'Queue steth amount',
   })
   steth: string;
-
   @ApiProperty({
     example: { ms: 0, withdrawalAt: '2023-10-04T15:14:24.202Z' },
     description: 'withdrawal info with Validator Exit Bus Oracle',
@@ -45,4 +44,10 @@ export class RequestTimeV2Dto {
     ms: number;
     withdrawalAt: string;
   };
+
+  @ApiProperty({
+    example: 'buffer',
+    description: 'Case of calculation',
+  })
+  type: string;
 }
