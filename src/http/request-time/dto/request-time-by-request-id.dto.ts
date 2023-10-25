@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-
-export enum RequestTimeStatus {
-  initializing = 'initializing',
-  calculating = 'calculating',
-  finalized = 'finalized',
-  calculated = 'calculated',
-}
+import { RequestTimeStatus } from './request-time-status';
 
 export class RequestInfoDto {
   @ApiProperty({

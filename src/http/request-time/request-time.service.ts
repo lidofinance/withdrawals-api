@@ -22,9 +22,10 @@ import { maxMinNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { RequestTimeByRequestIdDto, RequestTimeStatus } from './dto/request-time-by-request-id.dto';
+import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
 import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 import { transformToRequestDto } from './dto/request.dto';
+import { RequestTimeStatus } from './dto/request-time-status';
 
 @Injectable()
 export class RequestTimeService {
@@ -66,17 +67,21 @@ export class RequestTimeService {
 
   async getRequestTimeV2(params: RequestTimeOptionsDto): Promise<RequestTimeV2Dto | null> {
     this.validate(params);
+    const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
 
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    if (!validatorsLastUpdate) return null;
-
     const unfinalizedETH = this.queueInfo.getStETH();
-    if (!unfinalizedETH) return null;
+
+    if (!unfinalizedETH || !validatorsLastUpdate) {
+      return {
+        status: RequestTimeStatus.initializing,
+        nextCalculationAt,
+        requestInfo: null,
+      };
+    }
 
     const additionalStETH = parseEther(params.amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
-
-    const stethLastUpdate = this.queueInfo.getLastUpdate();
 
     const buffer = this.queueInfo.getDepositableEther();
     const latestEpoch = this.validators.getMaxExitEpoch();
@@ -89,16 +94,14 @@ export class RequestTimeService {
       latestEpoch,
     );
 
-    const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
-
     return {
-      finalizationIn: ms,
-      finalizationAt: new Date(Date.now() + ms).toISOString(),
-      stethLastUpdate,
-      validatorsLastUpdate,
-      steth: unfinalizedETH.toString(),
-      requests: requestsCount.toNumber(),
-      type,
+      requestInfo: {
+        finalizationIn: ms,
+        finalizationAt: new Date(Date.now() + ms).toISOString(),
+        type,
+      },
+      status: RequestTimeStatus.calculated,
+      nextCalculationAt,
     };
   }
 
