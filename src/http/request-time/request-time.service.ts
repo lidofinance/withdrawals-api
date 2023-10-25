@@ -118,7 +118,6 @@ export class RequestTimeService {
       };
     }
 
-    // const lastCalculatedTimeAt = new Date(this.queueInfo.getLastUpdate() * 1000).toISOString();
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
 
