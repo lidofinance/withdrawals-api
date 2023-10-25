@@ -1,27 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { RequestDto } from './request.dto';
 
-export class RequestTimeByRequestIdDto {
+export enum RequestTimeStatus {
+  initializing = 'initializing',
+  calculating = 'calculating',
+  finalized = 'finalized',
+  calculated = 'calculated',
+}
+
+export class RequestInfoDto {
   @ApiProperty({
     example: 5,
     description: 'Maximum waiting ms',
   })
-  ms: number;
+  finalizationIn: number;
 
   @ApiProperty({
     example: '2023-10-04T15:14:24.202Z',
-    description: 'Withdrawal At',
+    description: 'Possible withdrawal At',
   })
-  withdrawalAt: string;
-
-  @ApiProperty({
-    example: { ms: 0, withdrawalAt: '2023-10-04T15:14:24.202Z' },
-    description: 'withdrawal info with Validator Exit Bus Oracle',
-  })
-  withVEBO: {
-    ms: number;
-    withdrawalAt: string;
-  };
+  finalizationAt: string;
 
   @ApiProperty({
     example: 5,
@@ -30,19 +27,33 @@ export class RequestTimeByRequestIdDto {
   requestId: string;
 
   @ApiProperty({
-    example: {
-      id: '1',
-      amountOfStETH: '2',
-      amountOfShares: '2',
-      timestamp: '2023-10-04T15:14:24.202Z',
-    },
-    description: 'Request',
+    example: '2023-10-03T15:14:24.202Z',
+    description: 'Withdrawal requested at',
   })
-  request: RequestDto;
+  requestedAt: string;
 
   @ApiProperty({
     example: 'buffer',
     description: 'Case of calculation',
   })
   type: string;
+}
+
+export class RequestTimeByRequestIdDto {
+  @ApiProperty()
+  requestInfo: RequestInfoDto;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'status of request calculation',
+    enum: Object.values(RequestTimeStatus),
+  })
+  status: RequestTimeStatus;
+
+  @ApiProperty({
+    type: 'string',
+    description: 'last calculated time at',
+    example: '2023-10-03T11:14:24.202Z',
+  })
+  lastCalculatedTimeAt: string;
 }

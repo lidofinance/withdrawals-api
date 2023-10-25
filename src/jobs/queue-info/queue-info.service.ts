@@ -63,15 +63,16 @@ export class QueueInfoService {
         .reverse();
       const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIds);
       const requests = withdrawalStatuses.map((w, i) => ({ ...w, id: requestIds[i] } as WithdrawalRequest));
+      console.log(requests.map((r) => r.id.toString()));
 
       this.queueInfoStorageService.setRequests(requests);
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
       this.queueInfoStorageService.setUnfinalizedRequestsCount(unfinalizedRequests);
-      this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
       this.queueInfoStorageService.setDepositableEther(depositableEther);
       this.queueInfoStorageService.setBufferedEther(bufferedEther);
+      this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
     });
   }
 }
