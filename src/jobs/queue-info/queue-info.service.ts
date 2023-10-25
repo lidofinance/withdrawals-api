@@ -11,6 +11,7 @@ import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 
 @Injectable()
 export class QueueInfoService {
+  private job: CronJob;
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
@@ -27,11 +28,11 @@ export class QueueInfoService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
+    this.job = new CronJob(cronTime, () => this.updateQueueInfo());
     await this.updateQueueInfo();
 
-    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
-    const job = new CronJob(cronTime, () => this.updateQueueInfo());
-    job.start();
+    this.job.start();
 
     this.logger.log('Service initialized', { service: 'queue info', cronTime });
   }
@@ -73,6 +74,21 @@ export class QueueInfoService {
       this.queueInfoStorageService.setDepositableEther(depositableEther);
       this.queueInfoStorageService.setBufferedEther(bufferedEther);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+      this.queueInfoStorageService.setNextUpdate(this.getNextUpdateDate());
     });
+  }
+
+  protected getNextUpdateDate() {
+    const jobNextDate = this.job.nextDate().toJSDate();
+
+    if (!this.job.lastDate()) {
+      return jobNextDate;
+    }
+
+    const startOfLastJob = this.job.lastDate().getTime();
+    const endOfLastJob = new Date().getTime();
+    const diff = endOfLastJob - startOfLastJob;
+
+    return new Date(jobNextDate.getTime() + diff);
   }
 }

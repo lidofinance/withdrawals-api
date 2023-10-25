@@ -111,11 +111,12 @@ export class RequestTimeService {
       return {
         requestInfo: null,
         status: RequestTimeStatus.initializing,
-        lastCalculatedTimeAt: null,
+        nextCalculationAt: null,
       };
     }
 
-    const lastCalculatedTimeAt = new Date(this.queueInfo.getLastUpdate() * 1000).toISOString();
+    // const lastCalculatedTimeAt = new Date(this.queueInfo.getLastUpdate() * 1000).toISOString();
+    const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
 
     const lastRequestId = requests[requests.length - 1].id;
@@ -123,13 +124,13 @@ export class RequestTimeService {
     if (!request) {
       if (BigNumber.from(requestId).gt(lastRequestId)) {
         return {
-          lastCalculatedTimeAt,
+          nextCalculationAt,
           status: RequestTimeStatus.calculating,
           requestInfo: null,
         };
       } else if (BigNumber.from(requestId).lt(firstRequestId)) {
         return {
-          lastCalculatedTimeAt,
+          nextCalculationAt,
           status: RequestTimeStatus.finalized,
           requestInfo: null,
         };
@@ -165,7 +166,7 @@ export class RequestTimeService {
         type,
       },
       status: RequestTimeStatus.calculated,
-      lastCalculatedTimeAt,
+      nextCalculationAt,
     };
   }
 

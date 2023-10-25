@@ -12,6 +12,7 @@ export class QueueInfoStorageService {
   protected depositableEther: BigNumber;
   protected bufferedEther: BigNumber;
   protected requests: WithdrawalRequest[];
+  protected nextUpdate: Date;
 
   /**
    * Get unfinalized ETH
@@ -123,5 +124,13 @@ export class QueueInfoStorageService {
 
   public getBufferedEther(): BigNumber | undefined {
     return this.bufferedEther;
+  }
+
+  public setNextUpdate(nextUpdate: Date): void {
+    this.nextUpdate = nextUpdate;
+  }
+
+  public getNextUpdate(): Date | undefined {
+    return this.nextUpdate;
   }
 }

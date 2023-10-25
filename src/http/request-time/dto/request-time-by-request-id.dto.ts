@@ -52,8 +52,8 @@ export class RequestTimeByRequestIdDto {
 
   @ApiProperty({
     type: 'string',
-    description: 'last calculated time at',
+    description: 'next calculation time at',
     example: '2023-10-03T11:14:24.202Z',
   })
-  lastCalculatedTimeAt: string;
+  nextCalculationAt: string;
 }
