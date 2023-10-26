@@ -11,6 +11,7 @@ export class QueueInfoStorageService {
   protected maxStethAmount: BigNumber;
   protected depositableEther: BigNumber;
   protected bufferedEther: BigNumber;
+  protected lastRequestId: BigNumber;
   protected requests: WithdrawalRequest[];
   protected nextUpdate: Date;
 
@@ -132,5 +133,13 @@ export class QueueInfoStorageService {
 
   public getNextUpdate(): Date | undefined {
     return this.nextUpdate;
+  }
+
+  public setLastRequestId(lastRequestId: BigNumber): void {
+    this.lastRequestId = lastRequestId;
+  }
+
+  public getLastRequestId(): BigNumber | undefined {
+    return this.lastRequestId;
   }
 }

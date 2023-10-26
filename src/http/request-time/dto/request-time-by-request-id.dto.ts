@@ -1,16 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { RequestTimeStatus } from './request-time-status';
+import { RequestTimeCalculationType } from './request-time-calculation-type';
 
 export class RequestInfoDto {
   @ApiProperty({
     example: 5,
-    description: 'Maximum waiting ms',
+    description: 'Possible waiting ms',
   })
   finalizationIn: number;
 
   @ApiProperty({
     example: '2023-10-04T15:14:24.202Z',
-    description: 'Possible withdrawal At',
+    description: 'Possible finalization At',
   })
   finalizationAt: string;
 
@@ -29,8 +30,9 @@ export class RequestInfoDto {
   @ApiProperty({
     example: 'buffer',
     description: 'Case of calculation',
+    enum: Object.values(RequestTimeCalculationType),
   })
-  type: string;
+  type: RequestTimeCalculationType;
 }
 
 export class RequestTimeByRequestIdDto {

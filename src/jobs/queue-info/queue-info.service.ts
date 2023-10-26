@@ -65,8 +65,10 @@ export class QueueInfoService {
       const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIds);
       const requests = withdrawalStatuses.map((w, i) => ({ ...w, id: requestIds[i] } as WithdrawalRequest));
 
+      console.log(lastRequestId.toNumber());
       this.queueInfoStorageService.setRequests(requests);
       this.queueInfoStorageService.setStETH(unfinalizedStETH);
+      this.queueInfoStorageService.setLastRequestId(lastRequestId);
       this.queueInfoStorageService.setUnfinalizedRequestsCount(unfinalizedRequests);
       this.queueInfoStorageService.setMinStethAmount(minStethAmount);
       this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);

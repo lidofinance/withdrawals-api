@@ -26,6 +26,7 @@ import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto'
 import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 import { transformToRequestDto } from './dto/request.dto';
 import { RequestTimeStatus } from './dto/request-time-status';
+import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
 
 @Injectable()
 export class RequestTimeService {
@@ -119,26 +120,26 @@ export class RequestTimeService {
     }
 
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-    const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
 
-    const lastRequestId = requests[requests.length - 1].id;
-    const firstRequestId = requests[0].id;
-    if (!request) {
-      if (BigNumber.from(requestId).gt(lastRequestId)) {
-        return {
-          nextCalculationAt,
-          status: RequestTimeStatus.calculating,
-          requestInfo: null,
-        };
-      } else if (BigNumber.from(requestId).lt(firstRequestId)) {
-        return {
-          nextCalculationAt,
-          status: RequestTimeStatus.finalized,
-          requestInfo: null,
-        };
-      }
+    const lastRequestId = this.queueInfo.getLastRequestId();
+    if (BigNumber.from(requestId).gt(lastRequestId)) {
+      return {
+        nextCalculationAt,
+        status: RequestTimeStatus.calculating,
+        requestInfo: null,
+      };
     }
 
+    const firstRequestId = requests[0].id;
+    if (BigNumber.from(requestId).lt(firstRequestId)) {
+      return {
+        nextCalculationAt,
+        status: RequestTimeStatus.finalized,
+        requestInfo: null,
+      };
+    }
+
+    const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
     const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
@@ -200,10 +201,13 @@ export class RequestTimeService {
     this.logger.debug({ buffer: depositable.toString(), withdrawalEth: withdrawalEth.toString() });
     // enough depositable ether
     if (depositable.gt(withdrawalEth)) {
-      frameByBuffer = { value: currentFrame + 1, type: 'buffer' };
+      frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
     } else {
-      frameByOnlyRewards = { value: this.calculateFrameByRewardsOnly(unfinalized), type: 'rewardsOnly' };
+      frameByOnlyRewards = {
+        value: this.calculateFrameByRewardsOnly(unfinalized),
+        type: RequestTimeCalculationType.rewardsOnly,
+      };
       this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
     }
 
@@ -216,13 +220,13 @@ export class RequestTimeService {
         this.contractConfig.getRequestTimestampMargin()
     ) {
       this.logger.debug('case result < RequestTimestampMargin');
-      frameByBuffer = { value: currentFrame + 2, type: 'inRequestTimestampMargin' };
+      frameByBuffer = { value: currentFrame + 2, type: RequestTimeCalculationType.requestTimestampMargin };
     }
 
     // if none of up cases worked use long period calculation
     if (frameByBuffer === null) {
       const valueVebo = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalized, latestEpoch);
-      frameByExitValidatorsWithVEBO = { value: valueVebo, type: 'calculateFrameExitValidatorsVebo' };
+      frameByExitValidatorsWithVEBO = { value: valueVebo, type: RequestTimeCalculationType.exitValidators };
     }
 
     const minFrameObject = [frameByBuffer, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
