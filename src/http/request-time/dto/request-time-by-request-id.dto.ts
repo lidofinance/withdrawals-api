@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { RequestTimeStatus } from './request-time-status';
 import { RequestTimeCalculationType } from './request-time-calculation-type';
 
-export class RequestInfoDto {
+export class RequestByIdInfoDto {
   @ApiProperty({
     example: 5,
     description: 'Possible waiting ms',
@@ -37,7 +37,7 @@ export class RequestInfoDto {
 
 export class RequestTimeByRequestIdDto {
   @ApiProperty()
-  requestInfo: RequestInfoDto;
+  requestInfo: RequestByIdInfoDto;
 
   @ApiProperty({
     type: 'string',
