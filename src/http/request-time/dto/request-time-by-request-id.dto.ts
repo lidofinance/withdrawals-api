@@ -41,14 +41,14 @@ export class RequestTimeByRequestIdDto {
 
   @ApiProperty({
     type: 'string',
-    description: 'status of request calculation',
+    description: 'Status of request calculation',
     enum: Object.values(RequestTimeStatus),
   })
   status: RequestTimeStatus;
 
   @ApiProperty({
     type: 'string',
-    description: 'next calculation time at',
+    description: 'Next calculation time at',
     example: '2023-10-03T11:14:24.202Z',
   })
   nextCalculationAt: string;
