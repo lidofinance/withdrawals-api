@@ -9,7 +9,6 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
-import { ConsensusMethodResult } from '@lido-nestjs/consensus';
 
 export class ValidatorsService {
   constructor(
