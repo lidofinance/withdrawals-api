@@ -131,7 +131,7 @@ export class RequestTimeService {
     }
 
     const firstRequestId = requests[0]?.id ?? lastRequestId;
-    if (BigNumber.from(requestId).lt(firstRequestId)) {
+    if (BigNumber.from(requestId).lte(firstRequestId)) {
       return {
         nextCalculationAt,
         status: RequestTimeStatus.finalized,
