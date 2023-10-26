@@ -130,8 +130,16 @@ export class RequestTimeService {
       };
     }
 
-    const firstRequestId = requests[0]?.id ?? lastRequestId;
-    if (BigNumber.from(requestId).lte(firstRequestId)) {
+    if (requests.length === 0 && BigNumber.from(requestId).lte(lastRequestId)) {
+      return {
+        nextCalculationAt,
+        status: RequestTimeStatus.finalized,
+        requestInfo: null,
+      };
+    }
+
+    const firstRequestId = requests[0].id;
+    if (BigNumber.from(requestId).lt(firstRequestId)) {
       return {
         nextCalculationAt,
         status: RequestTimeStatus.finalized,
