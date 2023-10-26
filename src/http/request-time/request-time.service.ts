@@ -130,7 +130,7 @@ export class RequestTimeService {
       };
     }
 
-    const firstRequestId = requests[0].id;
+    const firstRequestId = requests[0]?.id ?? lastRequestId;
     if (BigNumber.from(requestId).lt(firstRequestId)) {
       return {
         nextCalculationAt,
