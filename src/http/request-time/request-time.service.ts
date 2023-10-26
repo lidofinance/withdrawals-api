@@ -172,7 +172,7 @@ export class RequestTimeService {
       requestInfo: {
         requestId: requestDto.id,
         requestedAt: requestDto.timestamp,
-        finalizationIn: ms,
+        finalizationIn: requestTimestamp + ms - Date.now(),
         finalizationAt: new Date(requestTimestamp + ms).toISOString(),
         type,
       },
