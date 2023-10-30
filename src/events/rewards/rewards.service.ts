@@ -55,6 +55,10 @@ export class RewardsService {
 
     const { blockNumber, frames } = framesFromLastReport;
 
+    if (frames.eq(0)) {
+      return BigNumber.from(0);
+    }
+
     const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
     const elRewards = (await this.getElRewards(blockNumber)) ?? BigNumber.from(0);
     const withdrawal = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
@@ -80,6 +84,10 @@ export class RewardsService {
       address: res.address,
     });
     const lastLog = logs[logs.length - 1];
+
+    if (!lastLog) {
+      return BigNumber.from(0);
+    }
 
     // check testnet error, not found events rewards
     const parser = new Interface([LIDO_EL_REWARDS_RECEIVED_EVENT]);
@@ -118,6 +126,9 @@ export class RewardsService {
     });
 
     const lastLog = logs[logs.length - 1];
+    if (!lastLog) {
+      return BigNumber.from(0);
+    }
     const parser = new Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
