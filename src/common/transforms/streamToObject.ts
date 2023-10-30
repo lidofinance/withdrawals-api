@@ -1,7 +1,6 @@
 export const streamToObject = <T>(stream: NodeJS.ReadableStream): Promise<T> => {
   return new Promise((res, rej) => {
     const bufs = [];
-    let buf;
 
     stream.on('data', function (d) {
       bufs.push(d);
@@ -12,7 +11,7 @@ export const streamToObject = <T>(stream: NodeJS.ReadableStream): Promise<T> => 
     });
 
     stream.on('end', function () {
-      buf = Buffer.concat(bufs);
+      const buf = Buffer.concat(bufs);
       res(JSON.parse(buf.toString()));
     });
   });
