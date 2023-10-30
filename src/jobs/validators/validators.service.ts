@@ -10,9 +10,9 @@ import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
-import { streamToObject } from 'common/transforms/streamToObject';
+import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 
-type ResponseValidators = Awaited<ConsensusMethodResult<'getStateValidators'>>;
+type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
 
 export class ValidatorsService {
   constructor(
@@ -44,12 +44,33 @@ export class ValidatorsService {
       const stream = await this.consensusProviderService.getStateValidatorsStream({
         stateId: 'head',
       });
-      const { data } = await streamToObject<ResponseValidators>(stream);
+      const data: ResponseValidatorsData = await processValidatorsStream(stream);
 
       const totalValidators = data.length;
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
       const validatorsExitEpochs = data.map((v) => v.validator.exit_epoch);
       validatorsExitEpochs.push(`${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`);
+
+      // research logs
+      this.logger.log(
+        'validators info',
+        data.reduce((acc, item) => {
+          const key = item.status.toString();
+          acc[key] = acc[key] ? acc[key] + 1 : 1;
+          return acc;
+        }, {}),
+      );
+
+      this.logger.log(
+        'validators info',
+        data.reduce((acc, item) => {
+          if (item.validator.exit_epoch === FAR_FUTURE_EPOCH.toString()) {
+            const key = item.status.toString();
+            acc[key] = acc[key] ? acc[key] + 1 : 1;
+          }
+          return acc;
+        }, {}),
+      );
 
       const latestEpoch = validatorsExitEpochs.reduce((acc, v) => {
         if (v !== FAR_FUTURE_EPOCH.toString()) {
