@@ -219,12 +219,10 @@ export class RequestTimeService {
       this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
     }
 
-    const requestTimestampFrame = this.genesisTimeService.getFrameByTimestamp(requestTimestamp) + 1;
-
     // postpone withdrawal request which is too close to report
     if (
       frameByBuffer !== null &&
-      this.genesisTimeService.timeToWithdrawalFrame(requestTimestampFrame, requestTimestamp) <
+      this.genesisTimeService.timeToWithdrawalFrame(currentFrame + 1, requestTimestamp) <
         this.contractConfig.getRequestTimestampMargin()
     ) {
       this.logger.debug('case result < RequestTimestampMargin');
