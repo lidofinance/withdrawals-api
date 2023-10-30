@@ -9,6 +9,10 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
+import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
+import { streamToObject } from 'common/transforms/streamToObject';
+
+type ResponseValidators = Awaited<ConsensusMethodResult<'getStateValidators'>>;
 
 export class ValidatorsService {
   constructor(
@@ -37,9 +41,10 @@ export class ValidatorsService {
   @OneAtTime()
   protected async updateValidators(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update validators' }, async () => {
-      const { data } = await this.consensusProviderService.getStateValidators({
+      const stream = await this.consensusProviderService.getStateValidatorsStream({
         stateId: 'head',
       });
+      const { data } = await streamToObject<ResponseValidators>(stream);
 
       const totalValidators = data.length;
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
