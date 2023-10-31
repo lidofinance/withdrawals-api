@@ -43,15 +43,6 @@ export class ValidatorsService {
     await this.jobService.wrapJob({ name: 'update validators' }, async () => {
       const stream = await this.consensusProviderService.getStateValidatorsStream({
         stateId: 'head',
-        status: [
-          'active_exiting',
-          'exited_slashed',
-          'exited_unslashed',
-          'pending_initialized',
-          'pending_queued',
-          'withdrawal_done',
-          'withdrawal_possible',
-        ],
       });
       const data: ResponseValidatorsData = await processValidatorsStream(stream);
 
@@ -59,27 +50,6 @@ export class ValidatorsService {
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
       const validatorsExitEpochs = data.map((v) => v.validator.exit_epoch);
       validatorsExitEpochs.push(`${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`);
-
-      // research logs
-      this.logger.log(
-        data.reduce((acc, item) => {
-          const key = item.status.toString();
-          acc[key] = acc[key] ? acc[key] + 1 : 1;
-          return acc;
-        }, {}),
-        'validators info',
-      );
-
-      this.logger.log(
-        data.reduce((acc, item) => {
-          if (item.validator.exit_epoch === FAR_FUTURE_EPOCH.toString()) {
-            const key = item.status.toString();
-            acc[key] = acc[key] ? acc[key] + 1 : 1;
-          }
-          return acc;
-        }, {}),
-        'validators info',
-      );
 
       const latestEpoch = validatorsExitEpochs.reduce((acc, v) => {
         if (v !== FAR_FUTURE_EPOCH.toString()) {
@@ -89,12 +59,6 @@ export class ValidatorsService {
         }
         return acc;
       }, '0');
-
-      this.logger.log(`latestEpoch = ${latestEpoch}`, 'validators info');
-      this.logger.log(
-        `currentEpoch + MAX_SEED_LOOKAHEAD + 1 = ${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`,
-        'validators info',
-      );
 
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
