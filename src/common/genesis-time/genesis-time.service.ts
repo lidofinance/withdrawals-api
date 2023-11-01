@@ -79,7 +79,7 @@ export class GenesisTimeService implements OnModuleInit {
   }
 
   getSlotByTimestamp(timestamp: number): number {
-    const currentSlotTime = Math.floor(timestamp);
+    const currentSlotTime = Math.floor(timestamp / 1000);
     const time = currentSlotTime - this.genesisTime;
     return Math.floor(time / SECONDS_PER_SLOT);
   }
