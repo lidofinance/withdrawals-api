@@ -156,7 +156,8 @@ export class RequestTimeService {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const latestEpoch =
-      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber()) + currentExitValidatorsDiffEpochs;
+      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
+      currentExitValidatorsDiffEpochs;
 
     const { ms, type } = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
@@ -201,22 +202,27 @@ export class RequestTimeService {
     requestTimestamp: number,
     latestEpoch: string,
   ) {
-    const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
+    let currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let frameByBuffer = null;
     let frameByOnlyRewards = null;
     let frameByExitValidatorsWithVEBO = null;
 
-    this.logger.debug({ buffer: depositable.toString(), withdrawalEth: withdrawalEth.toString() });
+    // gap after finalization check
+    const frameGapBeforeFinalization = this.genesisTimeService.getFrameByTimestamp(Date.now() - GAP_AFTER_REPORT);
+    if (frameGapBeforeFinalization !== currentFrame) {
+      currentFrame--;
+    }
+
     // enough depositable ether
     if (depositable.gt(withdrawalEth)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
-      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
+      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
     } else {
       frameByOnlyRewards = {
         value: this.calculateFrameByRewardsOnly(unfinalized),
         type: RequestTimeCalculationType.rewardsOnly,
       };
-      this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
+      this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
     }
 
     // postpone withdrawal request which is too close to report
@@ -250,7 +256,6 @@ export class RequestTimeService {
     // latest epoch of most late to exit validators
     const totalValidators = this.validators.getTotal();
 
-    // calculate additional source of eth, rewards accumulated each epoch
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 
     // calculate additional source of eth, rewards accumulated each epoch
