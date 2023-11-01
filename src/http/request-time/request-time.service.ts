@@ -156,7 +156,8 @@ export class RequestTimeService {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const latestEpoch =
-      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber()) + currentExitValidatorsDiffEpochs;
+      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
+      currentExitValidatorsDiffEpochs;
 
     const { ms, type } = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
@@ -215,13 +216,13 @@ export class RequestTimeService {
     // enough depositable ether
     if (depositable.gt(withdrawalEth)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
-      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer: ${frameByBuffer}`);
+      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
     } else {
       frameByOnlyRewards = {
         value: this.calculateFrameByRewardsOnly(unfinalized),
         type: RequestTimeCalculationType.rewardsOnly,
       };
-      this.logger.debug(`case calculate by rewards only, frameByOnlyRewards: ${frameByOnlyRewards}`);
+      this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
     }
 
     // postpone withdrawal request which is too close to report
