@@ -3,14 +3,7 @@ import { chain } from 'stream-chain';
 import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
 import { batch } from 'stream-json/utils/Batch';
-
-function unblock() {
-  // Unblock event loop in long loops
-  // Source: https://snyk.io/blog/nodejs-how-even-quick-async-functions-can-block-the-event-loop-starve-io/
-  return new Promise((resolve) => {
-    return setImmediate(() => resolve(true));
-  });
-}
+import { unblock } from 'common/utils/unblock';
 
 const BATCH_SIZE = 100;
 
