@@ -46,7 +46,12 @@ export class ValidatorsService {
       });
       const data: ResponseValidatorsData = await processValidatorsStream(stream);
 
-      const totalValidators = data.length;
+      const totalValidators = data.reduce((acc, item) => {
+        if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
+          return acc + 1;
+        }
+        return acc;
+      }, 0);
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
       const validatorsExitEpochs = data.map((v) => v.validator.exit_epoch);
       validatorsExitEpochs.push(`${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`);
