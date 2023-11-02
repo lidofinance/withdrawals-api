@@ -11,6 +11,7 @@ import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
+import { unblock } from '../../common/utils/unblock';
 
 type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
 
@@ -45,25 +46,24 @@ export class ValidatorsService {
         stateId: 'head',
       });
       const data: ResponseValidatorsData = await processValidatorsStream(stream);
-
-      const totalValidators = data.reduce((acc, item) => {
-        if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
-          return acc + 1;
-        }
-        return acc;
-      }, 0);
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-      const validatorsExitEpochs = data.map((v) => v.validator.exit_epoch);
-      validatorsExitEpochs.push(`${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`);
 
-      const latestEpoch = validatorsExitEpochs.reduce((acc, v) => {
-        if (v !== FAR_FUTURE_EPOCH.toString()) {
-          if (BigNumber.from(v).gt(BigNumber.from(acc))) {
-            return v;
+      let totalValidators = 0;
+      let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
+
+      for (const item of data) {
+        if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
+          totalValidators++;
+        }
+
+        if (item.validator.exit_epoch !== FAR_FUTURE_EPOCH.toString()) {
+          if (BigNumber.from(item.validator.exit_epoch).gt(BigNumber.from(latestEpoch))) {
+            latestEpoch = item.validator.exit_epoch;
           }
         }
-        return acc;
-      }, '0');
+
+        await unblock();
+      }
 
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
