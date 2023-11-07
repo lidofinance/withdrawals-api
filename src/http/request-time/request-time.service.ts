@@ -27,6 +27,7 @@ import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 import { transformToRequestDto } from './dto/request.dto';
 import { RequestTimeStatus } from './dto/request-time-status';
 import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
+import { RequestsOptionsDto } from './dto/requests-options.dto';
 
 @Injectable()
 export class RequestTimeService {
@@ -314,6 +315,10 @@ export class RequestTimeService {
         this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
       ) + 1
     );
+  }
+
+  async getRequests(requestOptions: RequestsOptionsDto) {
+    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id)));
   }
 
   protected validate(params: RequestTimeOptionsDto) {

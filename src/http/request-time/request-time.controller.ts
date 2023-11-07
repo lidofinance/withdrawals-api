@@ -17,15 +17,16 @@ import { RequestTimeService } from './request-time.service';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
+import { RequestsOptionsDto } from './dto/requests-options.dto';
 
-@Controller(HTTP_PATHS[1]['request-time'])
+@Controller()
 @ApiTags('Request Time')
 @UseInterceptors(ClassSerializerInterceptor)
 export class RequestTimeController {
   constructor(protected readonly requestTimeService: RequestTimeService) {}
 
   @Version('1')
-  @Get('/')
+  @Get(HTTP_PATHS[1]['request-time'])
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
@@ -34,7 +35,7 @@ export class RequestTimeController {
   }
 
   @Version('2')
-  @Get('/')
+  @Get(HTTP_PATHS[1]['request-time'])
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
@@ -43,11 +44,20 @@ export class RequestTimeController {
   }
 
   @Version('1')
-  @Get(':requestId')
+  @Get(HTTP_PATHS[1]['requests'] + '/:requestId')
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeByRequestIdDto })
   async getTimeByRequestId(@Param('requestId') requestId: string): Promise<RequestTimeByRequestIdDto | null> {
     return await this.requestTimeService.getTimeByRequestId(requestId);
+  }
+
+  @Version('1')
+  @Get(HTTP_PATHS[1]['requests'])
+  @Throttle(30, 30)
+  @CacheTTL(10 * 1000)
+  @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
+  async requests(@Query() requestsOptions: RequestsOptionsDto) {
+    return await this.requestTimeService.getRequests(requestsOptions);
   }
 }
