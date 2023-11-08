@@ -3,7 +3,7 @@ import { Transform } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, Validate } from 'class-validator';
 import { IsBigNumberValidator } from 'common/validators/is-big-number.validator';
 
-export class RequestsTimeOptionsV3Dto {
+export class RequestsTimeOptionsDto {
   @ApiProperty({ isArray: true })
   @ArrayMaxSize(20)
   @ArrayMinSize(1)

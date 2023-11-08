@@ -6,7 +6,6 @@ import {
   UseInterceptors,
   Version,
   Query,
-  Param,
 } from '@nestjs/common';
 import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -17,7 +16,7 @@ import { RequestTimeService } from './request-time.service';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
-import { RequestsTimeOptionsV3Dto } from './dto/requests-time-options-v3.dto';
+import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 
 @Controller(HTTP_PATHS[1]['request-time'])
 @ApiTags('Request Time')
@@ -39,7 +38,7 @@ export class RequestTimeController {
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
-  async requests(@Query() requestsOptions: RequestsTimeOptionsV3Dto) {
+  async requests(@Query() requestsOptions: RequestsTimeOptionsDto) {
     return await this.requestTimeService.getTimeRequests(requestsOptions);
   }
 
