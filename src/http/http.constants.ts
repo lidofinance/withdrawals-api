@@ -3,7 +3,6 @@ export const HTTP_PATHS = {
     nft: 'nft',
     'request-time': 'request-time',
     'estimate-gas': 'estimate-gas',
-    requests: 'requests',
   },
   2: {
     'request-time': 'request-time',
