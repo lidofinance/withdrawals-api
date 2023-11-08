@@ -38,7 +38,7 @@ export class RequestTimeController {
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
-  async requests(@Query() requestsOptions: RequestsTimeOptionsDto) {
+  async requestsTime(@Query() requestsOptions: RequestsTimeOptionsDto) {
     return await this.requestTimeService.getTimeRequests(requestsOptions);
   }
 
@@ -47,7 +47,7 @@ export class RequestTimeController {
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
-  async calculateTime(@Query() requestsOptions: RequestTimeOptionsDto) {
-    return await this.requestTimeService.getRequestTimeV2(requestsOptions);
+  async calculateTime(@Query() requestTimeOptions: RequestTimeOptionsDto) {
+    return await this.requestTimeService.getRequestTimeV2(requestTimeOptions);
   }
 }
