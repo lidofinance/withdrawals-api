@@ -1,11 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, Validate } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, Validate } from 'class-validator';
 import { IsBigNumberValidator } from 'common/validators/is-big-number.validator';
 
-export class RequestsOptionsDto {
-  @ApiProperty()
+export class RequestsTimeOptionsV3Dto {
+  @ApiProperty({ isArray: true })
   @ArrayMaxSize(20)
+  @ArrayMinSize(1)
   @IsArray()
   @Validate(IsBigNumberValidator, { each: true })
   @Transform(({ value }) => {

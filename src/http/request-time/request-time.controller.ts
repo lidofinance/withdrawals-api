@@ -17,16 +17,16 @@ import { RequestTimeService } from './request-time.service';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
-import { RequestsOptionsDto } from './dto/requests-options.dto';
+import { RequestsTimeOptionsV3Dto } from './dto/requests-time-options-v3.dto';
 
-@Controller()
+@Controller(HTTP_PATHS[1]['request-time'])
 @ApiTags('Request Time')
 @UseInterceptors(ClassSerializerInterceptor)
 export class RequestTimeController {
   constructor(protected readonly requestTimeService: RequestTimeService) {}
 
   @Version('1')
-  @Get(HTTP_PATHS[1]['request-time'])
+  @Get()
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
@@ -35,7 +35,7 @@ export class RequestTimeController {
   }
 
   @Version('2')
-  @Get(HTTP_PATHS[1]['request-time'])
+  @Get()
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
@@ -44,7 +44,7 @@ export class RequestTimeController {
   }
 
   @Version('1')
-  @Get(HTTP_PATHS[1]['requests'] + '/:requestId')
+  @Get('/:requestId')
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeByRequestIdDto })
@@ -52,12 +52,21 @@ export class RequestTimeController {
     return await this.requestTimeService.getTimeByRequestId(requestId);
   }
 
-  @Version('1')
-  @Get(HTTP_PATHS[1]['requests'])
+  @Version('3')
+  @Get()
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
-  async requests(@Query() requestsOptions: RequestsOptionsDto) {
-    return await this.requestTimeService.getRequests(requestsOptions);
+  async requests(@Query() requestsOptions: RequestsTimeOptionsV3Dto) {
+    return await this.requestTimeService.getTimeRequests(requestsOptions);
+  }
+
+  @Version('3')
+  @Get('/calculate')
+  @Throttle(30, 30)
+  @CacheTTL(10 * 1000)
+  @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
+  async calculateTime(@Query() requestsOptions: RequestTimeOptionsDto) {
+    return await this.requestTimeService.getRequestTimeV2(requestsOptions);
   }
 }
