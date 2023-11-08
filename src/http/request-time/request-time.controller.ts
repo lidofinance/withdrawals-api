@@ -38,30 +38,12 @@ export class RequestTimeController {
   @Get()
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
-  @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
-  async requestTimeV2(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeV2Dto | null> {
-    return await this.requestTimeService.getRequestTimeV2(requestTimeOptions);
-  }
-
-  @Version('1')
-  @Get('/:requestId')
-  @Throttle(30, 30)
-  @CacheTTL(10 * 1000)
-  @ApiResponse({ status: HttpStatus.OK, type: RequestTimeByRequestIdDto })
-  async getTimeByRequestId(@Param('requestId') requestId: string): Promise<RequestTimeByRequestIdDto | null> {
-    return await this.requestTimeService.getTimeByRequestId(requestId);
-  }
-
-  @Version('3')
-  @Get()
-  @Throttle(30, 30)
-  @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
   async requests(@Query() requestsOptions: RequestsTimeOptionsV3Dto) {
     return await this.requestTimeService.getTimeRequests(requestsOptions);
   }
 
-  @Version('3')
+  @Version('2')
   @Get('/calculate')
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
