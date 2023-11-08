@@ -8,7 +8,4 @@ export const HTTP_PATHS = {
   2: {
     'request-time': 'request-time',
   },
-  3: {
-    'request-time': 'request-time',
-  },
 };
