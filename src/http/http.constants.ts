@@ -4,4 +4,7 @@ export const HTTP_PATHS = {
     'request-time': 'request-time',
     'estimate-gas': 'estimate-gas',
   },
+  2: {
+    'request-time': 'request-time',
+  },
 };
