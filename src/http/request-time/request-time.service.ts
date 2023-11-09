@@ -156,19 +156,35 @@ export class RequestTimeService {
     const maxExitEpoch = this.validators.getMaxExitEpoch();
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
-    const latestEpoch =
+
+    const maxExitEpochInPast =
       this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
       currentExitValidatorsDiffEpochs;
 
-    const { ms, type } = await this.calculateWithdrawalTimeV2(
+    let { ms, type } = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
       queueStETH,
       buffer,
       requestTimestamp,
-      latestEpoch.toString(),
+      maxExitEpochInPast.toString(),
     );
 
     const requestDto = transformToRequestDto(request);
+
+    if (requestTimestamp + ms - Date.now() < 0) {
+      // if calculation wrong points to past then validators is not excited in time
+      // we need recalculate
+      const recalculatedResult = await this.calculateWithdrawalTimeV2(
+        request.amountOfStETH,
+        queueStETH,
+        buffer,
+        requestTimestamp,
+        maxExitEpoch.toString(),
+      );
+
+      ms = recalculatedResult.ms;
+      type = recalculatedResult.type;
+    }
 
     return {
       requestInfo: {
