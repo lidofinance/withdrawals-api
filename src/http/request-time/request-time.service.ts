@@ -123,13 +123,6 @@ export class RequestTimeService {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
 
     const lastRequestId = this.queueInfo.getLastRequestId();
-    if (BigNumber.from(requestId).gt(lastRequestId)) {
-      return {
-        nextCalculationAt,
-        status: RequestTimeStatus.calculating,
-        requestInfo: null,
-      };
-    }
 
     if (requests.length === 0 && BigNumber.from(requestId).lte(lastRequestId)) {
       return {
@@ -149,14 +142,44 @@ export class RequestTimeService {
     }
 
     const request = requests.find((wr) => wr.id.eq(BigNumber.from(requestId)));
-    const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
-    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
-    const requestTimestamp = request.timestamp.toNumber() * 1000;
 
     const maxExitEpoch = this.validators.getMaxExitEpoch();
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-    const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
 
+    if (!request && BigNumber.from(requestId).gt(lastRequestId)) {
+      // for not found requests return calculating status with 0 eth
+      const additionalStETH = parseEther('0');
+      const unfinalizedETH = this.queueInfo.getStETH();
+      const queueStETH = unfinalizedETH.add(additionalStETH);
+
+      const buffer = this.queueInfo.getDepositableEther();
+      const latestEpoch = this.validators.getMaxExitEpoch();
+
+      const { ms, type } = await this.calculateWithdrawalTimeV2(
+        additionalStETH,
+        queueStETH,
+        buffer,
+        Date.now(),
+        latestEpoch,
+      );
+
+      return {
+        nextCalculationAt,
+        status: RequestTimeStatus.calculating,
+        requestInfo: {
+          requestId,
+          requestedAt: null,
+          finalizationIn: ms,
+          finalizationAt: new Date(Date.now() + ms).toISOString(),
+          type: type,
+        },
+      };
+    }
+
+    const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
+    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
+    const requestTimestamp = request.timestamp.toNumber() * 1000;
+    const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const maxExitEpochInPast =
       this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
       currentExitValidatorsDiffEpochs;
