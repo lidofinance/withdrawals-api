@@ -6,7 +6,6 @@ import {
   UseInterceptors,
   Version,
   Query,
-  Param,
 } from '@nestjs/common';
 import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -17,6 +16,7 @@ import { RequestTimeService } from './request-time.service';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
+import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 
 @Controller(HTTP_PATHS[1]['request-time'])
 @ApiTags('Request Time')
@@ -25,7 +25,7 @@ export class RequestTimeController {
   constructor(protected readonly requestTimeService: RequestTimeService) {}
 
   @Version('1')
-  @Get('/')
+  @Get()
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
@@ -34,20 +34,20 @@ export class RequestTimeController {
   }
 
   @Version('2')
-  @Get('/')
+  @Get()
+  @Throttle(30, 30)
+  @CacheTTL(10 * 1000)
+  @ApiResponse({ status: HttpStatus.OK, type: Array<RequestTimeByRequestIdDto> })
+  async requestsTime(@Query() requestsOptions: RequestsTimeOptionsDto) {
+    return await this.requestTimeService.getTimeRequests(requestsOptions);
+  }
+
+  @Version('2')
+  @Get('/calculate')
   @Throttle(30, 30)
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
-  async requestTimeV2(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeV2Dto | null> {
+  async calculateTime(@Query() requestTimeOptions: RequestTimeOptionsDto) {
     return await this.requestTimeService.getRequestTimeV2(requestTimeOptions);
-  }
-
-  @Version('1')
-  @Get(':requestId')
-  @Throttle(30, 30)
-  @CacheTTL(10 * 1000)
-  @ApiResponse({ status: HttpStatus.OK, type: RequestTimeByRequestIdDto })
-  async getTimeByRequestId(@Param('requestId') requestId: string): Promise<RequestTimeByRequestIdDto | null> {
-    return await this.requestTimeService.getTimeByRequestId(requestId);
   }
 }
