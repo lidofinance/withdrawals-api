@@ -146,7 +146,10 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gt(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      return this.getRequestTimeV2('0');
+      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0');
+      lastRequestResult.status = RequestTimeStatus.calculating;
+      lastRequestResult.requestInfo.requestId = requestId;
+      return lastRequestResult;
     }
 
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
