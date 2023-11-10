@@ -42,7 +42,7 @@ export class RequestTimeService {
   ) {}
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
-    this.validate(params);
+    this.validateRequestTimeOptions(params);
 
     const validatorsLastUpdate = this.validators.getLastUpdate();
     if (!validatorsLastUpdate) return null;
@@ -67,10 +67,8 @@ export class RequestTimeService {
     };
   }
 
-  async getRequestTimeV2(params: RequestTimeOptionsDto): Promise<RequestTimeV2Dto | null> {
-    this.validate(params);
+  async getRequestTimeV2(amount: string): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const unfinalizedETH = this.queueInfo.getStETH();
 
@@ -82,7 +80,7 @@ export class RequestTimeService {
       };
     }
 
-    const additionalStETH = parseEther(params.amount || '0');
+    const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
     const buffer = this.queueInfo.getDepositableEther();
@@ -148,32 +146,7 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gt(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      const additionalStETH = parseEther('0');
-      const unfinalizedETH = this.queueInfo.getStETH();
-      const queueStETH = unfinalizedETH.add(additionalStETH);
-
-      const buffer = this.queueInfo.getDepositableEther();
-      const latestEpoch = this.validators.getMaxExitEpoch();
-
-      const { ms, type } = await this.calculateWithdrawalTimeV2(
-        additionalStETH,
-        queueStETH,
-        buffer,
-        Date.now(),
-        latestEpoch,
-      );
-
-      return {
-        nextCalculationAt,
-        status: RequestTimeStatus.calculating,
-        requestInfo: {
-          requestId,
-          requestedAt: null,
-          finalizationIn: ms,
-          finalizationAt: new Date(Date.now() + ms).toISOString(),
-          type: type,
-        },
-      };
+      return this.getRequestTimeV2('0');
     }
 
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
@@ -360,7 +333,7 @@ export class RequestTimeService {
     return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id)));
   }
 
-  protected validate(params: RequestTimeOptionsDto) {
+  public validateRequestTimeOptions(params: RequestTimeOptionsDto) {
     if (!this.queueInfo.getMinStethAmount()) return;
 
     const minAmount = formatEther(this.queueInfo.getMinStethAmount());
