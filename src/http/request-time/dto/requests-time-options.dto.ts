@@ -13,7 +13,7 @@ export class RequestsTimeOptionsDto {
     if (Array.isArray(value)) {
       return value;
     } else if (typeof value === 'string') {
-      return value.split(',');
+      return decodeURIComponent(value).split(',');
     } else {
       return Array(value);
     }
