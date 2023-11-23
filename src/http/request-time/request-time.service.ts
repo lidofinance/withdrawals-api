@@ -28,6 +28,7 @@ import { transformToRequestDto } from './dto/request.dto';
 import { RequestTimeStatus } from './dto/request-time-status';
 import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
+import { FAR_FUTURE_EPOCH } from '../../jobs/validators/validators.constants';
 
 @Injectable()
 export class RequestTimeService {
@@ -233,7 +234,7 @@ export class RequestTimeService {
     if (depositable.gt(withdrawalEth)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
-    } else {
+    } else if (!this.rewardsStorage.getRewardsPerFrame().eq(0)) {
       frameByOnlyRewards = {
         value: this.calculateFrameByRewardsOnly(unfinalized),
         type: RequestTimeCalculationType.rewardsOnly,
@@ -321,6 +322,10 @@ export class RequestTimeService {
 
   protected calculateFrameByRewardsOnly(unfinilized: BigNumber) {
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
+    if (rewardsPerDay.eq(0)) {
+      return FAR_FUTURE_EPOCH;
+    }
+
     const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
 
     const onlyRewardPotentialEpoch = unfinilized.div(rewardsPerEpoch);
