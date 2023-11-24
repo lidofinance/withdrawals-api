@@ -123,7 +123,7 @@ export class RequestTimeService {
 
     const lastRequestId = this.queueInfo.getLastRequestId();
 
-    if (requests.length === 0 && BigNumber.from(requestId).lte(lastRequestId)) {
+    if (requests.length === 0 && BigNumber.from(requestId).lt(lastRequestId)) {
       return {
         nextCalculationAt,
         status: RequestTimeStatus.finalized,
@@ -131,8 +131,8 @@ export class RequestTimeService {
       };
     }
 
-    const firstRequestId = requests[0].id;
-    if (BigNumber.from(requestId).lt(firstRequestId)) {
+    const firstRequestId = requests[0]?.id;
+    if (firstRequestId && BigNumber.from(requestId).lt(firstRequestId)) {
       return {
         nextCalculationAt,
         status: RequestTimeStatus.finalized,
@@ -145,7 +145,7 @@ export class RequestTimeService {
     const maxExitEpoch = this.validators.getMaxExitEpoch();
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
-    if (!request && BigNumber.from(requestId).gt(lastRequestId)) {
+    if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
       const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0');
       lastRequestResult.status = RequestTimeStatus.calculating;
