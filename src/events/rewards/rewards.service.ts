@@ -157,9 +157,6 @@ export class RewardsService {
     const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
-    console.log(+parsedData.args.getValue('timeElapsed').toString());
-    console.log(+parsedData.args.getValue('timeElapsed').toString() / (24 * 60 * 60));
-
     return {
       blockNumber: lastLog.blockNumber,
       frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(24 * 60 * 60),
