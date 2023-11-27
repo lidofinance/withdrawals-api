@@ -61,10 +61,9 @@ export class RewardsService {
 
     const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
     const elRewards = (await this.getElRewards(blockNumber)) ?? BigNumber.from(0);
-    const withdrawal = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
+    const withdrawalsReceived = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
 
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
-    const withdrawalsReceived = withdrawal ?? BigNumber.from(0);
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
     return clRewards.add(elRewards).div(frames);
@@ -157,6 +156,9 @@ export class RewardsService {
     const lastLog = logs[logs.length - 1];
     const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    console.log(+parsedData.args.getValue('timeElapsed').toString());
+    console.log(+parsedData.args.getValue('timeElapsed').toString() / (24 * 60 * 60));
 
     return {
       blockNumber: lastLog.blockNumber,

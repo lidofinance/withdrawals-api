@@ -236,7 +236,7 @@ export class RequestTimeService {
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
     } else if (!this.rewardsStorage.getRewardsPerFrame().eq(0)) {
       frameByOnlyRewards = {
-        value: this.calculateFrameByRewardsOnly(unfinalized),
+        value: this.calculateFrameByRewardsOnly(withdrawalEth.sub(depositable)),
         type: RequestTimeCalculationType.rewardsOnly,
       };
       this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
@@ -327,7 +327,6 @@ export class RequestTimeService {
     }
 
     const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
-
     const onlyRewardPotentialEpoch = unfinilized.div(rewardsPerEpoch);
 
     return (
