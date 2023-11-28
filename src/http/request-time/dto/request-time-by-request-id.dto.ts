@@ -19,13 +19,13 @@ export class RequestByIdInfoDto {
     example: 5,
     description: 'Request Id',
   })
-  requestId: string;
+  requestId?: string;
 
   @ApiProperty({
     example: '2023-10-03T15:14:24.202Z',
     description: 'Withdrawal requested at',
   })
-  requestedAt: string;
+  requestedAt?: string;
 
   @ApiProperty({
     example: 'buffer',
