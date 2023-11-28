@@ -234,12 +234,6 @@ export class RequestTimeService {
     if (depositable.gt(withdrawalEth)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
       this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
-    } else if (!this.rewardsStorage.getRewardsPerFrame().eq(0)) {
-      frameByOnlyRewards = {
-        value: this.calculateFrameByRewardsOnly(withdrawalEth.sub(depositable)),
-        type: RequestTimeCalculationType.rewardsOnly,
-      };
-      this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
     }
 
     // postpone withdrawal request which is too close to report
@@ -250,6 +244,14 @@ export class RequestTimeService {
     ) {
       this.logger.debug('case result < RequestTimestampMargin');
       frameByBuffer = { value: currentFrame + 2, type: RequestTimeCalculationType.requestTimestampMargin };
+    }
+
+    if (!this.rewardsStorage.getRewardsPerFrame().eq(0) && frameByBuffer === null) {
+      frameByOnlyRewards = {
+        value: this.calculateFrameByRewardsOnly(withdrawalEth.sub(depositable)),
+        type: RequestTimeCalculationType.rewardsOnly,
+      };
+      this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
     }
 
     // if none of up cases worked use long period calculation
