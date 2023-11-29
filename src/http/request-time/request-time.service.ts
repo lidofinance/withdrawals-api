@@ -29,11 +29,13 @@ import { RequestTimeStatus } from './dto/request-time-status';
 import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 import { FAR_FUTURE_EPOCH } from '../../jobs/validators/validators.constants';
+import { WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
 
 @Injectable()
 export class RequestTimeService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+    @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
     protected readonly validators: ValidatorsStorageService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly configService: ConfigService,
@@ -68,10 +70,10 @@ export class RequestTimeService {
     };
   }
 
-  async getRequestTimeV2(amount: string): Promise<RequestTimeV2Dto | null> {
+  async getRequestTimeV2(amount: string, unfinalized?: BigNumber): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    const unfinalizedETH = this.queueInfo.getStETH();
+    const unfinalizedETH = unfinalized ?? this.queueInfo.getStETH(); // use cached if empty param
 
     if (!unfinalizedETH || !validatorsLastUpdate) {
       return {
@@ -106,7 +108,7 @@ export class RequestTimeService {
     };
   }
 
-  async getTimeByRequestId(requestId: string): Promise<RequestTimeByRequestIdDto | null> {
+  async getTimeByRequestId(requestId: string, unfinalized: BigNumber): Promise<RequestTimeByRequestIdDto | null> {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
@@ -147,7 +149,7 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0');
+      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0', unfinalized);
       lastRequestResult.status = RequestTimeStatus.calculating;
       lastRequestResult.requestInfo.requestId = requestId;
       return lastRequestResult;
@@ -339,7 +341,8 @@ export class RequestTimeService {
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
-    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id)));
+    const unfinalized = await this.contractWithdrawal.unfinalizedStETH();
+    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized)));
   }
 
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {

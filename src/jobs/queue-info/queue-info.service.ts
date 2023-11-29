@@ -14,7 +14,7 @@ export class QueueInfoService {
   private job: CronJob;
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
-    @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
+      @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
 
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
