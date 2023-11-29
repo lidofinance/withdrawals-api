@@ -73,7 +73,7 @@ export class RequestTimeService {
   async getRequestTimeV2(amount: string, unfinalized?: BigNumber): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    const unfinalizedETH = unfinalized ?? this.queueInfo.getStETH(); // use cached if empty param
+    const unfinalizedETH = unfinalized ?? (await this.contractWithdrawal.unfinalizedStETH()); // do runtime request if empty param
 
     if (!unfinalizedETH || !validatorsLastUpdate) {
       return {
