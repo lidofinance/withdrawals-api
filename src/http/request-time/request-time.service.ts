@@ -9,7 +9,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 import { formatEther, parseEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
-import { EPOCH_PER_FRAME, GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -278,10 +278,11 @@ export class RequestTimeService {
     const totalValidators = this.validators.getTotal();
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
     const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
@@ -325,12 +326,13 @@ export class RequestTimeService {
   }
 
   protected calculateFrameByRewardsOnly(unfinilized: BigNumber) {
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
     if (rewardsPerDay.eq(0)) {
       return FAR_FUTURE_EPOCH;
     }
 
-    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
     const onlyRewardPotentialEpoch = unfinilized.div(rewardsPerEpoch);
 
     return (
