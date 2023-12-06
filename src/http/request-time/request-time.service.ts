@@ -29,13 +29,14 @@ import { RequestTimeStatus } from './dto/request-time-status';
 import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 import { FAR_FUTURE_EPOCH } from '../../jobs/validators/validators.constants';
-import { WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
+import { Lido, LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
 
 @Injectable()
 export class RequestTimeService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
+    @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     protected readonly validators: ValidatorsStorageService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly configService: ConfigService,
@@ -70,10 +71,15 @@ export class RequestTimeService {
     };
   }
 
-  async getRequestTimeV2(amount: string, unfinalized?: BigNumber): Promise<RequestTimeV2Dto | null> {
+  async getRequestTimeV2(
+    amount: string,
+    unfinalized?: BigNumber,
+    depositable?: BigNumber,
+  ): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const unfinalizedETH = unfinalized ?? (await this.contractWithdrawal.unfinalizedStETH()); // do runtime request if empty param
+    const depositableETH = depositable ?? (await this.contractLido.getDepositableEther()); // do runtime request if empty param
 
     if (!unfinalizedETH || !validatorsLastUpdate) {
       return {
@@ -86,13 +92,12 @@ export class RequestTimeService {
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
-    const buffer = this.queueInfo.getDepositableEther();
     const latestEpoch = this.validators.getMaxExitEpoch();
 
     const { ms, type } = await this.calculateWithdrawalTimeV2(
       additionalStETH,
       queueStETH,
-      buffer,
+      depositableETH,
       Date.now(),
       latestEpoch,
     );
@@ -108,7 +113,12 @@ export class RequestTimeService {
     };
   }
 
-  async getTimeByRequestId(requestId: string, unfinalized: BigNumber): Promise<RequestTimeByRequestIdDto | null> {
+  async getTimeByRequestId(
+    requestId: string,
+    unfinalized: BigNumber,
+    buffer: BigNumber,
+    depositable: BigNumber,
+  ): Promise<RequestTimeByRequestIdDto | null> {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
@@ -149,14 +159,14 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0', unfinalized);
+      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0', unfinalized, depositable);
       lastRequestResult.status = RequestTimeStatus.calculating;
       lastRequestResult.requestInfo.requestId = requestId;
       return lastRequestResult;
     }
 
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
-    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
+    const depositableForRequest = buffer.sub(queueStETH).add(request.amountOfStETH);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const maxExitEpochInPast =
@@ -166,7 +176,7 @@ export class RequestTimeService {
     let { ms, type } = await this.calculateWithdrawalTimeV2(
       request.amountOfStETH,
       queueStETH,
-      buffer,
+      depositableForRequest,
       requestTimestamp,
       maxExitEpochInPast.toString(),
     );
@@ -179,7 +189,7 @@ export class RequestTimeService {
       const recalculatedResult = await this.calculateWithdrawalTimeV2(
         request.amountOfStETH,
         queueStETH,
-        buffer,
+        depositableForRequest,
         requestTimestamp,
         maxExitEpoch.toString(),
       );
@@ -343,8 +353,13 @@ export class RequestTimeService {
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
-    const unfinalized = await this.contractWithdrawal.unfinalizedStETH();
-    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized)));
+    const [unfinalized, buffer, depositable] = await Promise.all([
+      this.contractWithdrawal.unfinalizedStETH(),
+      this.contractLido.getBufferedEther(),
+      this.contractLido.getDepositableEther(),
+    ]);
+
+    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized, buffer, depositable)));
   }
 
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {
