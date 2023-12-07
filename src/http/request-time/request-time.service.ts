@@ -9,7 +9,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 import { formatEther, parseEther } from '@ethersproject/units';
 import { ConfigService } from 'common/config';
-import { EPOCH_PER_FRAME, GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -29,11 +29,14 @@ import { RequestTimeStatus } from './dto/request-time-status';
 import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 import { FAR_FUTURE_EPOCH } from '../../jobs/validators/validators.constants';
+import { Lido, LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
 
 @Injectable()
 export class RequestTimeService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+    @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
+    @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     protected readonly validators: ValidatorsStorageService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly configService: ConfigService,
@@ -68,10 +71,15 @@ export class RequestTimeService {
     };
   }
 
-  async getRequestTimeV2(amount: string): Promise<RequestTimeV2Dto | null> {
+  async getRequestTimeV2(
+    amount: string,
+    unfinalized?: BigNumber,
+    depositable?: BigNumber,
+  ): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    const unfinalizedETH = this.queueInfo.getStETH();
+    const unfinalizedETH = unfinalized ?? (await this.contractWithdrawal.unfinalizedStETH()); // do runtime request if empty param
+    const depositableETH = depositable ?? (await this.contractLido.getDepositableEther()); // do runtime request if empty param
 
     if (!unfinalizedETH || !validatorsLastUpdate) {
       return {
@@ -84,16 +92,9 @@ export class RequestTimeService {
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
-    const buffer = this.queueInfo.getDepositableEther();
     const latestEpoch = this.validators.getMaxExitEpoch();
 
-    const { ms, type } = await this.calculateWithdrawalTimeV2(
-      additionalStETH,
-      queueStETH,
-      buffer,
-      Date.now(),
-      latestEpoch,
-    );
+    const { ms, type } = await this.calculateWithdrawalTimeV2(queueStETH, depositableETH, Date.now(), latestEpoch);
 
     return {
       requestInfo: {
@@ -106,7 +107,12 @@ export class RequestTimeService {
     };
   }
 
-  async getTimeByRequestId(requestId: string): Promise<RequestTimeByRequestIdDto | null> {
+  async getTimeByRequestId(
+    requestId: string,
+    unfinalized: BigNumber,
+    buffer: BigNumber,
+    depositable: BigNumber,
+  ): Promise<RequestTimeByRequestIdDto | null> {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
@@ -147,14 +153,14 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0');
+      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0', unfinalized, depositable);
       lastRequestResult.status = RequestTimeStatus.calculating;
       lastRequestResult.requestInfo.requestId = requestId;
       return lastRequestResult;
     }
 
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
-    const buffer = this.queueInfo.getBufferedEther().sub(queueStETH).add(request.amountOfStETH);
+    const depositableForRequest = buffer.sub(queueStETH).add(request.amountOfStETH);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const maxExitEpochInPast =
@@ -162,9 +168,8 @@ export class RequestTimeService {
       currentExitValidatorsDiffEpochs;
 
     let { ms, type } = await this.calculateWithdrawalTimeV2(
-      request.amountOfStETH,
       queueStETH,
-      buffer,
+      depositableForRequest,
       requestTimestamp,
       maxExitEpochInPast.toString(),
     );
@@ -175,9 +180,8 @@ export class RequestTimeService {
       // if calculation wrong points to past then validators is not excited in time
       // we need recalculate
       const recalculatedResult = await this.calculateWithdrawalTimeV2(
-        request.amountOfStETH,
         queueStETH,
-        buffer,
+        depositableForRequest,
         requestTimestamp,
         maxExitEpoch.toString(),
       );
@@ -213,8 +217,7 @@ export class RequestTimeService {
   }
 
   async calculateWithdrawalTimeV2(
-    withdrawalEth: BigNumber,
-    unfinalized: BigNumber,
+    unfinalized: BigNumber, // including withdrawal eth
     depositable: BigNumber,
     requestTimestamp: number,
     latestEpoch: string,
@@ -231,9 +234,9 @@ export class RequestTimeService {
     }
 
     // enough depositable ether
-    if (depositable.gt(withdrawalEth)) {
+    if (depositable.gt(unfinalized)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
-      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
+      this.logger.debug(`case buffer gt unfinalized, frameByBuffer`, frameByBuffer);
     }
 
     // postpone withdrawal request which is too close to report
@@ -248,7 +251,7 @@ export class RequestTimeService {
 
     if (!this.rewardsStorage.getRewardsPerFrame().eq(0) && frameByBuffer === null) {
       frameByOnlyRewards = {
-        value: this.calculateFrameByRewardsOnly(withdrawalEth.sub(depositable)),
+        value: this.calculateFrameByRewardsOnly(unfinalized.sub(depositable)),
         type: RequestTimeCalculationType.rewardsOnly,
       };
       this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
@@ -276,10 +279,11 @@ export class RequestTimeService {
     const totalValidators = this.validators.getTotal();
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
     const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
@@ -323,12 +327,13 @@ export class RequestTimeService {
   }
 
   protected calculateFrameByRewardsOnly(unfinilized: BigNumber) {
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
     if (rewardsPerDay.eq(0)) {
       return FAR_FUTURE_EPOCH;
     }
 
-    const rewardsPerEpoch = rewardsPerDay.div(EPOCH_PER_FRAME);
+    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
     const onlyRewardPotentialEpoch = unfinilized.div(rewardsPerEpoch);
 
     return (
@@ -339,7 +344,13 @@ export class RequestTimeService {
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
-    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id)));
+    const [unfinalized, buffer, depositable] = await Promise.all([
+      this.contractWithdrawal.unfinalizedStETH(),
+      this.contractLido.getBufferedEther(),
+      this.contractLido.getDepositableEther(),
+    ]);
+
+    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized, buffer, depositable)));
   }
 
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {

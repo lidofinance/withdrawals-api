@@ -1,7 +1,7 @@
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConsensusProviderService } from 'common/consensus-provider';
-import { EPOCH_PER_FRAME, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
+import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
 import { ContractConfigStorageService } from '../../storage';
 
 @Injectable()
@@ -60,12 +60,13 @@ export class GenesisTimeService implements OnModuleInit {
   }
 
   public getFrameOfEpoch(epoch: number) {
-    return Math.floor((epoch - this.contractConfig.getInitialEpoch()) / EPOCH_PER_FRAME);
+    return Math.floor((epoch - this.contractConfig.getInitialEpoch()) / this.contractConfig.getEpochsPerFrame());
   }
 
   timeToWithdrawalFrame(frame: number, from: number): number {
     const genesisTime = this.getGenesisTime();
-    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * EPOCH_PER_FRAME;
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
+    const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * epochPerFrame;
     const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
 
     return Math.round(genesisTime + timeToNextReport - from / 1000) * 1000; // in ms
@@ -73,9 +74,10 @@ export class GenesisTimeService implements OnModuleInit {
 
   getFrameByTimestamp(timestamp: number): number {
     const genesisTime = this.getGenesisTime();
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const secondsFromInitialEpochToTimestamp =
       timestamp / 1000 - (genesisTime + this.contractConfig.getInitialEpoch() * SECONDS_PER_SLOT * SLOTS_PER_EPOCH);
-    return Math.floor(secondsFromInitialEpochToTimestamp / (EPOCH_PER_FRAME * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
+    return Math.floor(secondsFromInitialEpochToTimestamp / (epochPerFrame * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
   }
 
   getSlotByTimestamp(timestamp: number): number {

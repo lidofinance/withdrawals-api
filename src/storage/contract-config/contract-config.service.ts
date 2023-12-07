@@ -5,6 +5,7 @@ export class ContractConfigStorageService {
   protected requestTimestampMargin: number;
   protected initialEpoch: number;
   protected epochsPerFrameVEBO: number;
+  protected epochsPerFrame: number;
   protected maxValidatorExitRequestsPerReport: number;
 
   public getRequestTimestampMargin() {
@@ -29,6 +30,14 @@ export class ContractConfigStorageService {
 
   public setEpochsPerFrameVEBO(epochsPerFrameVEBO: number) {
     this.epochsPerFrameVEBO = epochsPerFrameVEBO;
+  }
+
+  public getEpochsPerFrame() {
+    return this.epochsPerFrame;
+  }
+
+  public setEpochsPerFrame(epochsPerFrame: number) {
+    this.epochsPerFrame = epochsPerFrame;
   }
 
   public getMaxValidatorExitRequestsPerReport() {

@@ -51,6 +51,7 @@ export class ContractConfigService {
       this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
       this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
       this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
+      this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
     });
   }
 }
