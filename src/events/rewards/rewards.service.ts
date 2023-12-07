@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SECONDS_PER_SLOT } from '../../common/genesis-time';
+import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
@@ -12,7 +12,7 @@ import {
 import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
-import { RewardsStorageService } from '../../storage';
+import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
 
 @Injectable()
 export class RewardsService {
@@ -20,6 +20,7 @@ export class RewardsService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     protected readonly rewardsStorage: RewardsStorageService,
+    protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
   ) {}
@@ -159,7 +160,9 @@ export class RewardsService {
 
     return {
       blockNumber: lastLog.blockNumber,
-      frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(24 * 60 * 60),
+      frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(
+        SECONDS_PER_SLOT * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
+      ),
     };
   }
 }
