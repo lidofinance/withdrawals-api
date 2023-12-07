@@ -94,13 +94,7 @@ export class RequestTimeService {
 
     const latestEpoch = this.validators.getMaxExitEpoch();
 
-    const { ms, type } = await this.calculateWithdrawalTimeV2(
-      additionalStETH,
-      queueStETH,
-      depositableETH,
-      Date.now(),
-      latestEpoch,
-    );
+    const { ms, type } = await this.calculateWithdrawalTimeV2(queueStETH, depositableETH, Date.now(), latestEpoch);
 
     return {
       requestInfo: {
@@ -174,7 +168,6 @@ export class RequestTimeService {
       currentExitValidatorsDiffEpochs;
 
     let { ms, type } = await this.calculateWithdrawalTimeV2(
-      request.amountOfStETH,
       queueStETH,
       depositableForRequest,
       requestTimestamp,
@@ -187,7 +180,6 @@ export class RequestTimeService {
       // if calculation wrong points to past then validators is not excited in time
       // we need recalculate
       const recalculatedResult = await this.calculateWithdrawalTimeV2(
-        request.amountOfStETH,
         queueStETH,
         depositableForRequest,
         requestTimestamp,
@@ -225,8 +217,7 @@ export class RequestTimeService {
   }
 
   async calculateWithdrawalTimeV2(
-    withdrawalEth: BigNumber,
-    unfinalized: BigNumber,
+    unfinalized: BigNumber, // including withdrawal eth
     depositable: BigNumber,
     requestTimestamp: number,
     latestEpoch: string,
@@ -243,9 +234,9 @@ export class RequestTimeService {
     }
 
     // enough depositable ether
-    if (depositable.gt(withdrawalEth)) {
+    if (depositable.gt(unfinalized)) {
       frameByBuffer = { value: currentFrame + 1, type: RequestTimeCalculationType.buffer };
-      this.logger.debug(`case buffer gt withdrawalEth, frameByBuffer`, frameByBuffer);
+      this.logger.debug(`case buffer gt unfinalized, frameByBuffer`, frameByBuffer);
     }
 
     // postpone withdrawal request which is too close to report
@@ -260,7 +251,7 @@ export class RequestTimeService {
 
     if (!this.rewardsStorage.getRewardsPerFrame().eq(0) && frameByBuffer === null) {
       frameByOnlyRewards = {
-        value: this.calculateFrameByRewardsOnly(withdrawalEth.sub(depositable)),
+        value: this.calculateFrameByRewardsOnly(unfinalized.sub(depositable)),
         type: RequestTimeCalculationType.rewardsOnly,
       };
       this.logger.debug(`case calculate by rewards only`, frameByOnlyRewards);
