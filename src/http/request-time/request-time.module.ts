@@ -9,6 +9,7 @@ import { ConfigModule } from 'common/config';
 import { GenesisTimeModule } from 'common/genesis-time';
 import { RequestTimeController } from './request-time.controller';
 import { RequestTimeService } from './request-time.service';
+import { RewardsModule } from '../../events/rewards';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RequestTimeService } from './request-time.service';
     ConfigModule,
     GenesisTimeModule,
     RewardsStorageModule,
+    RewardsModule,
   ],
   controllers: [RequestTimeController],
   providers: [RequestTimeService],
