@@ -19,11 +19,20 @@ jobs:
     # needs: test
     name: Build and deploy
     steps:
-      - name: Testnet deploy
+      - name: Holesky testnet deploy
         uses: lidofinance/dispatch-workflow@v1
         env:
           APP_ID: ${{ secrets.APP_ID }}
           APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
           TARGET_REPO: "lidofinance/infra-mainnet"
           TARGET_WORKFLOW: "deploy_holesky_testnet_withdrawals_api.yaml"
+          TARGET: "develop"
+
+      - name: Goerli testnet deploy
+        uses: lidofinance/dispatch-workflow@v1
+        env:
+          APP_ID: ${{ secrets.APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+          TARGET_REPO: "lidofinance/infra-mainnet"
+          TARGET_WORKFLOW: "deploy_testnet_withdrawals_api.yaml"
           TARGET: "develop"
