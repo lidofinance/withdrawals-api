@@ -1,14 +1,19 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import { Lido, LIDO_CONTRACT_TOKEN, EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES } from '@lido-nestjs/contracts';
+import {
+  Lido,
+  LIDO_CONTRACT_TOKEN,
+  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
+  LidoLocator,
+} from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
   LIDO_ETH_DESTRIBUTED_EVENT,
   LIDO_TOKEN_REBASED_EVENT,
   LIDO_WITHDRAWALS_RECEIVED_EVENT,
-  WITHDRAWAL_VAULT_ADDRESSES,
 } from './rewards.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
@@ -20,6 +25,7 @@ export class RewardsService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
+    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -182,7 +188,8 @@ export class RewardsService {
 
   async getVaultsBalance() {
     const chainId = this.configService.get('CHAIN_ID');
-    const withdrawalVaultBalance = await this.provider.getBalance(WITHDRAWAL_VAULT_ADDRESSES[chainId]);
+    const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault();
+    const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress);
     const rewardsVaultBalance = await this.provider.getBalance(EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId]);
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
