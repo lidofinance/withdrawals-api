@@ -40,9 +40,6 @@ export class RewardsService {
       this.updateRewards();
     });
     this.logger.log('Service initialized', { service: 'rewards event' });
-
-    const a = await this.getVaultsBalance();
-    console.log(a.toString());
   }
 
   protected async updateRewards(): Promise<void> {
