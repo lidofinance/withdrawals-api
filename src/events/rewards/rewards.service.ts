@@ -195,8 +195,8 @@ export class RewardsService {
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
 
     // note: it is pessimistic, we can sub rewards partially depending on amount of time past
-    const diffEl = withdrawalVaultBalance.sub(clRewards);
-    const diffCl = rewardsVaultBalance.sub(elRewards);
+    const diffCl = withdrawalVaultBalance.sub(clRewards);
+    const diffEl = rewardsVaultBalance.sub(elRewards);
 
     let balance = BigNumber.from(0);
 
