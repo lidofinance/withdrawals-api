@@ -30,6 +30,7 @@ import { RequestTimeCalculationType } from './dto/request-time-calculation-type'
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 import { FAR_FUTURE_EPOCH } from '../../jobs/validators/validators.constants';
 import { Lido, LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
+import { RewardsService } from '../../events/rewards';
 
 @Injectable()
 export class RequestTimeService {
@@ -42,6 +43,7 @@ export class RequestTimeService {
     protected readonly configService: ConfigService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly rewardsStorage: RewardsStorageService,
+    protected readonly rewardsService: RewardsService,
     protected readonly contractConfig: ContractConfigStorageService,
   ) {}
 
@@ -75,11 +77,13 @@ export class RequestTimeService {
     amount: string,
     unfinalized?: BigNumber,
     depositable?: BigNumber,
+    vaultsBalance?: BigNumber,
   ): Promise<RequestTimeV2Dto | null> {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const unfinalizedETH = unfinalized ?? (await this.contractWithdrawal.unfinalizedStETH()); // do runtime request if empty param
     const depositableETH = depositable ?? (await this.contractLido.getDepositableEther()); // do runtime request if empty param
+    const vaultsBalanceETH = vaultsBalance ?? (await this.rewardsService.getVaultsBalance());
 
     if (!unfinalizedETH || !validatorsLastUpdate) {
       return {
@@ -94,7 +98,12 @@ export class RequestTimeService {
 
     const latestEpoch = this.validators.getMaxExitEpoch();
 
-    const { ms, type } = await this.calculateWithdrawalTimeV2(queueStETH, depositableETH, Date.now(), latestEpoch);
+    const { ms, type } = await this.calculateWithdrawalTimeV2(
+      queueStETH,
+      depositableETH.add(vaultsBalanceETH),
+      Date.now(),
+      latestEpoch,
+    );
 
     return {
       requestInfo: {
@@ -112,6 +121,7 @@ export class RequestTimeService {
     unfinalized: BigNumber,
     buffer: BigNumber,
     depositable: BigNumber,
+    vaultsBalance: BigNumber,
   ): Promise<RequestTimeByRequestIdDto | null> {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
@@ -153,14 +163,19 @@ export class RequestTimeService {
 
     if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
-      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2('0', unfinalized, depositable);
+      const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2(
+        '0',
+        unfinalized,
+        depositable,
+        vaultsBalance,
+      );
       lastRequestResult.status = RequestTimeStatus.calculating;
       lastRequestResult.requestInfo.requestId = requestId;
       return lastRequestResult;
     }
 
     const queueStETH = this.calculateUnfinalizedEthForRequestId(requests, request);
-    const depositableForRequest = buffer.sub(queueStETH).add(request.amountOfStETH);
+    const depositableForRequest = buffer.add(vaultsBalance).sub(queueStETH).add(request.amountOfStETH);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
     const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
     const maxExitEpochInPast =
@@ -344,13 +359,16 @@ export class RequestTimeService {
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
-    const [unfinalized, buffer, depositable] = await Promise.all([
+    const [unfinalized, buffer, depositable, vaultsBalance] = await Promise.all([
       this.contractWithdrawal.unfinalizedStETH(),
       this.contractLido.getBufferedEther(),
       this.contractLido.getDepositableEther(),
+      this.rewardsService.getVaultsBalance(),
     ]);
 
-    return Promise.all(requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized, buffer, depositable)));
+    return Promise.all(
+      requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized, buffer, depositable, vaultsBalance)),
+    );
   }
 
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {
