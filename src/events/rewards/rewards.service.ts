@@ -1,7 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import {
+  Lido,
+  LIDO_CONTRACT_TOKEN,
+  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
+  LidoLocator,
+} from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
@@ -19,6 +25,7 @@ export class RewardsService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
+    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -43,12 +50,17 @@ export class RewardsService {
 
   protected async updateRewards(): Promise<void> {
     const rewardsPerFrame = await this.getLastTotalRewardsPerFrame();
-    if (rewardsPerFrame) {
-      this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame);
-    }
+
+    this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame.allRewards);
+    this.rewardsStorage.setClRewardsPerFrame(rewardsPerFrame.clRewards);
+    this.rewardsStorage.setElRewardsPerFrame(rewardsPerFrame.elRewards);
   }
 
-  public async getLastTotalRewardsPerFrame(): Promise<BigNumber | null> {
+  public async getLastTotalRewardsPerFrame(): Promise<{
+    clRewards: BigNumber;
+    elRewards: BigNumber;
+    allRewards: BigNumber;
+  } | null> {
     const framesFromLastReport = await this.getFramesFromLastReport();
     if (framesFromLastReport === null) {
       return null;
@@ -57,7 +69,11 @@ export class RewardsService {
     const { blockNumber, frames } = framesFromLastReport;
 
     if (frames.eq(0)) {
-      return BigNumber.from(0);
+      return {
+        clRewards: BigNumber.from(0),
+        elRewards: BigNumber.from(0),
+        allRewards: BigNumber.from(0),
+      };
     }
 
     const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
@@ -67,7 +83,11 @@ export class RewardsService {
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
-    return clRewards.add(elRewards).div(frames);
+    return {
+      clRewards: clRewards.div(frames),
+      elRewards: elRewards.div(frames),
+      allRewards: clRewards.add(elRewards).div(frames),
+    };
   }
 
   protected async get48HoursAgoBlock() {
@@ -164,5 +184,30 @@ export class RewardsService {
         SECONDS_PER_SLOT * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
       ),
     };
+  }
+
+  async getVaultsBalance() {
+    const chainId = this.configService.get('CHAIN_ID');
+    const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault();
+    const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress);
+    const rewardsVaultBalance = await this.provider.getBalance(EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId]);
+    const elRewards = this.rewardsStorage.getElRewardsPerFrame();
+    const clRewards = this.rewardsStorage.getClRewardsPerFrame();
+
+    // note: it is pessimistic, we can sub rewards partially depending on amount of time past
+    const diffCl = withdrawalVaultBalance.sub(clRewards);
+    const diffEl = rewardsVaultBalance.sub(elRewards);
+
+    let balance = BigNumber.from(0);
+
+    if (diffEl.gt(0)) {
+      balance = balance.add(diffEl);
+    }
+
+    if (diffCl.gt(0)) {
+      balance = balance.add(diffCl);
+    }
+
+    return balance;
   }
 }
