@@ -368,7 +368,6 @@ export class RequestTimeService {
   protected calculateFrameByRewardsOnly(unfinilized: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
-    console.log('rewardsPerDay', rewardsPerDay.toString());
     if (rewardsPerDay.eq(0)) {
       return FAR_FUTURE_EPOCH;
     }
