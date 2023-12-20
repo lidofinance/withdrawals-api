@@ -290,7 +290,6 @@ export class RequestTimeService {
     }
 
     if (frameByBuffer === null && !this.rewardsStorage.getRewardsPerFrame().eq(0)) {
-      console.log('rewards', unfinalized.sub(fullBuffer).toString());
       frameByOnlyRewards = {
         value: this.calculateFrameByRewardsOnly(unfinalized.sub(fullBuffer)),
         type: RequestTimeCalculationType.rewardsOnly,
