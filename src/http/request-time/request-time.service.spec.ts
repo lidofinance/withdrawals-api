@@ -31,6 +31,21 @@ describe('RequestTimeService', () => {
   const initialEpoch = 201600;
   const epochPerFrame = 225;
 
+  // mocks
+  const getFrameOfEpochMock = (epoch) => {
+    return Math.floor((epoch - initialEpoch) / epochPerFrame);
+  };
+  const getFrameByTimestampMock = (timestamp: number) => {
+    const secondsFromInitialEpochToTimestamp =
+      timestamp / 1000 - (genesisTime + initialEpoch * SECONDS_PER_SLOT * SLOTS_PER_EPOCH);
+    return Math.floor(secondsFromInitialEpochToTimestamp / (epochPerFrame * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
+  };
+  const timeToWithdrawalFrameMock = (frame: number, from: number) => {
+    const epochOfNextReport = initialEpoch + frame * epochPerFrame;
+    const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
+    return Math.round(genesisTime + timeToNextReport - from / 1000) * 1000; // in ms
+  };
+
   beforeAll(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(1703601993996));
@@ -114,37 +129,19 @@ describe('RequestTimeService', () => {
   });
 
   it(`calculates frame by rewards only`, () => {
-    const expectedResult = 3;
-    const getFrameOfEpochMock = (epoch) => {
-      return Math.floor((epoch - initialEpoch) / epochPerFrame);
-    };
-
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
     jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
     jest.spyOn(genesisTimeService, 'getFrameOfEpoch').mockImplementation(getFrameOfEpochMock);
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
 
+    const expectedResult = 3;
     const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(expectedResult));
 
     expect(result).toBe(getFrameOfEpochMock(currentEpoch) + expectedResult + 1);
   });
 
   it(`calculates withdrawal time by some type`, async () => {
-    const getFrameOfEpochMock = (epoch) => {
-      return Math.floor((epoch - initialEpoch) / epochPerFrame);
-    };
-    const getFrameByTimestampMock = (timestamp: number) => {
-      const secondsFromInitialEpochToTimestamp =
-        timestamp / 1000 - (genesisTime + initialEpoch * SECONDS_PER_SLOT * SLOTS_PER_EPOCH);
-      return Math.floor(secondsFromInitialEpochToTimestamp / (epochPerFrame * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
-    };
-    const timeToWithdrawalFrameMock = (frame: number, from: number) => {
-      const epochOfNextReport = initialEpoch + frame * epochPerFrame;
-      const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
-      return Math.round(genesisTime + timeToNextReport - from / 1000) * 1000; // in ms
-    };
-
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
     jest.spyOn(contractConfig, 'getMaxValidatorExitRequestsPerReport').mockReturnValue(600);
