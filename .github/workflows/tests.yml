@@ -2,6 +2,10 @@ name: Tests
 
 on:
   workflow_call:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches-ignore:
+      - main
 
 permissions:
   contents: read
@@ -9,6 +13,7 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    if: ${{ github.event.pull_request.draft == false }}
     name: Test
     steps:
       - name: Checkout
