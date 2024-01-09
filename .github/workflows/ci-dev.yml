@@ -8,7 +8,9 @@ on:
     paths-ignore:
       - ".github/**"
 
-permissions: {}
+permissions:
+  contents: read
+  
 
 jobs:
   tests:
