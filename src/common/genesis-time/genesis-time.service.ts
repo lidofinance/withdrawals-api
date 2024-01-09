@@ -56,8 +56,6 @@ export class GenesisTimeService implements OnModuleInit {
     const currentTime = Math.floor(Date.now() / 1000);
     const genesisTime = this.getGenesisTime();
 
-    console.log('getCurrentEpoch', currentTime, genesisTime);
-
     return Math.floor((currentTime - genesisTime) / SECONDS_PER_SLOT / SLOTS_PER_EPOCH);
   }
 
