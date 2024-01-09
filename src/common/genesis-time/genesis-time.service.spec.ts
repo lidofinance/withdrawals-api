@@ -52,7 +52,7 @@ describe('GenesisTimeService', () => {
     jest.resetAllMocks();
   });
 
-  it(`GenesisTimeService init correctly`, async () => {
+  it(`inits correctly`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '10000',
@@ -66,7 +66,7 @@ describe('GenesisTimeService', () => {
     expect(result).toBe(10000);
   });
 
-  it(`GenesisTimeService init expected to fail`, async () => {
+  it(`expected to fail when genesis time empty`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {},
     });
@@ -74,7 +74,7 @@ describe('GenesisTimeService', () => {
     await expect(moduleRef.init()).rejects.toEqual(new Error('Failed to get genesis time'));
   });
 
-  it(`GenesisTimeService getCurrentEpoch`, async () => {
+  it(`get current epoch`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
@@ -88,7 +88,7 @@ describe('GenesisTimeService', () => {
     expect(result).toBe(246253);
   });
 
-  it(`GenesisTimeService getFrameOfEpoch`, async () => {
+  it(`getFrameOfEpoch`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
@@ -104,7 +104,7 @@ describe('GenesisTimeService', () => {
     expect(service.getFrameOfEpoch(201600 + 450)).toBe(2);
   });
 
-  it(`GenesisTimeService time to frame`, async () => {
+  it(`get frame of epoch`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
@@ -120,7 +120,7 @@ describe('GenesisTimeService', () => {
     expect(service.getFrameOfEpoch(201600 + 450)).toBe(2);
   });
 
-  it(`GenesisTimeService test timeToWithdrawalFrame`, async () => {
+  it(`time to withdrawal frame`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',

@@ -30,6 +30,7 @@ describe('RequestTimeService', () => {
   const currentEpoch = 252025;
   const initialEpoch = 201600;
   const epochPerFrame = 225;
+  const lockedSystemTimestamp = 1703601993996; // 2023-12-26T14:46:33.996Z
 
   // mocks
   const getFrameOfEpochMock = (epoch) => {
@@ -48,7 +49,7 @@ describe('RequestTimeService', () => {
 
   beforeAll(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(1703601993996));
+    jest.setSystemTime(new Date(lockedSystemTimestamp));
   });
 
   afterAll(() => {
@@ -121,27 +122,8 @@ describe('RequestTimeService', () => {
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
-  });
 
-  afterEach(async () => {
-    await moduleRef.close();
-    jest.resetAllMocks();
-  });
-
-  it(`calculates frame by rewards only`, () => {
-    jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
-    jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
-    jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
-    jest.spyOn(genesisTimeService, 'getFrameOfEpoch').mockImplementation(getFrameOfEpochMock);
-    jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
-
-    const expectedResult = 3;
-    const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(expectedResult));
-
-    expect(result).toBe(getFrameOfEpochMock(currentEpoch) + expectedResult + 1);
-  });
-
-  it(`calculates withdrawal time by some type`, async () => {
+    // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
     jest.spyOn(contractConfig, 'getMaxValidatorExitRequestsPerReport').mockReturnValue(600);
@@ -153,18 +135,35 @@ describe('RequestTimeService', () => {
     jest.spyOn(genesisTimeService, 'timeToWithdrawalFrame').mockImplementation(timeToWithdrawalFrameMock);
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
     jest.spyOn(validatorsStorage, 'getTotal').mockReturnValue(10000);
+  });
 
+  afterEach(async () => {
+    await moduleRef.close();
+    jest.resetAllMocks();
+  });
+
+  it(`calculates frame by rewards only`, () => {
+    const countFrames = 3;
+    const expectedResult = getFrameOfEpochMock(currentEpoch) + countFrames + 1;
+    const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(countFrames));
+
+    expect(result).toBe(expectedResult);
+  });
+
+  it(`calculates withdrawal type buffer`, async () => {
     const result1 = await service.calculateWithdrawalTimeV2({
       unfinalized: BigNumber.from('1007748958196602737132'),
       buffer: BigNumber.from('1007748958196602737137'),
       vaultsBalance: BigNumber.from('0'),
-      requestTimestamp: 1703592941739,
+      requestTimestamp: lockedSystemTimestamp,
       latestEpoch: '312321',
     });
 
     expect(result1.type).toBe(RequestTimeCalculationType.buffer);
+  });
 
-    const result2 = await service.calculateWithdrawalTimeV2({
+  it(`calculates withdrawal type requestTimestampMargin`, async () => {
+    const result = await service.calculateWithdrawalTimeV2({
       unfinalized: BigNumber.from('1007748958196602737132'),
       buffer: BigNumber.from('1007748958196602737137'),
       vaultsBalance: BigNumber.from('0'),
@@ -172,26 +171,42 @@ describe('RequestTimeService', () => {
       latestEpoch: '312321',
     });
 
-    expect(result2.type).toBe(RequestTimeCalculationType.requestTimestampMargin);
+    expect(result.type).toBe(RequestTimeCalculationType.requestTimestampMargin);
+  });
 
-    const result3 = await service.calculateWithdrawalTimeV2({
+  it(`calculates withdrawal type vaultsBalance`, async () => {
+    const result = await service.calculateWithdrawalTimeV2({
       unfinalized: BigNumber.from('1007748958196602737138'),
       buffer: BigNumber.from('1007748958196602737137'),
       vaultsBalance: BigNumber.from('2'),
-      requestTimestamp: 1703592941739,
+      requestTimestamp: lockedSystemTimestamp,
       latestEpoch: '312321',
     });
 
-    expect(result3.type).toBe(RequestTimeCalculationType.vaultsBalance);
+    expect(result.type).toBe(RequestTimeCalculationType.vaultsBalance);
+  });
 
-    const result4 = await service.calculateWithdrawalTimeV2({
+  it(`calculates withdrawal type rewardsOnly`, async () => {
+    const result = await service.calculateWithdrawalTimeV2({
       unfinalized: BigNumber.from('1007748958196602737138'),
       buffer: BigNumber.from('1007748958196602737137'),
       vaultsBalance: BigNumber.from('0'),
-      requestTimestamp: 1703592941739,
+      requestTimestamp: lockedSystemTimestamp,
       latestEpoch: '312321',
     });
 
-    expect(result4.type).toBe(RequestTimeCalculationType.rewardsOnly);
+    expect(result.type).toBe(RequestTimeCalculationType.rewardsOnly);
+  });
+
+  it(`calculates withdrawal type exit validators`, async () => {
+    const result = await service.calculateWithdrawalTimeV2({
+      unfinalized: BigNumber.from('10000007748958196602737138'),
+      buffer: BigNumber.from('0'),
+      vaultsBalance: BigNumber.from('0'),
+      requestTimestamp: lockedSystemTimestamp,
+      latestEpoch: '312321',
+    });
+
+    expect(result.type).toBe(RequestTimeCalculationType.exitValidators);
   });
 });
