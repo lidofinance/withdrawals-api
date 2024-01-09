@@ -8,7 +8,6 @@ import {
 import { BigNumber } from '@ethersproject/bignumber';
 
 import { formatEther, parseEther } from '@ethersproject/units';
-import { ConfigService } from 'common/config';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import {
@@ -40,7 +39,6 @@ export class RequestTimeService {
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     protected readonly validators: ValidatorsStorageService,
     protected readonly queueInfo: QueueInfoStorageService,
-    protected readonly configService: ConfigService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly rewardsService: RewardsService,
@@ -365,7 +363,7 @@ export class RequestTimeService {
     return Math.round(waitingTime.toNumber());
   }
 
-  protected calculateFrameByRewardsOnly(unfinilized: BigNumber) {
+  public calculateFrameByRewardsOnly(unfinilized: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerDay = this.rewardsStorage.getRewardsPerFrame();
     if (rewardsPerDay.eq(0)) {
