@@ -14,7 +14,7 @@ describe('GenesisTimeService', () => {
 
   beforeAll(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date(2023, 11, 1));
+    jest.setSystemTime(new Date(1701385200000));
   });
 
   afterAll(() => {
