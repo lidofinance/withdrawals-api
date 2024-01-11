@@ -305,6 +305,8 @@ export class RequestTimeService {
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
     const result = this.genesisTimeService.timeToWithdrawalFrame(minFrameObject.value, requestTimestamp);
 
+    console.log([frameByBuffer, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
+
     return {
       ms: result ? result + GAP_AFTER_REPORT : null,
       type: minFrameObject.type,

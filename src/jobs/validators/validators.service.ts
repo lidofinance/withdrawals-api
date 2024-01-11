@@ -9,11 +9,11 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
-import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from '../../common/utils/unblock';
-
-type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
+import { LidoKeysService } from './lido-keys';
+import { ResponseValidatorsData, Validator } from './validators.types';
+import { convertFromWei } from '../../http/nft/nft.utils';
 
 export class ValidatorsService {
   constructor(
@@ -24,6 +24,7 @@ export class ValidatorsService {
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
+    protected readonly lidoKeys: LidoKeysService,
   ) {}
 
   /**
@@ -47,6 +48,8 @@ export class ValidatorsService {
       });
       const data: ResponseValidatorsData = await processValidatorsStream(stream);
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+      console.log('currentEpoch', currentEpoch);
+      console.log('current frame', this.genesisTimeService.getFrameOfEpoch(currentEpoch));
 
       let totalValidators = 0;
       let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
@@ -64,10 +67,36 @@ export class ValidatorsService {
 
         await unblock();
       }
-
+      console.log('totalValidators active', totalValidators);
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+      await this.parseLidoValidatorsWithdrawableBalances(data);
     });
+  }
+
+  protected async parseLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+    const keysData = await this.lidoKeys.fetchLidoKeysData();
+    const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
+
+    console.log(validators.length, lidoValidators.length);
+    console.log(lidoValidators[0]);
+
+    const epochBalances = {};
+
+    for (const item of lidoValidators) {
+      if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString()) {
+        const frame = this.genesisTimeService.getFrameOfEpoch(Number(item.validator.withdrawable_epoch));
+        const balance = epochBalances[frame];
+        epochBalances[frame] = balance ? balance.add(item.balance) : BigNumber.from(item.balance);
+      }
+
+      await unblock();
+    }
+
+    console.log(
+      Object.keys(epochBalances).map((frame) => ({ frame, balance: convertFromWei(epochBalances[frame].toString()) })),
+    );
   }
 }
