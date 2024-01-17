@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { HealthIndicator, HealthIndicatorResult, HealthCheckError } from '@nestjs/terminus';
 import { ExecutionProvider } from 'common/execution-provider';
-import { MAX_BLOCK_DELAY_SECONDS } from './health.constants';
+import { MAX_BLOCK_DELAY_CONSENSUS_SECONDS, MAX_BLOCK_DELAY_SECONDS } from './health.constants';
 
 @Injectable()
 export class ExecutionProviderHealthIndicator extends HealthIndicator {
@@ -14,7 +14,7 @@ export class ExecutionProviderHealthIndicator extends HealthIndicator {
     const nowTimestamp = this.getNowTimestamp();
     const deltaTimestamp = Math.abs(nowTimestamp - blockTimestamp);
 
-    const isHealthy = deltaTimestamp < MAX_BLOCK_DELAY_SECONDS;
+    const isHealthy = deltaTimestamp < MAX_BLOCK_DELAY_CONSENSUS_SECONDS;
     const result = this.getStatus(key, isHealthy, {
       blockTimestamp,
       nowTimestamp,
