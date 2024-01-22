@@ -14,6 +14,7 @@ import { unblock } from '../../common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
 import { convertFromWei } from '../../http/nft/nft.utils';
+import { parseGweiToWei } from '../../common/utils/parseGweiToBigNumber';
 
 export class ValidatorsService {
   constructor(
@@ -72,31 +73,36 @@ export class ValidatorsService {
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
 
-      await this.parseLidoValidatorsWithdrawableBalances(data);
+      await this.setLidoValidatorsWithdrawableBalances(data);
     });
   }
 
-  protected async parseLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+  protected async setLidoValidatorsWithdrawableBalances(validators: Validator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
 
     console.log(validators.length, lidoValidators.length);
     console.log(lidoValidators[0]);
 
-    const epochBalances = {};
+    const frameBalances = {};
 
     for (const item of lidoValidators) {
-      if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString()) {
+      if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
         const frame = this.genesisTimeService.getFrameOfEpoch(Number(item.validator.withdrawable_epoch));
-        const balance = epochBalances[frame];
-        epochBalances[frame] = balance ? balance.add(item.balance) : BigNumber.from(item.balance);
+        const balance = parseGweiToWei(frameBalances[frame].toString());
+        frameBalances[frame] = balance ? balance.add(item.balance) : BigNumber.from(item.balance);
       }
 
       await unblock();
     }
 
+    this.validatorsStorageService.setFrameBalances(frameBalances);
+
     console.log(
-      Object.keys(epochBalances).map((frame) => ({ frame, balance: convertFromWei(epochBalances[frame].toString()) })),
+      Object.keys(frameBalances).map((frame) => ({
+        frame,
+        balance: convertFromWei(frameBalances[frame].toString()),
+      })),
     );
   }
 }

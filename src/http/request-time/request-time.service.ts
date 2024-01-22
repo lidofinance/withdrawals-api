@@ -260,6 +260,7 @@ export class RequestTimeService {
     let currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     let frameByBuffer = null;
     let frameByOnlyRewards = null;
+    let frameValidatorsBalances = null;
     let frameByExitValidatorsWithVEBO = null;
 
     // gap after finalization check
@@ -294,18 +295,23 @@ export class RequestTimeService {
       };
     }
 
+    if (frameByBuffer === null) {
+      frameValidatorsBalances = {
+        value: this.calculateFrameByValidatorBalances(unfinalized.sub(fullBuffer)),
+        type: RequestTimeCalculationType.validatorBalances,
+      };
+    }
+
     // if none of up cases worked use long period calculation
     if (frameByBuffer === null) {
       const valueVebo = await this.calculateFrameExitValidatorsCaseWithVEBO(unfinalized.sub(fullBuffer), latestEpoch);
       frameByExitValidatorsWithVEBO = { value: valueVebo, type: RequestTimeCalculationType.exitValidators };
     }
 
-    const minFrameObject = [frameByBuffer, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
+    const minFrameObject = [frameByBuffer, frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
       .filter((f) => Boolean(f))
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
     const result = this.genesisTimeService.timeToWithdrawalFrame(minFrameObject.value, requestTimestamp);
-
-    console.log([frameByBuffer, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
 
     return {
       ms: result ? result + GAP_AFTER_REPORT : null,
@@ -336,9 +342,7 @@ export class RequestTimeService {
     const lidoQueueInEpoch = lidoQueueInEpochBeforeVEBOExitLimit.add(VEBOFramesCount.mul(epochsPerFrameVEBO));
 
     // time to find validators for removing
-    const sweepingMean = BigNumber.from(totalValidators)
-      .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
-      .div(2);
+    const sweepingMean = this.getSweepingMean();
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
@@ -351,9 +355,7 @@ export class RequestTimeService {
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 
     const lidoQueueInEpoch = unfinalizedETH.div(MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)));
-    const sweepingMean = BigNumber.from(totalValidators)
-      .div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH))
-      .div(2);
+    const sweepingMean = this.getSweepingMean();
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
     const waitingTime = potentialExitEpoch
@@ -380,6 +382,33 @@ export class RequestTimeService {
         this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
       ) + 1
     );
+  }
+
+  public getSweepingMean() {
+    const totalValidators = this.validators.getTotal();
+    return BigNumber.from(totalValidators).div(BigNumber.from(MAX_WITHDRAWALS_PER_PAYLOAD).mul(SLOTS_PER_EPOCH)).div(2);
+  }
+
+  public calculateFrameByValidatorBalances(unfinilized: BigNumber) {
+    const frameBalances = this.validators.getFrameBalances();
+    const frames = Object.keys(frameBalances);
+    let result = FAR_FUTURE_EPOCH;
+
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
+      const balance = frameBalances[frame];
+      const reduced = unfinilized.sub(balance);
+
+      if (reduced.lte(0)) {
+        result = BigNumber.from(frame);
+      } else {
+        unfinilized = reduced;
+      }
+    }
+
+    const sweepingMean = this.getSweepingMean();
+
+    return result.add(sweepingMean);
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
