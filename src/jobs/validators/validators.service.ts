@@ -112,7 +112,7 @@ export class ValidatorsService {
       Object.keys(frameIndexes).map((frame) => ({
         frame,
         indexesLength: frameIndexes[frame].length,
-        firstIndex: frameIndexes[0],
+        firstIndex: frameIndexes[frame][0],
       })),
     );
   }
