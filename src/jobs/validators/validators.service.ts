@@ -81,16 +81,20 @@ export class ValidatorsService {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
 
-    console.log(validators.length, lidoValidators.length);
-    console.log(lidoValidators[0]);
-
     const frameBalances = {};
+    const frameIndexes = {};
 
     for (const item of lidoValidators) {
       if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
         const frame = this.genesisTimeService.getFrameOfEpoch(Number(item.validator.withdrawable_epoch));
-        const balance = parseGweiToWei(frameBalances[frame].toString());
-        frameBalances[frame] = balance ? balance.add(item.balance) : BigNumber.from(item.balance);
+        const prevBalance = frameBalances[frame];
+        const balance = parseGweiToWei(item.balance);
+        frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+        if (frameIndexes[frame]) {
+          frameIndexes[frame].push(item.index);
+        } else {
+          frameIndexes[frame] = [item.index];
+        }
       }
 
       await unblock();
@@ -102,6 +106,13 @@ export class ValidatorsService {
       Object.keys(frameBalances).map((frame) => ({
         frame,
         balance: convertFromWei(frameBalances[frame].toString()),
+      })),
+    );
+    console.log(
+      Object.keys(frameIndexes).map((frame) => ({
+        frame,
+        indexesLength: frameIndexes[frame].length,
+        firstIndex: frameIndexes[0],
       })),
     );
   }

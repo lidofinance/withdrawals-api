@@ -308,6 +308,8 @@ export class RequestTimeService {
       frameByExitValidatorsWithVEBO = { value: valueVebo, type: RequestTimeCalculationType.exitValidators };
     }
 
+    console.log([frameByBuffer, frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
+
     const minFrameObject = [frameByBuffer, frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
       .filter((f) => Boolean(f))
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
@@ -406,9 +408,11 @@ export class RequestTimeService {
       }
     }
 
-    const sweepingMean = this.getSweepingMean();
+    const sweepingMean = this.getSweepingMean().toNumber();
+    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
+    const framesOfSweepingMean = Math.ceil(sweepingMean / epochPerFrame);
 
-    return result.add(sweepingMean);
+    return result.add(framesOfSweepingMean).toNumber();
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
