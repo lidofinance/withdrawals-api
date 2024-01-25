@@ -296,10 +296,13 @@ export class RequestTimeService {
     }
 
     if (frameByBuffer === null) {
-      frameValidatorsBalances = {
-        value: this.calculateFrameByValidatorBalances(unfinalized.sub(fullBuffer)),
-        type: RequestTimeCalculationType.validatorBalances,
-      };
+      const valueFrameValidatorsBalance = this.calculateFrameByValidatorBalances(unfinalized.sub(fullBuffer));
+      if (valueFrameValidatorsBalance) {
+        frameValidatorsBalances = {
+          value: valueFrameValidatorsBalance,
+          type: RequestTimeCalculationType.validatorBalances,
+        };
+      }
     }
 
     // if none of up cases worked use long period calculation
@@ -394,7 +397,7 @@ export class RequestTimeService {
   public calculateFrameByValidatorBalances(unfinilized: BigNumber) {
     const frameBalances = this.validators.getFrameBalances();
     const frames = Object.keys(frameBalances);
-    let result = FAR_FUTURE_EPOCH;
+    let result = null;
 
     for (let i = 0; i < frames.length; i++) {
       const frame = frames[i];
@@ -406,6 +409,10 @@ export class RequestTimeService {
       } else {
         unfinilized = reduced;
       }
+    }
+
+    if (result === null) {
+      return null;
     }
 
     const sweepingMean = this.getSweepingMean().toNumber();
