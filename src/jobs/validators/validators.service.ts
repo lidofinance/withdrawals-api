@@ -49,8 +49,6 @@ export class ValidatorsService {
       });
       const data: ResponseValidatorsData = await processValidatorsStream(stream);
       const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-      console.log('currentEpoch', currentEpoch);
-      console.log('current frame', this.genesisTimeService.getFrameOfEpoch(currentEpoch));
 
       let totalValidators = 0;
       let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
@@ -68,7 +66,6 @@ export class ValidatorsService {
 
         await unblock();
       }
-      console.log('totalValidators active', totalValidators);
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
@@ -102,18 +99,5 @@ export class ValidatorsService {
 
     this.validatorsStorageService.setFrameBalances(frameBalances);
 
-    console.log(
-      Object.keys(frameBalances).map((frame) => ({
-        frame,
-        balance: convertFromWei(frameBalances[frame].toString()),
-      })),
-    );
-    console.log(
-      Object.keys(frameIndexes).map((frame) => ({
-        frame,
-        indexesLength: frameIndexes[frame].length,
-        firstIndex: frameIndexes[frame][0],
-      })),
-    );
   }
 }

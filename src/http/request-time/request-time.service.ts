@@ -311,8 +311,6 @@ export class RequestTimeService {
       frameByExitValidatorsWithVEBO = { value: valueVebo, type: RequestTimeCalculationType.exitValidators };
     }
 
-    console.log([frameByBuffer, frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
-
     const minFrameObject = [frameByBuffer, frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
       .filter((f) => Boolean(f))
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
