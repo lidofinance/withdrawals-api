@@ -4,15 +4,18 @@ on:
   release:
     types: [released]
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
-  # test:
-  #   ...
+  tests:
+    if: ${{ github.event.pull_request.draft == false }}
+    uses: ./.github/workflows/tests.yml
+    secrets: inherit
 
   deploy:
     runs-on: ubuntu-latest
-    # needs: test
+    needs: tests
     name: Build and deploy
     steps:
       - name: Build prod image

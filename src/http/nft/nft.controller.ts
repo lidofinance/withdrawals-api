@@ -24,7 +24,7 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId')
-  @Throttle(1000, 30)
+  @Throttle(2000, 30)
   @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   async nftMetaV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<NFTDto> {

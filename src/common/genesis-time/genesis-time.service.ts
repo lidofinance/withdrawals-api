@@ -14,9 +14,9 @@ export class GenesisTimeService implements OnModuleInit {
 
   public async onModuleInit(): Promise<void> {
     const genesis = await this.consensusService.getGenesis();
-    this.genesisTime = Number(genesis.data.genesis_time) ?? -1;
+    this.genesisTime = Number(genesis.data.genesis_time);
 
-    if (this.genesisTime === -1) {
+    if (isNaN(this.genesisTime)) {
       throw new Error('Failed to get genesis time');
     }
   }
