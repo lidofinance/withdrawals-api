@@ -13,7 +13,6 @@ import { processValidatorsStream } from 'jobs/validators/utils/validators-stream
 import { unblock } from '../../common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
-import { convertFromWei } from '../../http/nft/nft.utils';
 import { parseGweiToWei } from '../../common/utils/parseGweiToBigNumber';
 
 export class ValidatorsService {
@@ -79,7 +78,6 @@ export class ValidatorsService {
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
 
     const frameBalances = {};
-    const frameIndexes = {};
 
     for (const item of lidoValidators) {
       if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
@@ -87,17 +85,11 @@ export class ValidatorsService {
         const prevBalance = frameBalances[frame];
         const balance = parseGweiToWei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
-        if (frameIndexes[frame]) {
-          frameIndexes[frame].push(item.index);
-        } else {
-          frameIndexes[frame] = [item.index];
-        }
       }
 
       await unblock();
     }
 
     this.validatorsStorageService.setFrameBalances(frameBalances);
-
   }
 }
