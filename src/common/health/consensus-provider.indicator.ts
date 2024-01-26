@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { HealthIndicator, HealthIndicatorResult, HealthCheckError } from '@nestjs/terminus';
-import { ExecutionProvider } from 'common/execution-provider';
-import { MAX_BLOCK_DELAY_CONSENSUS_SECONDS, MAX_BLOCK_DELAY_SECONDS } from './health.constants';
+import { MAX_BLOCK_DELAY_SECONDS } from './health.constants';
+import { ConsensusProviderService } from '../consensus-provider';
+import { GenesisTimeService } from '../genesis-time';
 
 @Injectable()
-export class ExecutionProviderHealthIndicator extends HealthIndicator {
-  constructor(private provider: ExecutionProvider) {
+export class ConsensusProviderIndicator extends HealthIndicator {
+  constructor(
+    private readonly consensusProviderService: ConsensusProviderService,
+    private readonly genesisTimeService: GenesisTimeService,
+  ) {
     super();
   }
 
@@ -14,7 +18,7 @@ export class ExecutionProviderHealthIndicator extends HealthIndicator {
     const nowTimestamp = this.getNowTimestamp();
     const deltaTimestamp = Math.abs(nowTimestamp - blockTimestamp);
 
-    const isHealthy = deltaTimestamp < MAX_BLOCK_DELAY_CONSENSUS_SECONDS;
+    const isHealthy = deltaTimestamp < MAX_BLOCK_DELAY_SECONDS;
     const result = this.getStatus(key, isHealthy, {
       blockTimestamp,
       nowTimestamp,
@@ -26,8 +30,8 @@ export class ExecutionProviderHealthIndicator extends HealthIndicator {
 
   protected async getBlockTimestamp() {
     try {
-      const block = await this.provider.getBlock('latest');
-      return block.timestamp;
+      const head = await this.consensusProviderService.getBlockHeader({ blockId: 'head' });
+      return this.genesisTimeService.getSlotTime(Number(head.data.header.message.slot));
     } catch (error) {
       return -1;
     }
