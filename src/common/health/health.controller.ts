@@ -3,6 +3,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { HEALTH_URL, MAX_MEMORY_HEAP } from './health.constants';
 import { ExecutionProviderHealthIndicator } from './execution-provider.indicator';
+import { ConsensusProviderIndicator } from './consensus-provider.indicator';
 
 @Controller(HEALTH_URL)
 @ApiExcludeController()
@@ -11,6 +12,7 @@ export class HealthController {
     protected health: HealthCheckService,
     protected memory: MemoryHealthIndicator,
     protected readonly executionProvider: ExecutionProviderHealthIndicator,
+    protected readonly consensusProvider: ConsensusProviderIndicator,
   ) {}
 
   @Get()
@@ -19,6 +21,7 @@ export class HealthController {
     return this.health.check([
       async () => this.memory.checkHeap('memoryHeap', MAX_MEMORY_HEAP),
       async () => this.executionProvider.isHealthy('RPCProvider'),
+      async () => this.consensusProvider.isHealthy('consensusProvider'),
     ]);
   }
 }
