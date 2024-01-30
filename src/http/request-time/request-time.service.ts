@@ -58,9 +58,14 @@ export class RequestTimeService {
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
-    const days = this.calculateRequestTime(queueStETH);
+    let days = this.calculateRequestTime(queueStETH);
 
     const requestsCount = this.queueInfo.getUnfinalizedRequestsCount();
+
+    if (days <= 0) {
+      console.error('Error: withdrawal time calculation less 0 days');
+      days = 5;
+    }
 
     return {
       days,
