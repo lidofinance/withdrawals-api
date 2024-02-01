@@ -310,8 +310,10 @@ export class RequestTimeService {
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
     const result = this.genesisTimeService.timeToWithdrawalFrame(minFrameObject.value, requestTimestamp);
 
+    const validatedResult = this.validateTimeResponseWithFallback(result);
+
     return {
-      ms: result ? result + GAP_AFTER_REPORT : null,
+      ms: validatedResult ? validatedResult + GAP_AFTER_REPORT : null,
       type: minFrameObject.type,
     };
   }
@@ -396,6 +398,15 @@ export class RequestTimeService {
     return Promise.all(
       requestOptions.ids.map((id) => this.getTimeByRequestId(id, unfinalized, buffer, depositable, vaultsBalance)),
     );
+  }
+
+  private validateTimeResponseWithFallback(ms: number) {
+    if (ms < 0) {
+      console.error('Error: withdrawal time calculation less 0 days');
+      return 5 * 3600 * 24 * 1000;
+    }
+
+    return ms;
   }
 
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {
