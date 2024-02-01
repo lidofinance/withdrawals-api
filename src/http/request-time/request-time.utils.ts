@@ -5,7 +5,6 @@ export const maxMinNumberValidation = (amount: string, min: string): { isValid: 
   if (Number.isNaN(numberAmount)) return { isValid: false, message: 'Amount is not valid' };
   if (!Number.isFinite(numberAmount)) return { isValid: false, message: 'Amount is not valid' };
   if (numberAmount > MAX_VALID_NUMBER) return { isValid: false, message: 'Amount is too big' };
-  // if (numberAmount > ) return { isValid: false, message: 'Amount is too big' };
   if (numberAmount < Number(min)) return { isValid: false, message: 'Amount is too small' };
 
   return { isValid: true };
