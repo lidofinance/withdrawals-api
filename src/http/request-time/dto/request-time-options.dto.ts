@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNumber, IsOptional, Max, Min } from 'class-validator';
+import { IsNumber, Max, Min } from 'class-validator';
 import { MAX_VALID_NUMBER } from '../request-time.constants';
 
 export class RequestTimeOptionsDto {
@@ -9,6 +9,5 @@ export class RequestTimeOptionsDto {
   @IsNumber()
   @Min(0)
   @Max(MAX_VALID_NUMBER)
-  @IsOptional()
-  readonly amount?: number;
+  readonly amount: number = 0;
 }
