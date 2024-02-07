@@ -54,7 +54,7 @@ export class RequestTimeService {
     const unfinalizedETH = this.queueInfo.getStETH();
     if (!unfinalizedETH) return null;
 
-    const additionalStETH = parseEther(String(params.amount) || '0');
+    const additionalStETH = parseEther(params.amount.toFixed(20) || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
@@ -106,7 +106,7 @@ export class RequestTimeService {
       };
     }
 
-    const additionalStETH = parseEther(String(amount) || '0');
+    const additionalStETH = parseEther(amount.toFixed(20) || '0');
     const queueStETH = unfinalized.add(additionalStETH);
 
     const latestEpoch = this.validators.getMaxExitEpoch();
