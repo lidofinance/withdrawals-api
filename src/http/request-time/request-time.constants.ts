@@ -10,3 +10,5 @@ export const MAX_WITHDRAWALS_PER_PAYLOAD = 2 ** 4;
 export const MAX_VALID_NUMBER = 1000000000000;
 
 export const GAP_AFTER_REPORT = 30 * 60 * 1000; // 30 mins
+
+export const NUMBER_DECIMAL_DIGITS = 20;
