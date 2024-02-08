@@ -4,7 +4,11 @@ import { parseEther, formatEther } from '@ethersproject/units';
 @ValidatorConstraint({ name: 'maxEther', async: false })
 export class MaxEtherValidator implements ValidatorConstraintInterface {
   validate(value: string, args: ValidationArguments) {
-    return parseEther(value).lt(args.constraints[0]);
+    try {
+      return parseEther(value).lt(args.constraints[0]);
+    } catch (e) {
+      return false;
+    }
   }
 
   defaultMessage(args: ValidationArguments) {
