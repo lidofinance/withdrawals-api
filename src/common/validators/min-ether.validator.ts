@@ -1,13 +1,13 @@
 import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
-import { MIN_VALID_NUMBER } from '../../http/request-time/request-time.constants';
+import { parseEther } from '@ethersproject/units';
 
 @ValidatorConstraint({ name: 'minEther', async: false })
 export class MinEtherValidator implements ValidatorConstraintInterface {
-  validate(value: string) {
-    return Number(value) >= MIN_VALID_NUMBER;
+  validate(value: string, args: ValidationArguments) {
+    return parseEther(value).gte(parseEther(args.constraints[0]));
   }
 
-  defaultMessage(validationArguments: ValidationArguments) {
-    return `${validationArguments.property} must not be less than ${MIN_VALID_NUMBER}`;
+  defaultMessage(args: ValidationArguments) {
+    return `${args.property} must not be less than ${args.constraints[0]}`;
   }
 }

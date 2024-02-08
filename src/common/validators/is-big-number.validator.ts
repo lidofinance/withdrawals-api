@@ -12,7 +12,7 @@ export class IsBigNumberValidator implements ValidatorConstraintInterface {
     return true;
   }
 
-  defaultMessage(validationArguments: ValidationArguments) {
-    return `${validationArguments.property} should be BigNumber.`;
+  defaultMessage(args: ValidationArguments) {
+    return `${args.property} should be BigNumber.`;
   }
 }

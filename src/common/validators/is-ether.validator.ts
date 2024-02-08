@@ -12,7 +12,7 @@ export class IsEtherValidator implements ValidatorConstraintInterface {
     return true;
   }
 
-  defaultMessage(validationArguments: ValidationArguments) {
-    return `${validationArguments.property} should be Eth`;
+  defaultMessage(args: ValidationArguments) {
+    return `${args.property} should be a valid Ether amount`;
   }
 }
