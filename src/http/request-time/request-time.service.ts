@@ -16,7 +16,6 @@ import {
   MAX_EFFECTIVE_BALANCE,
   MAX_WITHDRAWALS_PER_PAYLOAD,
   MIN_PER_EPOCH_CHURN_LIMIT,
-  NUMBER_DECIMAL_DIGITS,
 } from './request-time.constants';
 import { minNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
@@ -55,7 +54,7 @@ export class RequestTimeService {
     const unfinalizedETH = this.queueInfo.getStETH();
     if (!unfinalizedETH) return null;
 
-    const additionalStETH = parseEther(params.amount.toFixed(NUMBER_DECIMAL_DIGITS) || '0');
+    const additionalStETH = parseEther(params.amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 
     const stethLastUpdate = this.queueInfo.getLastUpdate();
@@ -81,7 +80,7 @@ export class RequestTimeService {
     amount,
     cached,
   }: {
-    amount: number;
+    amount: string;
     cached?: {
       unfinalized: BigNumber;
       buffer: BigNumber;
@@ -107,7 +106,7 @@ export class RequestTimeService {
       };
     }
 
-    const additionalStETH = parseEther(amount.toFixed(NUMBER_DECIMAL_DIGITS) || '0');
+    const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
 
     const latestEpoch = this.validators.getMaxExitEpoch();
@@ -179,7 +178,7 @@ export class RequestTimeService {
     if (!request && BigNumber.from(requestId).gte(lastRequestId)) {
       // for not found requests return calculating status with 0 eth
       const lastRequestResult: RequestTimeByRequestIdDto = await this.getRequestTimeV2({
-        amount: 0,
+        amount: '0',
         cached: {
           unfinalized,
           buffer,

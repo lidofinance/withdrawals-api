@@ -1,13 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNumber, Max, Min } from 'class-validator';
-import { MAX_VALID_NUMBER } from '../request-time.constants';
+import { Validate } from 'class-validator';
+import { IsEtherValidator } from 'common/validators/is-ether.validator';
+import { MaxEtherValidator } from 'common/validators/max-ether.validator';
+import { MinEtherValidator } from 'common/validators/min-ether.validator';
 
 export class RequestTimeOptionsDto {
   @ApiPropertyOptional({ type: 'number', minimum: 0, description: 'stETH amount' })
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  @Max(MAX_VALID_NUMBER)
-  readonly amount: number = 0;
+  @Validate(MinEtherValidator)
+  @Validate(MaxEtherValidator)
+  @Validate(IsEtherValidator)
+  readonly amount: string = '0';
 }
