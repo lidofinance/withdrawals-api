@@ -1,4 +1,4 @@
-import { ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
+import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
 import { BigNumber } from '@ethersproject/bignumber';
 
 @ValidatorConstraint({ name: 'isBigNumber', async: false })
@@ -12,7 +12,7 @@ export class IsBigNumberValidator implements ValidatorConstraintInterface {
     return true;
   }
 
-  defaultMessage() {
-    return 'Value should be BigNumber.';
+  defaultMessage(args: ValidationArguments) {
+    return `${args.property} should be BigNumber.`;
   }
 }

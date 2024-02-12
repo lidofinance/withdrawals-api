@@ -17,7 +17,7 @@ import {
   MAX_WITHDRAWALS_PER_PAYLOAD,
   MIN_PER_EPOCH_CHURN_LIMIT,
 } from './request-time.constants';
-import { maxMinNumberValidation } from './request-time.utils';
+import { minNumberValidation } from './request-time.utils';
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
@@ -310,8 +310,10 @@ export class RequestTimeService {
       .reduce((prev, curr) => (prev.value < curr.value ? prev : curr));
     const result = this.genesisTimeService.timeToWithdrawalFrame(minFrameObject.value, requestTimestamp);
 
+    const validatedResult = this.validateTimeResponseWithFallback(result);
+
     return {
-      ms: result ? result + GAP_AFTER_REPORT : null,
+      ms: validatedResult ? validatedResult + GAP_AFTER_REPORT : null,
       type: minFrameObject.type,
     };
   }
@@ -398,11 +400,20 @@ export class RequestTimeService {
     );
   }
 
+  private validateTimeResponseWithFallback(ms: number) {
+    if (ms < 0) {
+      console.error('Error: withdrawal time calculation less 0 days');
+      return 5 * 3600 * 24 * 1000;
+    }
+
+    return ms;
+  }
+
   public validateRequestTimeOptions(params: RequestTimeOptionsDto) {
     if (!this.queueInfo.getMinStethAmount()) return;
 
     const minAmount = formatEther(this.queueInfo.getMinStethAmount());
-    const isValidAmount = maxMinNumberValidation(params.amount, minAmount);
+    const isValidAmount = minNumberValidation(String(params.amount), minAmount);
     const isNeedValidate = params.amount && Number(params.amount) !== 0;
 
     if (isNeedValidate && !isValidAmount.isValid) {
