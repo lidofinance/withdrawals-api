@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { BigNumber } from '@ethersproject/bignumber';
 
 @Injectable()
 export class ValidatorsStorageService {
   protected maxExitEpoch: string;
   protected total: number;
   protected lastUpdate: number;
+  protected frameBalances: Record<string, BigNumber>;
 
   /**
    * Get max exit epoch for all validators
@@ -52,5 +54,21 @@ export class ValidatorsStorageService {
    */
   public setLastUpdate(lastUpdate: number): void {
     this.lastUpdate = lastUpdate;
+  }
+
+  /**
+   * Get frame balances
+   * @returns frame balances
+   */
+  public getFrameBalances() {
+    return this.frameBalances;
+  }
+
+  /**
+   * Updates frame balances
+   * @param frameBalances - frame balances
+   */
+  public setFrameBalances(frameBalances: Record<string, BigNumber>): void {
+    this.frameBalances = frameBalances;
   }
 }
