@@ -9,11 +9,11 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
-import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from '../../common/utils/unblock';
-
-type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
+import { LidoKeysService } from './lido-keys';
+import { ResponseValidatorsData, Validator } from './validators.types';
+import { parseGweiToWei } from '../../common/utils/parseGweiToBigNumber';
 
 export class ValidatorsService {
   constructor(
@@ -24,6 +24,7 @@ export class ValidatorsService {
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
+    protected readonly lidoKeys: LidoKeysService,
   ) {}
 
   /**
@@ -64,10 +65,31 @@ export class ValidatorsService {
 
         await unblock();
       }
-
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+      await this.setLidoValidatorsWithdrawableBalances(data);
     });
+  }
+
+  protected async setLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+    const keysData = await this.lidoKeys.fetchLidoKeysData();
+    const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
+
+    const frameBalances = {};
+
+    for (const item of lidoValidators) {
+      if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
+        const frame = this.genesisTimeService.getFrameOfEpoch(Number(item.validator.withdrawable_epoch));
+        const prevBalance = frameBalances[frame];
+        const balance = parseGweiToWei(item.balance);
+        frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+      }
+
+      await unblock();
+    }
+
+    this.validatorsStorageService.setFrameBalances(frameBalances);
   }
 }
