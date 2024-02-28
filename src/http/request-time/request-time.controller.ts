@@ -48,7 +48,6 @@ export class RequestTimeController {
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeV2Dto })
   async calculateTime(@Query() requestTimeOptions: RequestTimeOptionsDto) {
-    this.requestTimeService.validateRequestTimeOptions(requestTimeOptions);
     return await this.requestTimeService.getRequestTimeV2({ amount: requestTimeOptions.amount });
   }
 }

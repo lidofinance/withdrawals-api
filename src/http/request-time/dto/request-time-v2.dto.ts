@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { RequestTimeStatus } from './request-time-status';
-import { RequestTimeCalculationType } from './request-time-calculation-type';
+
+import { WaitingTimeStatus, WaitingTimeCalculationType } from 'waiting-time';
 
 export class RequestInfoDto {
   @ApiProperty({
@@ -18,9 +18,9 @@ export class RequestInfoDto {
   @ApiProperty({
     example: 'buffer',
     description: 'Case of calculation',
-    enum: Object.values(RequestTimeCalculationType),
+    enum: Object.values(WaitingTimeCalculationType),
   })
-  type: RequestTimeCalculationType;
+  type: WaitingTimeCalculationType;
 }
 
 export class RequestTimeV2Dto {
@@ -30,9 +30,9 @@ export class RequestTimeV2Dto {
   @ApiProperty({
     type: 'string',
     description: 'Status of request calculation',
-    enum: Object.values(RequestTimeStatus),
+    enum: Object.values(WaitingTimeStatus),
   })
-  status: RequestTimeStatus;
+  status: WaitingTimeStatus;
 
   @ApiProperty({
     type: 'string',
