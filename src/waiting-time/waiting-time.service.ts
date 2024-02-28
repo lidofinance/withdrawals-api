@@ -187,7 +187,7 @@ export class WaitingTimeService {
       }
     }
 
-    // enough buffer and vaults balance ether
+    // enough buffer and vaults balance
     if (fullBuffer.gt(unfinalized)) {
       if (isRequestShouldBePostponed) {
         return { frame: currentFrame + 2, type: WaitingTimeCalculationType.requestTimestampMargin };
@@ -261,17 +261,23 @@ export class WaitingTimeService {
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
 
+    // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
     const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
       MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
     );
 
+    // number of validators to exit
     const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
-    const VEBOFramesCount = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO);
-    const lidoQueueInEpoch = lidoQueueInEpochBeforeVEBOExitLimit.add(VEBOFramesCount.mul(epochsPerFrameVEBO));
 
-    // time to find validators for removing
+    // Validator Exit Bus Oracle (VEBO) has max validator to exit per VEBO frame
+    // according to this limitation, this is VEBO frames needed to exit
+    // adding 1 because of round down BigNumber dividing
+    const VEBOFrames = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO).add(1);
+    const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
+
+    // time to find validators for exiting
     const sweepingMean = calculateSweepingMean(totalValidators);
-    const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
+    const potentialExitEpoch = BigNumber.from(latestEpoch).add(VEBOEpochs).add(sweepingMean);
 
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }

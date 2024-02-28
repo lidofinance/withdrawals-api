@@ -1,6 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
 
-import { calculateSweepingMean } from './calculateSweepingMean';
+import { calculateSweepingMean } from './calculate-sweeping-mean';
 
 type calculateFrameByValidatorBalancesArgs = {
   unfinilized: BigNumber;

@@ -9,7 +9,6 @@ import { WaitingTimeService } from 'waiting-time';
 
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
-import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
 
 @Injectable()
@@ -63,20 +62,6 @@ export class RequestTimeService {
     };
   }): Promise<RequestTimeV2Dto | null> {
     return await this.waitingTimeService.getWaitingTimeInfo({ amount, cached });
-  }
-
-  async getTimeByRequestId(
-    requestId: string,
-    unfinalized: BigNumber,
-    buffer: BigNumber,
-    vaultsBalance: BigNumber,
-  ): Promise<RequestTimeByRequestIdDto | null> {
-    return await this.waitingTimeService.getWaitingTimeInfoById({
-      requestId,
-      unfinalized,
-      buffer,
-      vaultsBalance,
-    });
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {
