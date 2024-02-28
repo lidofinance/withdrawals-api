@@ -162,7 +162,7 @@ export class WaitingTimeService {
     };
   }
 
-  private async calculateWithdrawalFrame(args: CalculateWaitingTimeV2Args): Promise<CalculateWaitingTimeV2Result> {
+  public async calculateWithdrawalFrame(args: CalculateWaitingTimeV2Args): Promise<CalculateWaitingTimeV2Result> {
     const { unfinalized, buffer, vaultsBalance, requestTimestamp, latestEpoch } = args;
 
     const fullBuffer = buffer.add(vaultsBalance);
@@ -402,7 +402,7 @@ export class WaitingTimeService {
     } else return null;
   }
 
-  private calculateFrameByRewardsOnly(unfinilized: BigNumber) {
+  public calculateFrameByRewardsOnly(unfinilized: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     if (rewardsPerFrame.eq(0)) return null;
