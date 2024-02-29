@@ -277,6 +277,9 @@ export class WaitingTimeService {
 
     // time to find validators for exiting
     const sweepingMean = calculateSweepingMean(totalValidators);
+
+    // latestEpoch - epoch of last exiting validator in whole network
+    // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(VEBOEpochs).add(sweepingMean);
 
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
