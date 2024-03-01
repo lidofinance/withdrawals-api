@@ -26,6 +26,7 @@ export type GetWaitingTimeInfoV2Args = {
     vaultsBalance: BigNumber;
   };
 };
+
 export type GetWaitingTimeInfoV2Result = {
   requestInfo: CalculateTimeByIdRequestInfo | null; // Request info
   status: WaitingTimeStatus; // Status of request calculation
@@ -38,6 +39,7 @@ export type GetWaitingTimeInfoByIdArgs = {
   buffer: BigNumber;
   vaultsBalance: BigNumber;
 };
+
 export type GetWaitingTimeInfoByIdResult = {
   requestInfo: CalculateTimeByIdRequestInfo; // Request info
   status: WaitingTimeStatus; // Status of request calculation
