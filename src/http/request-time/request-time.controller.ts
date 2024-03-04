@@ -17,7 +17,7 @@ import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
 import { RequestTimeByRequestIdDto } from './dto/request-time-by-request-id.dto';
 import { RequestsTimeOptionsDto } from './dto/requests-time-options.dto';
-import { ErrorResponseType } from '../common/dto/ErrorResponseType';
+import { ErrorResponseType } from '../common/dto/error-response-type';
 
 @Controller(HTTP_PATHS[1]['request-time'])
 @ApiTags('Request Time')
