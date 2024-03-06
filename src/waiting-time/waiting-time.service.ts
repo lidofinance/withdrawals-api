@@ -411,13 +411,13 @@ export class WaitingTimeService {
     } else return null;
   }
 
-  public calculateFrameByRewardsOnly(unfinilized: BigNumber) {
+  public calculateFrameByRewardsOnly(unfinalized: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     if (rewardsPerFrame.eq(0)) return null;
 
     const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
-    const onlyRewardPotentialEpoch = unfinilized.div(rewardsPerEpoch);
+    const onlyRewardPotentialEpoch = unfinalized.div(rewardsPerEpoch);
 
     return (
       this.genesisTimeService.getFrameOfEpoch(
