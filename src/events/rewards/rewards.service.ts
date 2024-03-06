@@ -186,6 +186,7 @@ export class RewardsService {
     };
   }
 
+  // it includes WithdrawalVault balance and diff between rewards and cached rewards from previous report
   async getVaultsBalance() {
     const chainId = this.configService.get('CHAIN_ID');
     const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault();

@@ -2,7 +2,7 @@ import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments 
 import { parseEther, formatEther } from '@ethersproject/units';
 
 @ValidatorConstraint({ name: 'maxEther', async: false })
-export class MaxEtherValidator implements ValidatorConstraintInterface {
+export class MaxWithdrawableEtherValidator implements ValidatorConstraintInterface {
   validate(value: string, args: ValidationArguments) {
     try {
       return parseEther(value).lte(args.constraints[0]);

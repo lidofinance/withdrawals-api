@@ -13,7 +13,7 @@ import { processValidatorsStream } from 'jobs/validators/utils/validators-stream
 import { unblock } from '../../common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
-import { parseGweiToWei } from '../../common/utils/parseGweiToBigNumber';
+import { parseGweiToWei } from '../../common/utils/parse-gwei-to-big-number';
 
 export class ValidatorsService {
   constructor(

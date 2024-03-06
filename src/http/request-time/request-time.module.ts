@@ -1,27 +1,15 @@
 import { Module } from '@nestjs/common';
-import {
-  ValidatorsStorageModule,
-  QueueInfoStorageModule,
-  RewardsStorageModule,
-  ContractConfigStorageModule,
-} from 'storage';
-import { ConfigModule } from 'common/config';
-import { GenesisTimeModule } from 'common/genesis-time';
+
+import { ValidatorsStorageModule, QueueInfoStorageModule } from 'storage';
+import { WaitingTimeModule } from 'waiting-time';
+import { MinWithdrawableEtherValidator } from 'common/validators/min-withdrawable-ether.validator';
+
 import { RequestTimeController } from './request-time.controller';
 import { RequestTimeService } from './request-time.service';
-import { RewardsModule } from '../../events/rewards';
 
 @Module({
-  imports: [
-    ValidatorsStorageModule,
-    QueueInfoStorageModule,
-    ContractConfigStorageModule,
-    ConfigModule,
-    GenesisTimeModule,
-    RewardsStorageModule,
-    RewardsModule,
-  ],
+  imports: [ValidatorsStorageModule, QueueInfoStorageModule, WaitingTimeModule],
   controllers: [RequestTimeController],
-  providers: [RequestTimeService],
+  providers: [RequestTimeService, MinWithdrawableEtherValidator],
 })
 export class RequestTimeModule {}
