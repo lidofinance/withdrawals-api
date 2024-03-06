@@ -1,8 +1,6 @@
 ## Common information for all calculation cases
 
-> [!IMPORTANT]
-> Each case of calculation finds epoch when Lido can finalize requests, but finalization happens during Accounting Oracle report and it happens in exact reference slot. Here are examples of reference slots for different networks: mainnet - 12:00:04 UTC, goerli - 05:28:00 UTC, holesky - each 2 hours.
-
+Each case of calculation finds epoch when Lido can finalize requests, but finalization happens during Accounting Oracle report and it happens in exact reference slot. Here are examples of reference slots for different networks: mainnet - 12:00:04 UTC, goerli - 05:28:00 UTC, holesky - each 2 hours.
 
 ### Calculate next report time
 
