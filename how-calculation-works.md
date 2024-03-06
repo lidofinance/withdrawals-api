@@ -12,7 +12,7 @@
 
 ### Gap before next report
 
-- Withdrawal requests which are close to report (`getRequestTimestampMargin`) will not be in closest report, will be postponed to he next one if they are in that gap before report.
+- Withdrawal requests which are close to report (`getRequestTimestampMargin`) will not be in closest report, will be postponed to the next one if they are in that gap before report.
 - `OracleReportSanityChecker` contract, get `limits.requestTimestampMargin` from [getOracleReportLimits](https://docs.lido.fi/contracts/oracle-report-sanity-checker#getoraclereportlimits)
 
 ### Gap after report
