@@ -1,5 +1,7 @@
 ## Withdrawals API
 
+How works withdrawal time calculation [here](how-calculation-works.md)
+
 ## Installation
 
 ```bash
