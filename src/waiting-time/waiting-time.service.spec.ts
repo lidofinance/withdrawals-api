@@ -81,6 +81,7 @@ describe('WaitingTimeService', () => {
           provide: WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
           useValue: {
             unfinalizedStETH: jest.fn(),
+            isBunkerModeActive: jest.fn(),
           },
         },
         {
@@ -143,6 +144,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
     jest.spyOn(validatorsStorage, 'getTotal').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+    jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
   });
 
   afterEach(async () => {
@@ -247,6 +249,19 @@ describe('WaitingTimeService', () => {
       });
 
       expect(result.type).toBe(WaitingTimeCalculationType.exitValidators);
+    });
+
+    it(`is bunker active, return type bunker`, async () => {
+      jest.spyOn(service, 'getFrameIsBunker').mockResolvedValue(15);
+      const result = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(result.type).toBe(WaitingTimeCalculationType.bunker);
     });
   });
 });
