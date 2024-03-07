@@ -18,6 +18,7 @@ import {
   GAP_AFTER_REPORT,
   MAX_EFFECTIVE_BALANCE,
   MIN_PER_EPOCH_CHURN_LIMIT,
+  WITHDRAWAL_BUNKER_DELAY_FRAMES,
 } from './waiting-time.constants';
 import {
   validateTimeResponseWithFallback,
@@ -167,6 +168,11 @@ export class WaitingTimeService {
 
     const fullBuffer = buffer.add(vaultsBalance);
     let currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
+
+    const frameIsBunker = await this.getFrameIsBunker();
+    if (frameIsBunker) {
+      return { frame: frameIsBunker, type: WaitingTimeCalculationType.bunker };
+    }
 
     // gap after finalization check
     const frameGapBeforeFinalization = this.genesisTimeService.getFrameByTimestamp(Date.now() - GAP_AFTER_REPORT);
@@ -424,6 +430,17 @@ export class WaitingTimeService {
         this.genesisTimeService.getCurrentEpoch() + onlyRewardPotentialEpoch.toNumber(),
       ) + 1
     );
+  }
+
+  public async getFrameIsBunker(): Promise<null | number> {
+    const isBunker = await this.contractWithdrawal.isBunkerModeActive();
+    if (isBunker) {
+      return (
+        this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch()) +
+        WITHDRAWAL_BUNKER_DELAY_FRAMES
+      );
+    }
+    return null;
   }
 
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
