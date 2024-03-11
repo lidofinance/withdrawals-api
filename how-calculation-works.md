@@ -1,4 +1,10 @@
-## Common information for all calculation cases
+## How withdrawal request time calculation works
+
+### The algorithm of searching for a first suitable case from following cases is:
+
+1. `bunker` mode is active.
+2. `buffer` or `vaultsBalance` has enough funds.
+3.  select minimum frame from the following three cases of `rewardOnly`, *`validatorBalances`* or *`exitValidators`.*
 
 Each case of calculation finds epoch when Lido can finalize requests, but finalization happens during Accounting Oracle report and it happens in exact reference slot. Here are examples of reference slots for different networks: mainnet - 12:00:04 UTC, goerli - 05:28:00 UTC, holesky - each 2 hours.
 
@@ -16,13 +22,6 @@ Each case of calculation finds epoch when Lido can finalize requests, but finali
 ### Gap after report
 
 - it takes time to proceed report it usually it can take 20-30 min. But in emergency cases there is possibility that report won’t happen in current frame, but possibility is very low and it happened only around 5 time in history.
-
-
-### The sequence of searching for a first suitable case from following cases is:
-
-1. `bunker` mode is active.
-2. `buffer` or `vaultsBalance` has enough funds.
-3.  select minimum frame from the following three cases of `rewardOnly`, *`validatorBalances`* or *`exitValidators`.*
 
 ## Case if there is enough tokens in buffer + withdrawals vaults for withdrawal:
 
@@ -60,6 +59,8 @@ We can find Lido validators which is already in process of withdrawal and group 
 - And last thing to count is `sweepingMean`.  More information can be found [here](https://consensys.net/shanghai-capella-upgrade/) in *Full Withdrawal Process* chapter*.* Shortly it is minimum 256 epoch (27.3 hour). But we use middle value which is 567 epoch (depending on total validators number). **
 - Next find next frame after found epoch potential epoch
 - No gap before report but gap after report still exists
+
+---
 
 ## [Under development] Case of bunker active
 
