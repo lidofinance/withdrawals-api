@@ -1,6 +1,6 @@
 ## How withdrawal request time calculation works
 
-### The algorithm of searching for a first suitable case from following cases is:
+### The algorithm of searching for a first suitable calculation case:
 
 1. `bunker` mode is active.
 2. `buffer` or `vaultsBalance` has enough funds.
@@ -23,16 +23,18 @@ Each case of calculation finds epoch when Lido can finalize requests, but finali
 
 - it takes time to proceed report it usually it can take 20-30 min. But in emergency cases there is possibility that report won’t happen in current frame, but possibility is very low and it happened only around 5 time in history.
 
-## Case if there is enough tokens in buffer + withdrawals vaults for withdrawal:
+## More about each calculation case
 
-If next sources of tokens has enough funds for current request + all others unfinalized requests before this request, we can withdrawal tokens without exit validators process.
+### Case if there is enough tokens in buffer + withdrawals vaults for withdrawal:
+
+If next sources of tokens has enough funds for current request + all others unfinalized requests before this request, we can withdraw tokens without exit validators process.
 
 - lido buffer from [method](https://docs.lido.fi/contracts/lido#getbufferedether)
 - balance of [WithdrawalVaults](https://docs.lido.fi/contracts/withdrawal-vault) and [ExecutionLayerRewardsVault](https://docs.lido.fi/contracts/lido-execution-layer-rewards-vault)
 
 ---
 
-## Case of rewards only
+### Case of rewards only
 
 Based on rewards from previous report we can consider this number as approximate future rewards. Formula to get epoch
 
@@ -44,13 +46,13 @@ implementation here
 
 ---
 
-## Case of validators with withdrawable epoch
+### Case of validators with withdrawable epoch
 
 We can find Lido validators which is already in process of withdrawal and group them by `withdrawable_epoch` to `frameBalances`, then we can find frame and return it.
 
 ---
 
-## Case if there is NOT enough tokens for withdrawal:
+### Case if there is NOT enough tokens for withdrawal:
 
 - We are going to calculate how much reports should be proceeded to fulfil current withdrawal
 - Basic target is to find epoch for exit all needed validators
@@ -62,7 +64,7 @@ We can find Lido validators which is already in process of withdrawal and group 
 
 ---
 
-## [Under development] Case of bunker active
+### [Under development] Case of bunker active
 
 We check if bunker is active in contract [here](https://docs.lido.fi/contracts/withdrawal-queue-erc721#isbunkermodeactive) and predict that finalization will be in approximately 14 frames as constant if there are no associated slashings. More about bunker more [here](https://docs.lido.fi/guides/oracle-spec/accounting-oracle/#bunker-mode-activation).
 
