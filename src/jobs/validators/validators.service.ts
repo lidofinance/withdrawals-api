@@ -65,11 +65,10 @@ export class ValidatorsService {
 
         await unblock();
       }
+      await this.setLidoValidatorsWithdrawableBalances(data);
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
-
-      await this.setLidoValidatorsWithdrawableBalances(data);
     });
   }
 
