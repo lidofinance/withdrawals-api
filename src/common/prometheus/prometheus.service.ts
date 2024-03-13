@@ -1,6 +1,7 @@
 import { getOrCreateMetric } from '@willsoto/nestjs-prometheus';
 import { Options, Metrics, Metric } from './interfaces';
 import { METRICS_PREFIX } from './prometheus.constants';
+import { RequestSourceType } from '../../http/request-time/headers/request-source-type';
 
 export class PrometheusService {
   protected prefix = METRICS_PREFIX;
@@ -47,4 +48,16 @@ export class PrometheusService {
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
     labelNames: ['result'],
   });
+
+  public requestSource = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'requests_source',
+    help: 'Sources of withdrawal time requests',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
+    labelNames: ['source', 'route'],
+  });
+
+  public trackRequestSource(source: RequestSourceType, route: string) {
+    source = Object.values(RequestSourceType).includes(source) ? source : RequestSourceType.unknown;
+    this.requestSource.labels({ source, route }).inc();
+  }
 }

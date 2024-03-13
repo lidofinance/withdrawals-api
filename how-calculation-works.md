@@ -42,8 +42,6 @@ Based on rewards from previous report we can consider this number as approximate
 
 where `unfinalized` is current request + all requests before it.
 
-implementation here
-
 ---
 
 ### Case of validators with withdrawable epoch
