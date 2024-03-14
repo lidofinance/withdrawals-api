@@ -51,6 +51,10 @@ export class RewardsService {
   protected async updateRewards(): Promise<void> {
     const rewardsPerFrame = await this.getLastTotalRewardsPerFrame();
 
+    if (!rewardsPerFrame) {
+      return;
+    }
+
     this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame.allRewards);
     this.rewardsStorage.setClRewardsPerFrame(rewardsPerFrame.clRewards);
     this.rewardsStorage.setElRewardsPerFrame(rewardsPerFrame.elRewards);
