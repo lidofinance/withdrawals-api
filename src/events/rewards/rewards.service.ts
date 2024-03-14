@@ -51,11 +51,13 @@ export class RewardsService {
   protected async updateRewards(): Promise<void> {
     const rewardsPerFrame = await this.getLastTotalRewardsPerFrame();
 
-    if (rewardsPerFrame) {
-      this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame.allRewards);
-      this.rewardsStorage.setClRewardsPerFrame(rewardsPerFrame.clRewards);
-      this.rewardsStorage.setElRewardsPerFrame(rewardsPerFrame.elRewards);
+    if (!rewardsPerFrame) {
+      return;
     }
+
+    this.rewardsStorage.setRewardsPerFrame(rewardsPerFrame.allRewards);
+    this.rewardsStorage.setClRewardsPerFrame(rewardsPerFrame.clRewards);
+    this.rewardsStorage.setElRewardsPerFrame(rewardsPerFrame.elRewards);
   }
 
   public async getLastTotalRewardsPerFrame(): Promise<{
