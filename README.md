@@ -13,7 +13,7 @@ The service is helpful for stakers, providing insights from the moment of withdr
 - Estimation before request: users can estimate the waiting time before placing a withdrawal request.
 - Tracking the existing request: users can track the estimated waiting time for the already placed request.
 
-ℹ️ Detailed explanation of the estimation algorithm is available [here](how-estimation-works.md).
+ℹ️ **Detailed explanation of the estimation algorithm is available [here](how-estimation-works.md).**
 
 ### Prerequisites
 
