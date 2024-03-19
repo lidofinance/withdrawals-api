@@ -154,7 +154,7 @@ describe('WaitingTimeService', () => {
 
   describe('check withdrawal calculation types', () => {
     it(`type buffer`, async () => {
-      const result1 = await service.calculateWithdrawalFrame({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737132'),
         buffer: BigNumber.from('1007748958196602737137'),
         vaultsBalance: BigNumber.from('0'),
@@ -162,7 +162,7 @@ describe('WaitingTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result1.type).toBe(WaitingTimeCalculationType.buffer);
+      expect(result.type).toBe(WaitingTimeCalculationType.buffer);
     });
 
     it(`type requestTimestampMargin`, async () => {
@@ -262,6 +262,18 @@ describe('WaitingTimeService', () => {
       });
 
       expect(result.type).toBe(WaitingTimeCalculationType.bunker);
+    });
+
+    it(`tests that resulted frame is not past`, async () => {
+      const result = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('1007748958196602737132'),
+        buffer: BigNumber.from('1007748958196602737137'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(result.frame).toBeGreaterThan(getFrameOfEpochMock(currentEpoch));
     });
   });
 });
