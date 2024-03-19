@@ -140,7 +140,6 @@ export class WaitingTimeService {
       requestTimestamp,
       latestEpoch: maxExitEpochInPast.toString(),
     });
-    console.log('pre frame', frame);
 
     const { type, finalizationIn } = await this.checkInPastCase({
       request,
