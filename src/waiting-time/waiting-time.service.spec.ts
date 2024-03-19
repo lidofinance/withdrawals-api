@@ -5,20 +5,21 @@ import {
   QueueInfoStorageService,
   RewardsStorageService,
   ValidatorsStorageService,
-} from '../../storage';
-import { RequestTimeService } from './request-time.service';
+} from 'storage';
+import { WaitingTimeService } from './waiting-time.service';
 import { BigNumber } from '@ethersproject/bignumber';
 import { LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { GenesisTimeService } from 'common/genesis-time/genesis-time.service';
 import { RewardsService } from 'events/rewards/rewards.service';
-import { RequestTimeCalculationType } from './dto/request-time-calculation-type';
-import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
+import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+
+import { WaitingTimeCalculationType } from './waiting-time.types';
 
 jest.mock('common/config', () => ({}));
 
-describe('RequestTimeService', () => {
+describe('WaitingTimeService', () => {
   let moduleRef: TestingModule;
-  let service: RequestTimeService;
+  let service: WaitingTimeService;
   let rewardsStorage: RewardsStorageService;
   let contractConfig: ContractConfigStorageService;
   let genesisTimeService: GenesisTimeService;
@@ -65,7 +66,7 @@ describe('RequestTimeService', () => {
     moduleRef = await Test.createTestingModule({
       imports: [LoggerModule.forRoot({ transports: [nullTransport()] })],
       providers: [
-        RequestTimeService,
+        WaitingTimeService,
         {
           provide: ContractConfigStorageService,
           useValue: {
@@ -80,6 +81,7 @@ describe('RequestTimeService', () => {
           provide: WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
           useValue: {
             unfinalizedStETH: jest.fn(),
+            isBunkerModeActive: jest.fn(),
           },
         },
         {
@@ -123,7 +125,7 @@ describe('RequestTimeService', () => {
       ],
     }).compile();
 
-    service = moduleRef.get<RequestTimeService>(RequestTimeService);
+    service = moduleRef.get<WaitingTimeService>(WaitingTimeService);
     rewardsStorage = moduleRef.get<RewardsStorageService>(RewardsStorageService);
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
@@ -142,6 +144,7 @@ describe('RequestTimeService', () => {
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
     jest.spyOn(validatorsStorage, 'getTotal').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+    jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
   });
 
   afterEach(async () => {
@@ -151,7 +154,7 @@ describe('RequestTimeService', () => {
 
   describe('check withdrawal calculation types', () => {
     it(`type buffer`, async () => {
-      const result1 = await service.calculateWithdrawalTimeV2({
+      const result1 = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737132'),
         buffer: BigNumber.from('1007748958196602737137'),
         vaultsBalance: BigNumber.from('0'),
@@ -159,11 +162,11 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result1.type).toBe(RequestTimeCalculationType.buffer);
+      expect(result1.type).toBe(WaitingTimeCalculationType.buffer);
     });
 
     it(`type requestTimestampMargin`, async () => {
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737132'),
         buffer: BigNumber.from('1007748958196602737137'),
         vaultsBalance: BigNumber.from('0'),
@@ -171,11 +174,11 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.requestTimestampMargin);
+      expect(result.type).toBe(WaitingTimeCalculationType.requestTimestampMargin);
     });
 
     it(`type vaultsBalance`, async () => {
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737138'),
         buffer: BigNumber.from('1007748958196602737137'),
         vaultsBalance: BigNumber.from('2'),
@@ -183,11 +186,11 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.vaultsBalance);
+      expect(result.type).toBe(WaitingTimeCalculationType.vaultsBalance);
     });
 
     it(`type exitValidators`, async () => {
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('10000007748958196602737138'),
         buffer: BigNumber.from('0'),
         vaultsBalance: BigNumber.from('0'),
@@ -195,13 +198,13 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.exitValidators);
+      expect(result.type).toBe(WaitingTimeCalculationType.exitValidators);
     });
   });
 
   describe('calculates withdrawal type rewardsOnly', () => {
     it(`check type`, async () => {
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737138'),
         buffer: BigNumber.from('1007748958196602737137'),
         vaultsBalance: BigNumber.from('0'),
@@ -209,7 +212,7 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.rewardsOnly);
+      expect(result.type).toBe(WaitingTimeCalculationType.rewardsOnly);
     });
 
     it(`check frames number`, () => {
@@ -224,7 +227,7 @@ describe('RequestTimeService', () => {
   describe('calculates withdrawal type validatorBalances', () => {
     it(`is enough validators balances`, async () => {
       jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue(frameBalancesMock);
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('10000007748958196602737138'),
         buffer: BigNumber.from('0'),
         vaultsBalance: BigNumber.from('0'),
@@ -232,12 +235,12 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.validatorBalances);
+      expect(result.type).toBe(WaitingTimeCalculationType.validatorBalances);
     });
 
     it(`is not enough validators balances, fallback to exitValidators`, async () => {
       jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue(frameBalancesMock);
-      const result = await service.calculateWithdrawalTimeV2({
+      const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('100000007748958196602737138'),
         buffer: BigNumber.from('0'),
         vaultsBalance: BigNumber.from('0'),
@@ -245,7 +248,20 @@ describe('RequestTimeService', () => {
         latestEpoch: '312321',
       });
 
-      expect(result.type).toBe(RequestTimeCalculationType.exitValidators);
+      expect(result.type).toBe(WaitingTimeCalculationType.exitValidators);
+    });
+
+    it(`is bunker active, return type bunker`, async () => {
+      jest.spyOn(service, 'getFrameIsBunker').mockResolvedValue(15);
+      const result = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(result.type).toBe(WaitingTimeCalculationType.bunker);
     });
   });
 });

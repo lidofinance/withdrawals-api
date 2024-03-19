@@ -8,11 +8,13 @@ import { SWAGGER_URL } from 'http/common/swagger';
 import { ConfigService } from 'common/config';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
+import { useContainer } from 'class-validator';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
     bufferLogs: true,
   });
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   // config

@@ -1,4 +1,4 @@
-import { WithdrawalRequest } from '../../../storage/queue-info/queue-info.types';
+import { WithdrawalRequest } from 'storage';
 
 export class RequestDto {
   id: string;
