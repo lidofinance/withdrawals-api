@@ -1,15 +1,19 @@
 ## Withdrawals API
 
-The Withdrawals API offers an utility for estimating the waiting time for [withdrawals](https://docs.lido.fi/guides/lido-tokens-integration-guide#withdrawals-unsteth) within the Lido protocol on Ethereum.
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding-bottom: 12px;">
+    <img alt="Withdrawals API Logo" src="./static/img/logo.jpg" />
+</div>
 
-This service is helpful for stakers, providing insights from the moment of withdrawal request [placement](https://docs.lido.fi/contracts/withdrawal-queue-erc721#request) to its [finalization](https://docs.lido.fi/contracts/withdrawal-queue-erc721#finalization).
+The **Withdrawals API** service offers an utility for estimating the waiting time for [withdrawals](https://docs.lido.fi/guides/lido-tokens-integration-guide#withdrawals-unsteth) within the Lido protocol on Ethereum.
+
+The service is helpful for stakers, providing insights from the moment of withdrawal request [placement](https://docs.lido.fi/contracts/withdrawal-queue-erc721#request) to its [finalization](https://docs.lido.fi/contracts/withdrawal-queue-erc721#finalization) when the request becomes claimable.
 
 ### Use Cases
 
-- Estimation Before Request: Users can estimate the waiting time before placing a withdrawal request.
-- Tracking: Users can track the estimated waiting time for an already placed request.
+- Estimation before request: users can estimate the waiting time before placing a withdrawal request.
+- Tracking the existing request: users can track the estimated waiting time for the already placed request.
 
-Detailed explanation of the estimation algorithm is available [here](how-estimation-works.md).
+ℹ️ Detailed explanation of the estimation algorithm is available [here](how-estimation-works.md).
 
 ### Prerequisites
 
