@@ -140,6 +140,7 @@ export class WaitingTimeService {
       requestTimestamp,
       latestEpoch: maxExitEpochInPast.toString(),
     });
+    console.log('pre frame', frame);
 
     const { type, finalizationIn } = await this.checkInPastCase({
       request,
@@ -314,7 +315,7 @@ export class WaitingTimeService {
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
 
     let currentType = type;
-    let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, Date.now());
+    let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
     let finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
     const isInPast = requestTimestamp + ms - Date.now() < 0;
 
@@ -329,7 +330,7 @@ export class WaitingTimeService {
         latestEpoch: maxExitEpoch.toString(),
       });
 
-      ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, Date.now());
+      ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, requestTimestamp);
       finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
       currentType = recalculatedResult.type;
     }
