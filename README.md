@@ -17,8 +17,8 @@ The service is helpful for stakers, providing insights from the moment of withdr
 
 ### Prerequisites
 
-- Node.js (version 20.0 or higher)
-- Yarn
+- Node.js (version 16.0 or higher)
+- Yarn (version 1.22 or higher)
 
 ### Installation
 
