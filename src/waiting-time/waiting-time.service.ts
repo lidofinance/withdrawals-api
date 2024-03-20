@@ -202,9 +202,12 @@ export class WaitingTimeService {
       }
     }
 
-    // takes min from next 3 cases
+    // takes min from next 3 cases:
+    // rewards only
     let frameByOnlyRewards: CalculateWaitingTimeV2Result | null = null;
+    // validators with withdrawable_epoch + rewards
     let frameValidatorsBalances: CalculateWaitingTimeV2Result | null = null;
+    // exit validators + rewards (todo: add here case validators with withdrawable_epoch)
     let frameByExitValidatorsWithVEBO: CalculateWaitingTimeV2Result | null = null;
 
     // checked only rewards filling unfinalized
@@ -219,12 +222,16 @@ export class WaitingTimeService {
     const frameBalances = this.validators.getFrameBalances();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const totalValidators = this.validators.getTotal();
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const valueFrameValidatorsBalance = calculateFrameByValidatorBalances({
       unfinilized: unfinalized.sub(fullBuffer),
       frameBalances,
       epochPerFrame,
       totalValidators,
+      currentFrame,
+      rewardsPerFrame,
     });
+
     if (valueFrameValidatorsBalance) {
       frameValidatorsBalances = {
         frame: valueFrameValidatorsBalance,
