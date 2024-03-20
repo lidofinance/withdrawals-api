@@ -2,9 +2,13 @@
   "name": "withdrawals-api",
   "version": "0.0.1",
   "description": "Withdrawals API",
-  "author": "Lido team",
+  "author": "Lido contributors",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=16",
+    "yarn": ">=1.22"
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
