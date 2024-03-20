@@ -4,14 +4,17 @@ import { calculateSweepingMean } from './calculate-sweeping-mean';
 
 type calculateFrameByValidatorBalancesArgs = {
   unfinilized: BigNumber;
+  rewardsPerFrame: BigNumber;
+  currentFrame: number;
   totalValidators: number;
   frameBalances: Record<string, BigNumber>;
   epochPerFrame: number;
 };
 
 export const calculateFrameByValidatorBalances = (args: calculateFrameByValidatorBalancesArgs): number | null => {
-  const { frameBalances, unfinilized, totalValidators, epochPerFrame } = args;
+  const { frameBalances, unfinilized, totalValidators, epochPerFrame, rewardsPerFrame, currentFrame } = args;
   let unfinalizedAmount = unfinilized;
+  let lastFrame = BigNumber.from(currentFrame);
 
   const frames = Object.keys(frameBalances);
   let result = null;
@@ -19,10 +22,20 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
   for (let i = 0; i < frames.length; i++) {
     const frame = frames[i];
     const balance = frameBalances[frame];
-    const reduced = unfinalizedAmount.sub(balance);
+    const framesBetween = BigNumber.from(frame).sub(lastFrame);
+    let reduced = unfinalizedAmount.sub(balance);
 
-    if (reduced.lte(0)) result = BigNumber.from(frame);
-    else unfinalizedAmount = reduced;
+    // consider rewards only for future frames
+    if (framesBetween.gte(0)) {
+      reduced = reduced.sub(framesBetween.mul(rewardsPerFrame));
+      lastFrame = BigNumber.from(frame);
+    }
+    unfinalizedAmount = reduced;
+
+    if (reduced.lte(0)) {
+      result = BigNumber.from(frame);
+      break;
+    }
   }
 
   if (result === null) return null;

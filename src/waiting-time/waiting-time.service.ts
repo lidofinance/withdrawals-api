@@ -202,9 +202,12 @@ export class WaitingTimeService {
       }
     }
 
-    // takes min from next 3 cases
+    // takes min from next 3 cases:
+    // rewards only
     let frameByOnlyRewards: CalculateWaitingTimeV2Result | null = null;
+    // validators with withdrawable_epoch + rewards
     let frameValidatorsBalances: CalculateWaitingTimeV2Result | null = null;
+    // exit validators + rewards (todo: add here case validators with withdrawable_epoch)
     let frameByExitValidatorsWithVEBO: CalculateWaitingTimeV2Result | null = null;
 
     // checked only rewards filling unfinalized
@@ -219,12 +222,16 @@ export class WaitingTimeService {
     const frameBalances = this.validators.getFrameBalances();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const totalValidators = this.validators.getTotal();
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const valueFrameValidatorsBalance = calculateFrameByValidatorBalances({
       unfinilized: unfinalized.sub(fullBuffer),
       frameBalances,
       epochPerFrame,
       totalValidators,
+      currentFrame,
+      rewardsPerFrame,
     });
+
     if (valueFrameValidatorsBalance) {
       frameValidatorsBalances = {
         frame: valueFrameValidatorsBalance,
@@ -314,7 +321,7 @@ export class WaitingTimeService {
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
 
     let currentType = type;
-    let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, Date.now());
+    let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
     let finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
     const isInPast = requestTimestamp + ms - Date.now() < 0;
 
@@ -329,7 +336,7 @@ export class WaitingTimeService {
         latestEpoch: maxExitEpoch.toString(),
       });
 
-      ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, Date.now());
+      ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, requestTimestamp);
       finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
       currentType = recalculatedResult.type;
     }
