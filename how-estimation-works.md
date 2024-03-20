@@ -15,9 +15,9 @@ The algorithm estimates withdrawal waiting times by evaluating the current state
 1. Check if the `BUNKER` mode is active.
 2. Determine if the `buffer` or `vaultsBalance` holds enough ether to cover withdrawal request (`totalBuffer` is enough).
 3. Choose the soonest possible case for covering the withdrawal request, which could be:
-   1. `projectedRewards`: incorporating expected rewards from consensus layer (CL) and execution layer (EL).
-   2. `knownWithdawableValidatorBalances`: leveraging balances from validators scheduled for withdrawal
-   3. `exitValidatorBalances`: considering additional validator exits necessary to accumulate sufficient funds.
+   1. `rewardsOnly`: incorporating expected rewards from consensus layer (CL) and execution layer (EL).
+   2. `validatorBalances`: leveraging balances from validators scheduled for withdrawal
+   3. `exitValidators`: considering additional validator exits necessary to accumulate sufficient funds.
 
 Regardless of the base case detected, every possible withdrawal request finalization still aligns with the [AccountingOracle](https://docs.lido.fi/contracts/accounting-oracle) report, occurring daily (with only rare exceptions), gathered for the exact reference slot (e.g., 12:00:04 UTC every day for Mainnet) happening with a submission delay about ~30 minutes (see the example [tx](https://etherscan.io/tx/0x569556dd4694408de8c8c0a164f4ace48273227c156b42969cd75034063f0907) for `AccountingOracle.submitReportData(...)`).
 
