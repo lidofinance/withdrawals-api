@@ -57,7 +57,7 @@ More about the `BUNKER` mode is [here](https://docs.lido.fi/guides/oracle-spec/a
 
 ### 2. Case if there is enough buffered ether (including withdrawals and EL rewards vaults balances)
 
-If there enough ether from the following sources to finalize all unfinalized requests placed before and included the provided one:
+If there is enough ether from the following sources to finalize all unfinalized requests placed before and included the provided one:
 
 - buffer ether balance retrieved from the [Lido.getBufferedEther()](https://docs.lido.fi/contracts/lido#getbufferedether) method
 - ether balance of [WithdrawalVault](https://docs.lido.fi/contracts/withdrawal-vault)
@@ -71,7 +71,7 @@ Then the finalization is possible relying on the already existing `totalBuffer` 
 
 ### 3.i. Case of the projected rewards
 
-If there not enough ether to fulfill the withdrawal request (`unfinalized > totalBuffer`), the next case is to consider projected rewards for the future report. In this case, the projected rewards amount can be approximately derived from the previous report.
+If there is not enough ether to fulfill the withdrawal request (`unfinalized > totalBuffer`), the next case is to consider projected rewards for the future report. In this case, the projected rewards amount can be approximately derived from the previous report.
 
 The following formula is utilized to get epoch
 
@@ -83,13 +83,13 @@ where `unfinalized` is the amount of the withdrawal request considered summed wi
 
 ### 3.ii. Case of validators with withdrawable epoch
 
-If there not enough ether to fulfill the withdrawal request (`unfinalized > totalBuffer`), the previous case might be appended with the known validators are to be withdrawn (when the `withdrawable_epoch` is assigned).
+If there is not enough ether to fulfill the withdrawal request (`unfinalized > totalBuffer`), the previous case might be appended with the known validators are to be withdrawn (when the `withdrawable_epoch` is assigned).
 
 It's needed to select the Lido-participating validators which are already in process of withdrawal and group them by `withdrawable_epoch` to `frameBalances`, allowing to find the oracle report frame containing enough funds from:
 
 - buffer (`totalBuffer`)
 - projectedRewards (`rewardsPerEpoch * epochsTillTheFrame`)
-- frameBalances[epochsTillTheFrame] (`frameBalances[epochsTillTheFrame] = frameBalances[epochsTillTheFrame-1] + knownWithdawableValidatorBalances[epochsTillTheFrame])
+- frameBalances (`object { [frame]: [sum of balances of validators with withdrawable_epoch for certain frame] }`)
 
 ---
 
