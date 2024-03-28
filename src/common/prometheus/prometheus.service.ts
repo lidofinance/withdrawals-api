@@ -53,13 +53,13 @@ export class PrometheusService {
     name: METRICS_PREFIX + 'requests_source',
     help: 'Sources of withdrawal time requests',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
-    labelNames: ['requestSource', 'route'],
+    labelNames: ['requestSource', 'route', 'version'],
   });
 
-  public trackRequestSource(requestSource: RequestSourceType, route: string) {
+  public trackRequestSource(requestSource: RequestSourceType, route: string, version: number | string) {
     requestSource = Object.values(RequestSourceType).includes(requestSource)
       ? requestSource
       : RequestSourceType.unknown;
-    this.requestSource.labels({ requestSource, route }).inc();
+    this.requestSource.labels({ requestSource, route, version }).inc();
   }
 }
