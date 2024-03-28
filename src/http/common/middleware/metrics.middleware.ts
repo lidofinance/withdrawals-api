@@ -1,23 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Reply } from './interfaces';
 import { PrometheusService } from 'common/prometheus';
-import { HTTP_PATHS } from 'http/http.constants';
-
-const getPathDetails = (originalUrl: string) => {
-  try {
-    const parts = originalUrl.split('/');
-    const version = parseInt(parts[1].substring(1));
-    const route = parts[2].split('?')[0];
-
-    if (isNaN(version) || !HTTP_PATHS[version] || !HTTP_PATHS[version][route]) {
-      return { version: HTTP_PATHS[version] ? version : 'unknown', route: 'unknown' };
-    }
-
-    return { version, route };
-  } catch (error) {
-    return { version: 'unknown', route: 'unknown' };
-  }
-};
+import { getPathDetails } from 'common/utils/get-path-details';
 
 @Injectable()
 export class MetricsMiddleware implements NestMiddleware {
