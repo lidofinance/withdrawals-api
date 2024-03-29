@@ -6,5 +6,6 @@ export const HTTP_PATHS = {
   },
   2: {
     'request-time': 'request-time',
+    'request-time/calculate': 'request-time/calculate',
   },
 };
