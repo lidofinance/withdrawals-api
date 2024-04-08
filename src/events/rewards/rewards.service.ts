@@ -132,6 +132,15 @@ export class RewardsService {
     });
 
     const lastLog = logs[logs.length - 1];
+
+    if (!lastLog) {
+      this.logger.warn('ETHDistributed event is not found for CL balance.');
+
+      return {
+        preCLBalance: BigNumber.from(0),
+        postCLBalance: BigNumber.from(0),
+      };
+    }
     const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
 
