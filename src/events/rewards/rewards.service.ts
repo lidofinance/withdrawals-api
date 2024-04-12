@@ -19,6 +19,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
+import { PrometheusService } from '../../common/prometheus';
 
 @Injectable()
 export class RewardsService {
@@ -26,6 +27,7 @@ export class RewardsService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
+    protected readonly prometheusService: PrometheusService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -41,11 +43,17 @@ export class RewardsService {
     // getting total rewards per frame starts from TokenRebased event because it contains
     // how much time is gone from last report (can be more the 1-day in rare critical situation)
     const tokenRebased = this.contractLido.filters.TokenRebased();
-    this.provider.on(tokenRebased, () => {
-      this.logger.debug('event TokenRebased triggered');
-      this.updateRewards();
+    this.provider.on(tokenRebased, async () => {
+      this.logger.log('event TokenRebased triggered', { service: 'rewards' });
+      try {
+        await this.updateRewards();
+        this.prometheusService.rewardsEventTriggered.labels({ result: 'success' });
+      } catch (e) {
+        this.logger.error(e);
+        this.prometheusService.rewardsEventTriggered.labels({ result: 'error' });
+      }
     });
-    this.logger.log('Service initialized', { service: 'rewards event' });
+    this.logger.log('Service initialized', { service: 'rewards' });
   }
 
   protected async updateRewards(): Promise<void> {
@@ -67,12 +75,19 @@ export class RewardsService {
   } | null> {
     const framesFromLastReport = await this.getFramesFromLastReport();
     if (framesFromLastReport === null) {
+      this.logger.warn(
+        'last rewards was not updated because last TokenRebase events were not found during last 48 hours.',
+        { service: 'rewards' },
+      );
       return null;
     }
 
     const { blockNumber, frames } = framesFromLastReport;
 
     if (frames.eq(0)) {
+      this.logger.warn('last rewards set to 0 because frames passed from last event is 0.', {
+        service: 'rewards',
+      });
       return {
         clRewards: BigNumber.from(0),
         elRewards: BigNumber.from(0),
@@ -87,10 +102,13 @@ export class RewardsService {
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
+    const allRewards = clRewards.add(elRewards).div(frames);
+    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, { service: 'rewards' });
+
     return {
       clRewards: clRewards.div(frames),
       elRewards: elRewards.div(frames),
-      allRewards: clRewards.add(elRewards).div(frames),
+      allRewards,
     };
   }
 
