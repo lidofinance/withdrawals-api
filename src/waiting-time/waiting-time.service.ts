@@ -211,10 +211,9 @@ export class WaitingTimeService {
     let frameByExitValidatorsWithVEBO: CalculateWaitingTimeV2Result | null = null;
 
     // checked only rewards filling unfinalized
-    const frameByOnlyRewardsValue = this.calculateFrameByRewardsOnly(unfinalized.sub(fullBuffer));
-    if (frameByOnlyRewardsValue) {
+    if (!this.rewardsStorage.getRewardsPerFrame().eq(0)) {
       frameByOnlyRewards = {
-        frame: frameByOnlyRewardsValue,
+        frame: this.calculateFrameByRewardsOnly(unfinalized.sub(fullBuffer)),
         type: WaitingTimeCalculationType.rewardsOnly,
       };
     }

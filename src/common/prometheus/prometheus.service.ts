@@ -56,13 +56,6 @@ export class PrometheusService {
     labelNames: ['requestSource', 'route', 'version'],
   });
 
-  public rewardsEventTriggered = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'rewards_event_triggered',
-    help: 'Rewards event triggered',
-    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
-    labelNames: ['result'],
-  });
-
   public trackRequestSource(requestSource: RequestSourceType, route: string, version: number | string) {
     requestSource = Object.values(RequestSourceType).includes(requestSource)
       ? requestSource

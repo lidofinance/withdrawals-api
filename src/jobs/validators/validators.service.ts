@@ -43,8 +43,6 @@ export class ValidatorsService {
   @OneAtTime()
   protected async updateValidators(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update validators' }, async () => {
-      this.logger.log('Start update validators', { service: 'validators' });
-
       const stream = await this.consensusProviderService.getStateValidatorsStream({
         stateId: 'head',
       });
@@ -71,8 +69,6 @@ export class ValidatorsService {
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
-
-      this.logger.log('End update validators', { service: 'validators', totalValidators, latestEpoch });
     });
   }
 
