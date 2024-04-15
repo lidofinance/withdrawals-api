@@ -79,7 +79,11 @@ export class RewardsService {
         'last rewards was not updated because last TokenRebase events were not found during last 48 hours.',
         { service: 'rewards' },
       );
-      return null;
+      return {
+        clRewards: BigNumber.from(0),
+        elRewards: BigNumber.from(0),
+        allRewards: BigNumber.from(0),
+      };
     }
 
     const { blockNumber, frames } = framesFromLastReport;
