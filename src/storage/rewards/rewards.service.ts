@@ -3,9 +3,9 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 @Injectable()
 export class RewardsStorageService {
-  protected rewardsPerFrame: BigNumber;
-  protected clRewardsPerFrame: BigNumber;
-  protected elRewardsPerFrame: BigNumber;
+  protected rewardsPerFrame: BigNumber = BigNumber.from(0);
+  protected clRewardsPerFrame: BigNumber = BigNumber.from(0);
+  protected elRewardsPerFrame: BigNumber = BigNumber.from(0);
 
   public getRewardsPerFrame() {
     return this.rewardsPerFrame;
