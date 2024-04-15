@@ -149,6 +149,8 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('ETHDistributed event logs', { service: 'rewards', logsCount: logs.length });
+
     const lastLog = logs[logs.length - 1];
 
     if (!lastLog) {
@@ -162,6 +164,14 @@ export class RewardsService {
     }
     const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last ETHDistributed event', {
+      service: 'rewards',
+      args: parsedData.args,
+      preCLBalance: parsedData.args.getValue('preCLBalance'),
+      postCLBalance: parsedData.args.getValue('postCLBalance'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
     const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
@@ -177,12 +187,21 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('WithdrawalsReceived event logs', { service: 'rewards', logsCount: logs.length });
+
     const lastLog = logs[logs.length - 1];
     if (!lastLog) {
       return BigNumber.from(0);
     }
     const parser = new Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last WithdrawalsReceived event', {
+      service: 'rewards',
+      args: parsedData.args,
+      amount: parsedData.args.getValue('amount'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     return BigNumber.from(parsedData.args.getValue('amount'));
   }
@@ -202,6 +221,8 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('TokenRebase event logs for last 48 hours', { service: 'rewards', logsCount: logs.length });
+
     if (logs.length === 0) {
       return null;
     }
@@ -209,6 +230,13 @@ export class RewardsService {
     const lastLog = logs[logs.length - 1];
     const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last TokenRebase event for last 48 hours', {
+      service: 'rewards',
+      args: parsedData.args,
+      timeElapsed: parsedData.args.getValue('timeElapsed'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     return {
       blockNumber: lastLog.blockNumber,
