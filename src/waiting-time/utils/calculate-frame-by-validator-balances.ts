@@ -43,5 +43,8 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
   const sweepingMean = calculateSweepingMean(totalValidators).toNumber();
   const framesOfSweepingMean = Math.ceil(sweepingMean / epochPerFrame);
 
-  return result.add(framesOfSweepingMean).toNumber();
+  const resultFrame = result.add(framesOfSweepingMean).toNumber();
+
+  // If withdrawable_epoch is less than current frame, should return next frame
+  return resultFrame < currentFrame ? currentFrame + 1 : resultFrame;
 };
