@@ -19,6 +19,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
+import { PrometheusService } from '../../common/prometheus';
 
 @Injectable()
 export class RewardsService {
@@ -26,6 +27,7 @@ export class RewardsService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
+    protected readonly prometheusService: PrometheusService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -41,11 +43,17 @@ export class RewardsService {
     // getting total rewards per frame starts from TokenRebased event because it contains
     // how much time is gone from last report (can be more the 1-day in rare critical situation)
     const tokenRebased = this.contractLido.filters.TokenRebased();
-    this.provider.on(tokenRebased, () => {
-      this.logger.debug('event TokenRebased triggered');
-      this.updateRewards();
+    this.provider.on(tokenRebased, async () => {
+      this.logger.log('event TokenRebased triggered', { service: 'rewards' });
+      try {
+        await this.updateRewards();
+        this.prometheusService.rewardsEventTriggered.labels({ result: 'success' });
+      } catch (e) {
+        this.logger.error(e);
+        this.prometheusService.rewardsEventTriggered.labels({ result: 'error' });
+      }
     });
-    this.logger.log('Service initialized', { service: 'rewards event' });
+    this.logger.log('Service initialized', { service: 'rewards' });
   }
 
   protected async updateRewards(): Promise<void> {
@@ -67,12 +75,19 @@ export class RewardsService {
   } | null> {
     const framesFromLastReport = await this.getFramesFromLastReport();
     if (framesFromLastReport === null) {
+      this.logger.warn(
+        'last rewards was not updated because last TokenRebase events were not found during last 48 hours.',
+        { service: 'rewards' },
+      );
       return null;
     }
 
     const { blockNumber, frames } = framesFromLastReport;
 
     if (frames.eq(0)) {
+      this.logger.warn('last rewards set to 0 because frames passed from last event is 0.', {
+        service: 'rewards',
+      });
       return {
         clRewards: BigNumber.from(0),
         elRewards: BigNumber.from(0),
@@ -87,10 +102,13 @@ export class RewardsService {
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
+    const allRewards = clRewards.add(elRewards).div(frames);
+    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, { service: 'rewards' });
+
     return {
       clRewards: clRewards.div(frames),
       elRewards: elRewards.div(frames),
-      allRewards: clRewards.add(elRewards).div(frames),
+      allRewards,
     };
   }
 
@@ -131,6 +149,8 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('ETHDistributed event logs', { service: 'rewards', logsCount: logs.length });
+
     const lastLog = logs[logs.length - 1];
 
     if (!lastLog) {
@@ -144,6 +164,14 @@ export class RewardsService {
     }
     const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last ETHDistributed event', {
+      service: 'rewards',
+      args: parsedData.args,
+      preCLBalance: parsedData.args.getValue('preCLBalance'),
+      postCLBalance: parsedData.args.getValue('postCLBalance'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
     const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
@@ -159,12 +187,21 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('WithdrawalsReceived event logs', { service: 'rewards', logsCount: logs.length });
+
     const lastLog = logs[logs.length - 1];
     if (!lastLog) {
       return BigNumber.from(0);
     }
     const parser = new Interface([LIDO_WITHDRAWALS_RECEIVED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last WithdrawalsReceived event', {
+      service: 'rewards',
+      args: parsedData.args,
+      amount: parsedData.args.getValue('amount'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     return BigNumber.from(parsedData.args.getValue('amount'));
   }
@@ -184,6 +221,8 @@ export class RewardsService {
       address: res.address,
     });
 
+    this.logger.log('TokenRebase event logs for last 48 hours', { service: 'rewards', logsCount: logs.length });
+
     if (logs.length === 0) {
       return null;
     }
@@ -191,6 +230,13 @@ export class RewardsService {
     const lastLog = logs[logs.length - 1];
     const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
     const parsedData = parser.parseLog(lastLog);
+
+    this.logger.log('last TokenRebase event for last 48 hours', {
+      service: 'rewards',
+      args: parsedData.args,
+      timeElapsed: parsedData.args.getValue('timeElapsed'),
+      blockNumber: lastLog.blockNumber,
+    });
 
     return {
       blockNumber: lastLog.blockNumber,
