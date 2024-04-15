@@ -23,7 +23,6 @@ async function bootstrap() {
   const appPort = configService.get('PORT');
   const corsWhitelist = configService.get('CORS_WHITELIST_REGEXP');
   const sentryDsn = configService.get('SENTRY_DSN');
-  const chainId = configService.get('CHAIN_ID');
   const secrets = configService.secrets;
 
   // versions
@@ -35,27 +34,24 @@ async function bootstrap() {
   // sentry
   const mask = satanizer([...commonPatterns, ...secrets]);
   const release = `${APP_NAME}@${APP_VERSION}`;
-  // sentry is disabled for goerli
-  if (chainId !== 5) {
-    Sentry.init({
-      dsn: sentryDsn,
-      release,
-      environment,
-      beforeSend: (event) => {
-        /*
-         * We can only mask exact properties,
-         * because there are circular references in event,
-         * which breaks satanizer.
-         */
-        return {
-          ...event,
-          exception: mask(event.exception),
-          breadcrumbs: mask(event.breadcrumbs),
-          tags: mask(event.tags),
-        };
-      },
-    });
-  }
+  Sentry.init({
+    dsn: sentryDsn,
+    release,
+    environment,
+    beforeSend: (event) => {
+      /*
+       * We can only mask exact properties,
+       * because there are circular references in event,
+       * which breaks satanizer.
+       */
+      return {
+        ...event,
+        exception: mask(event.exception),
+        breadcrumbs: mask(event.breadcrumbs),
+        tags: mask(event.tags),
+      };
+    },
+  });
 
   // cors
   if (corsWhitelist !== '') {

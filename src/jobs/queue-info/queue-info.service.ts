@@ -40,8 +40,6 @@ export class QueueInfoService {
   @OneAtTime()
   protected async updateQueueInfo(): Promise<void> {
     await this.jobService.wrapJob({ name: 'update queue info' }, async () => {
-      this.logger.log('Start update queue info', { service: 'queue info' });
-
       const [
         unfinalizedStETH,
         unfinalizedRequests,
@@ -77,16 +75,6 @@ export class QueueInfoService {
       this.queueInfoStorageService.setBufferedEther(bufferedEther);
       this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       this.queueInfoStorageService.setNextUpdate(this.getNextUpdateDate());
-
-      this.logger.log('End update queue info', {
-        service: 'queue info',
-        requests: requests.length,
-        unfinalizedStETH: unfinalizedStETH.toString(),
-        lastRequestId: lastRequestId.toString(),
-        unfinalizedRequests: unfinalizedRequests.toString(),
-        depositableEther: depositableEther.toString(),
-        bufferedEther: bufferedEther.toString(),
-      });
     });
   }
 
