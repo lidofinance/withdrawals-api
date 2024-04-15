@@ -42,6 +42,8 @@ export class ContractConfigService {
   @OneAtTime()
   protected async updateContractConfig(): Promise<void> {
     await this.jobService.wrapJob({ name: 'contract config' }, async () => {
+      this.logger.log('Start update contract config', { service: 'contract config' });
+
       const [limits, frameConfig, veboFrameConfig] = await Promise.all([
         this.oracleReportSanityChecker.getOracleReportLimits(),
         this.accountingOracleHashConsensus.getFrameConfig(),
@@ -52,6 +54,15 @@ export class ContractConfigService {
       this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
       this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
       this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
+
+      this.logger.log('End update contract config', {
+        service: 'contract config',
+        requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
+        maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
+        initialEpoch: frameConfig.initialEpoch.toNumber(),
+        epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
+        epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
+      });
     });
   }
 }
