@@ -21,7 +21,7 @@ import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
 import { PrometheusService } from '../../common/prometheus';
 
-import { getLogsWithOneRetry } from './rewards.utils';
+import { getLogsByRetryCount } from './rewards.utils';
 
 @Injectable()
 export class RewardsService {
@@ -148,12 +148,17 @@ export class RewardsService {
     postCLBalance: BigNumber;
   }> {
     const res = this.contractLido.filters.ETHDistributed();
-    const logs = await getLogsWithOneRetry(this.provider, {
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      this.logger,
+      'ETHDistributed',
+    );
 
     this.logger.log('ETHDistributed event logs', { service: 'rewards', logsCount: logs.length });
 
@@ -186,12 +191,17 @@ export class RewardsService {
 
   protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.WithdrawalsReceived();
-    const logs = await getLogsWithOneRetry(this.provider, {
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      this.logger,
+      'WithdrawalsReceived',
+    );
 
     this.logger.log('WithdrawalsReceived event logs', { service: 'rewards', logsCount: logs.length });
 
@@ -220,12 +230,18 @@ export class RewardsService {
     const last48HoursAgoBlock = await this.get48HoursAgoBlock();
 
     const res = this.contractLido.filters.TokenRebased();
-    const logs = await getLogsWithOneRetry(this.provider, {
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock: last48HoursAgoBlock,
-      address: res.address,
-    });
+
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock: last48HoursAgoBlock,
+        address: res.address,
+      },
+      this.logger,
+      'TokenRebased',
+    );
 
     this.logger.log('TokenRebase event logs for last 48 hours', { service: 'rewards', logsCount: logs.length });
 
