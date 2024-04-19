@@ -21,6 +21,8 @@ import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
 import { PrometheusService } from '../../common/prometheus';
 
+import { getLogsByRetryCount } from './rewards.utils';
+
 @Injectable()
 export class RewardsService {
   constructor(
@@ -146,19 +148,24 @@ export class RewardsService {
     postCLBalance: BigNumber;
   }> {
     const res = this.contractLido.filters.ETHDistributed();
-    const logs = await this.provider.getLogs({
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      this.logger,
+      'ETHDistributed',
+    );
 
     this.logger.log('ETHDistributed event logs', { service: 'rewards', logsCount: logs.length });
 
     const lastLog = logs[logs.length - 1];
 
     if (!lastLog) {
-      this.logger.warn('ETHDistributed event is not found for CL balance.');
+      this.logger.warn('ETHDistributed event is not found for CL balance.', { service: 'rewards', fromBlock });
 
       // if balances is not found leave them empty and so diff CL (which is CL rewards) will be 0
       return {
@@ -184,12 +191,17 @@ export class RewardsService {
 
   protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.WithdrawalsReceived();
-    const logs = await this.provider.getLogs({
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      this.logger,
+      'WithdrawalsReceived',
+    );
 
     this.logger.log('WithdrawalsReceived event logs', { service: 'rewards', logsCount: logs.length });
 
@@ -218,16 +230,24 @@ export class RewardsService {
     const last48HoursAgoBlock = await this.get48HoursAgoBlock();
 
     const res = this.contractLido.filters.TokenRebased();
-    const logs = await this.provider.getLogs({
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock: last48HoursAgoBlock,
-      address: res.address,
-    });
+
+    const logs = await getLogsByRetryCount(
+      this.provider,
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock: last48HoursAgoBlock,
+        address: res.address,
+      },
+      this.logger,
+      'TokenRebased',
+    );
 
     this.logger.log('TokenRebase event logs for last 48 hours', { service: 'rewards', logsCount: logs.length });
 
     if (logs.length === 0) {
+      this.logger.warn('TokenRebase events are not found for last 48 hours.', { service: 'rewards' });
+
       return null;
     }
 
