@@ -17,7 +17,7 @@ The service is helpful for stakers, providing insights from the moment of withdr
 
 ### Prerequisites
 
-- Node.js (version 16.0 or higher)
+- Node.js (version 20.0 or higher)
 - Yarn (version 1.22 or higher)
 
 ### Installation
@@ -46,6 +46,7 @@ $ yarn start
 $ yarn start:dev
 
 # production mode
+$ yarn build
 $ yarn start:prod
 ```
 
