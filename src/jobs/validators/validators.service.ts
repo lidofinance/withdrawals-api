@@ -14,6 +14,7 @@ import { unblock } from '../../common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
 import { parseGweiToWei } from '../../common/utils/parse-gwei-to-big-number';
+import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
 
 export class ValidatorsService {
   constructor(
@@ -23,6 +24,7 @@ export class ValidatorsService {
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
+    protected readonly validatorsCacheService: ValidatorsCacheService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
   ) {}
@@ -31,6 +33,7 @@ export class ValidatorsService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    await this.validatorsCacheService.initializeFromCache();
     await this.updateValidators();
 
     const cronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
@@ -71,6 +74,8 @@ export class ValidatorsService {
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+      await this.validatorsCacheService.saveDataToCache();
 
       this.logger.log('End update validators', { service: 'validators', totalValidators, latestEpoch });
     });
