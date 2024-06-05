@@ -5,7 +5,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { parseEther } from '@ethersproject/units';
 
 import { QueueInfoStorageService, ValidatorsStorageService } from 'storage';
-import { WaitingTimeService } from 'waiting-time';
+import { WaitingTimeService, WaitingTimeStatus } from 'waiting-time';
 
 import { RequestTimeDto, RequestTimeOptionsDto } from './dto';
 import { RequestTimeV2Dto } from './dto/request-time-v2.dto';
@@ -23,10 +23,18 @@ export class RequestTimeService {
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    if (!validatorsLastUpdate) return null;
+    if (!validatorsLastUpdate) {
+      return {
+        status: WaitingTimeStatus.initializing,
+      };
+    }
 
     const unfinalizedETH = this.queueInfo.getStETH();
-    if (!unfinalizedETH) return null;
+    if (!unfinalizedETH) {
+      return {
+        status: WaitingTimeStatus.initializing,
+      };
+    }
 
     const additionalStETH = parseEther(params.amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
@@ -47,6 +55,7 @@ export class RequestTimeService {
       validatorsLastUpdate,
       steth: unfinalizedETH.toString(),
       requests: requestsCount.toNumber(),
+      status: WaitingTimeStatus.calculated,
     };
   }
 

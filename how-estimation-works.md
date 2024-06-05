@@ -91,6 +91,9 @@ It's needed to select the Lido-participating validators which are already in pro
 - projectedRewards (`rewardsPerEpoch * epochsTillTheFrame`)
 - frameBalances (`object { [frame]: [sum of balances of validators with withdrawable_epoch for certain frame] }`)
 
+So the final formula for that case looks like this:
+`frame (which has engough validator balances) + sweepingMean`. More about `sweepingMean` [here](#sweeping mean).
+
 ---
 
 ### 3.iii. Case when new validator exits are needed to finalize the withdrawal requests
@@ -98,13 +101,15 @@ It's needed to select the Lido-participating validators which are already in pro
 - The idea is to find the nearest epoch pretending that all needed validators were exited
 - Find epoch by this formula: `unfinalizedStETH / (32ETH * churnLimit + rewardsPerEpoch)`
 - `rewardsPerEpoch` is calculated as described in the provided [prediction model](https://hackmd.io/@lido/r1fau3aJ3?type=view#Predict-available-ETH-before-next-withdrawn)
+- Worth noting that the exited validators become withdrawable only after the withdrawal  [sweep](#sweeping mean) approached them.
 
-- Worth noting that the exited validators become withdrawable only after the withdrawal sweep approached them.
+### Sweeping Mean
 For simplicity, it's suggested to use the average time of the withdrawal sweep (`sweepingMean`) as a constant timeframe extension when estimating the withdrawal waiting time.
 
 More information can be found [here](https://consensys.net/shanghai-capella-upgrade/) in *Full Withdrawal Process* chapter*.*
 
 > it is takes 256 epoch (27.3 hours) at minimum on Mainnet, and the current avg value is 567 epochs (the values depend on the total validators number).
+
 
 ---
 

@@ -7,13 +7,15 @@ import { ConsensusProviderService } from 'common/consensus-provider';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { FAR_FUTURE_EPOCH, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from '../../common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
 import { parseGweiToWei } from '../../common/utils/parse-gwei-to-big-number';
+import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
+import { CronExpression } from '@nestjs/schedule';
 
 export class ValidatorsService {
   constructor(
@@ -23,6 +25,7 @@ export class ValidatorsService {
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
+    protected readonly validatorsCacheService: ValidatorsCacheService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
   ) {}
@@ -31,9 +34,13 @@ export class ValidatorsService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    await this.validatorsCacheService.initializeFromCache();
     await this.updateValidators();
 
-    const cronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
+    const envCronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
+    const chainId = this.configService.get('CHAIN_ID');
+    const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
+    const cronTime = envCronTime ? envCronTime : cronByChainId;
     const job = new CronJob(cronTime, () => this.updateValidators());
     job.start();
 
@@ -71,6 +78,8 @@ export class ValidatorsService {
       this.validatorsStorageService.setTotal(totalValidators);
       this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
       this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+      await this.validatorsCacheService.saveDataToCache();
 
       this.logger.log('End update validators', { service: 'validators', totalValidators, latestEpoch });
     });
