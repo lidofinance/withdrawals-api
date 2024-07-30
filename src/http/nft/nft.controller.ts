@@ -33,7 +33,6 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId/image')
-  // limit: 10, ttl: 30
   @Throttle({ default: { limit: 10, ttl: 30000 } })
   @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
