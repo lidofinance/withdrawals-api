@@ -44,7 +44,7 @@
     "@nestjs/schedule": "^2.2.0",
     "@nestjs/swagger": "^6.1.4",
     "@nestjs/terminus": "^9.1.4",
-    "@nestjs/throttler": "^3.1.0",
+    "@nestjs/throttler": "^6.0.0",
     "@sentry/node": "^7.29.0",
     "@willsoto/nestjs-prometheus": "^5.1.0",
     "cache-manager": "^5.7.4",
