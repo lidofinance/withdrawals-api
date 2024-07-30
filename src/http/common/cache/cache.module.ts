@@ -5,6 +5,7 @@ export const CacheModule = CacheModuleSource.registerAsync({
   imports: [ConfigModule],
   inject: [ConfigService],
   useFactory: async (configService: ConfigService) => ({
-    ttl: configService.get('GLOBAL_CACHE_TTL'),
+    // cache-manager@^5 uses ms
+    ttl: configService.get('GLOBAL_CACHE_TTL') * 1000,
   }),
 });
