@@ -37,7 +37,7 @@ export class RequestTimeController {
 
   @Version('1')
   @Get()
-  @Throttle(30, 30)
+  @Throttle({ default: { limit: 30, ttl: 30000 } })
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
   async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
@@ -46,7 +46,7 @@ export class RequestTimeController {
 
   @Version('2')
   @Get()
-  @Throttle(30, 30)
+  @Throttle({ default: { limit: 30, ttl: 30000 } })
   @CacheTTL(10 * 1000)
   @ApiResponse({ status: HttpStatus.OK, isArray: true, type: RequestTimeByRequestIdDto })
   @ApiResponse({
@@ -60,7 +60,7 @@ export class RequestTimeController {
 
   @Version('2')
   @Get('/calculate')
-  @Throttle(30, 30)
+  @Throttle({ default: { limit: 30, ttl: 30000 } })
   @CacheTTL(10 * 1000)
   @ApiResponse({
     status: HttpStatus.OK,

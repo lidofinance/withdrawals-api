@@ -24,7 +24,7 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId')
-  @Throttle(2000, 30)
+  @Throttle({ default: { limit: 2000, ttl: 30000 } })
   @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   async nftMetaV1(@Param() nftParams: NFTParamsDto, @Query() nftQuery: NFTOptionsDto): Promise<NFTDto> {
@@ -33,7 +33,8 @@ export class NFTController {
 
   @Version('1')
   @Get('/:tokenId/image')
-  @Throttle(10, 30)
+  // limit: 10, ttl: 30
+  @Throttle({ default: { limit: 10, ttl: 30000 } })
   @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: NFTDto })
   @Header('Content-Type', 'image/svg+xml')
