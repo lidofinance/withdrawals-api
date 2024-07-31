@@ -7,6 +7,7 @@ export const ThrottlerModule = ThrottlerModuleSource.forRootAsync({
   useFactory: async (configService: ConfigService) => ({
     throttlers: [
       {
+        // TTL in infra and examples is in seconds, but has been changed to milliseconds
         ttl: configService.get('GLOBAL_THROTTLE_TTL') * 1000,
         limit: configService.get('GLOBAL_THROTTLE_LIMIT'),
       },
