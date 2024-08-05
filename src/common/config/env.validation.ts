@@ -28,19 +28,19 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 5 }))
-  GLOBAL_THROTTLE_TTL: number;
+  GLOBAL_THROTTLE_TTL: number = 5;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 100 }))
-  GLOBAL_THROTTLE_LIMIT: number;
+  GLOBAL_THROTTLE_LIMIT: number = 100;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 1 }))
-  GLOBAL_CACHE_TTL: number;
+  GLOBAL_CACHE_TTL: number = 1;
 
   @IsOptional()
   @IsString()
