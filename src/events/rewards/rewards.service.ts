@@ -25,6 +25,8 @@ import { getLogsByRetryCount } from './rewards.utils';
 
 @Injectable()
 export class RewardsService {
+  static SERVICE_LOG_NAME = 'rewards';
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
@@ -46,16 +48,16 @@ export class RewardsService {
     // how much time is gone from last report (can be more the 1-day in rare critical situation)
     const tokenRebased = this.contractLido.filters.TokenRebased();
     this.provider.on(tokenRebased, async () => {
-      this.logger.log('event TokenRebased triggered', { service: 'rewards' });
+      this.logger.log('event TokenRebased triggered', { service: RewardsService.SERVICE_LOG_NAME });
       try {
         await this.updateRewards();
         this.prometheusService.rewardsEventTriggered.labels({ result: 'success' });
       } catch (e) {
-        this.logger.error(e);
+        this.logger.error(e, { service: RewardsService.SERVICE_LOG_NAME });
         this.prometheusService.rewardsEventTriggered.labels({ result: 'error' });
       }
     });
-    this.logger.log('Service initialized', { service: 'rewards' });
+    this.logger.log('Service initialized', { service: RewardsService.SERVICE_LOG_NAME });
   }
 
   protected async updateRewards(): Promise<void> {
@@ -79,7 +81,7 @@ export class RewardsService {
     if (framesFromLastReport === null) {
       this.logger.warn(
         'last rewards was not updated because last TokenRebase events were not found during last 48 hours.',
-        { service: 'rewards' },
+        { service: RewardsService.SERVICE_LOG_NAME },
       );
       return {
         clRewards: BigNumber.from(0),
@@ -92,7 +94,7 @@ export class RewardsService {
 
     if (frames.eq(0)) {
       this.logger.warn('last rewards set to 0 because frames passed from last event is 0.', {
-        service: 'rewards',
+        service: RewardsService.SERVICE_LOG_NAME,
       });
       return {
         clRewards: BigNumber.from(0),
@@ -109,7 +111,9 @@ export class RewardsService {
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
     const allRewards = clRewards.add(elRewards).div(frames);
-    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, { service: 'rewards' });
+    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
+      service: RewardsService.SERVICE_LOG_NAME,
+    });
 
     return {
       clRewards: clRewards.div(frames),
@@ -160,12 +164,15 @@ export class RewardsService {
       'ETHDistributed',
     );
 
-    this.logger.log('ETHDistributed event logs', { service: 'rewards', logsCount: logs.length });
+    this.logger.log('ETHDistributed event logs', { service: RewardsService.SERVICE_LOG_NAME, logsCount: logs.length });
 
     const lastLog = logs[logs.length - 1];
 
     if (!lastLog) {
-      this.logger.warn('ETHDistributed event is not found for CL balance.', { service: 'rewards', fromBlock });
+      this.logger.warn('ETHDistributed event is not found for CL balance.', {
+        service: RewardsService.SERVICE_LOG_NAME,
+        fromBlock,
+      });
 
       // if balances is not found leave them empty and so diff CL (which is CL rewards) will be 0
       return {
@@ -177,7 +184,7 @@ export class RewardsService {
     const parsedData = parser.parseLog(lastLog);
 
     this.logger.log('last ETHDistributed event', {
-      service: 'rewards',
+      service: RewardsService.SERVICE_LOG_NAME,
       args: parsedData.args,
       preCLBalance: parsedData.args.getValue('preCLBalance'),
       postCLBalance: parsedData.args.getValue('postCLBalance'),
@@ -203,7 +210,10 @@ export class RewardsService {
       'WithdrawalsReceived',
     );
 
-    this.logger.log('WithdrawalsReceived event logs', { service: 'rewards', logsCount: logs.length });
+    this.logger.log('WithdrawalsReceived event logs', {
+      service: RewardsService.SERVICE_LOG_NAME,
+      logsCount: logs.length,
+    });
 
     const lastLog = logs[logs.length - 1];
     if (!lastLog) {
@@ -213,7 +223,7 @@ export class RewardsService {
     const parsedData = parser.parseLog(lastLog);
 
     this.logger.log('last WithdrawalsReceived event', {
-      service: 'rewards',
+      service: RewardsService.SERVICE_LOG_NAME,
       args: parsedData.args,
       amount: parsedData.args.getValue('amount'),
       blockNumber: lastLog.blockNumber,
@@ -243,10 +253,15 @@ export class RewardsService {
       'TokenRebased',
     );
 
-    this.logger.log('TokenRebase event logs for last 48 hours', { service: 'rewards', logsCount: logs.length });
+    this.logger.log('TokenRebase event logs for last 48 hours', {
+      service: RewardsService.SERVICE_LOG_NAME,
+      logsCount: logs.length,
+    });
 
     if (logs.length === 0) {
-      this.logger.warn('TokenRebase events are not found for last 48 hours.', { service: 'rewards' });
+      this.logger.warn('TokenRebase events are not found for last 48 hours.', {
+        service: RewardsService.SERVICE_LOG_NAME,
+      });
 
       return null;
     }
@@ -256,7 +271,7 @@ export class RewardsService {
     const parsedData = parser.parseLog(lastLog);
 
     this.logger.log('last TokenRebase event for last 48 hours', {
-      service: 'rewards',
+      service: RewardsService.SERVICE_LOG_NAME,
       args: parsedData.args,
       timeElapsed: parsedData.args.getValue('timeElapsed'),
       blockNumber: lastLog.blockNumber,

@@ -18,6 +18,8 @@ import { ValidatorsCacheService } from 'storage/validators/validators-cache.serv
 import { CronExpression } from '@nestjs/schedule';
 
 export class ValidatorsService {
+  static SERVICE_LOG_NAME = 'validators';
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
 
@@ -44,45 +46,52 @@ export class ValidatorsService {
     const job = new CronJob(cronTime, () => this.updateValidators());
     job.start();
 
-    this.logger.log('Service initialized', { service: 'validators', cronTime });
+    this.logger.log('Service initialized', { service: ValidatorsService.SERVICE_LOG_NAME, cronTime });
   }
 
   @OneAtTime()
   protected async updateValidators(): Promise<void> {
-    await this.jobService.wrapJob({ name: 'update validators' }, async () => {
-      this.logger.log('Start update validators', { service: 'validators' });
+    await this.jobService.wrapJob(
+      { name: 'update validators', service: ValidatorsService.SERVICE_LOG_NAME },
+      async () => {
+        this.logger.log('Start update validators', { service: ValidatorsService.SERVICE_LOG_NAME });
 
-      const stream = await this.consensusProviderService.getStateValidatorsStream({
-        stateId: 'head',
-      });
-      const data: ResponseValidatorsData = await processValidatorsStream(stream);
-      const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+        const stream = await this.consensusProviderService.getStateValidatorsStream({
+          stateId: 'head',
+        });
+        const data: ResponseValidatorsData = await processValidatorsStream(stream);
+        const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
-      let totalValidators = 0;
-      let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
+        let totalValidators = 0;
+        let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
 
-      for (const item of data) {
-        if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
-          totalValidators++;
-        }
-
-        if (item.validator.exit_epoch !== FAR_FUTURE_EPOCH.toString()) {
-          if (BigNumber.from(item.validator.exit_epoch).gt(BigNumber.from(latestEpoch))) {
-            latestEpoch = item.validator.exit_epoch;
+        for (const item of data) {
+          if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
+            totalValidators++;
           }
+
+          if (item.validator.exit_epoch !== FAR_FUTURE_EPOCH.toString()) {
+            if (BigNumber.from(item.validator.exit_epoch).gt(BigNumber.from(latestEpoch))) {
+              latestEpoch = item.validator.exit_epoch;
+            }
+          }
+
+          await unblock();
         }
+        await this.setLidoValidatorsWithdrawableBalances(data);
+        this.validatorsStorageService.setTotal(totalValidators);
+        this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
+        this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
 
-        await unblock();
-      }
-      await this.setLidoValidatorsWithdrawableBalances(data);
-      this.validatorsStorageService.setTotal(totalValidators);
-      this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
-      this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+        await this.validatorsCacheService.saveDataToCache();
 
-      await this.validatorsCacheService.saveDataToCache();
-
-      this.logger.log('End update validators', { service: 'validators', totalValidators, latestEpoch });
-    });
+        this.logger.log('End update validators', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          totalValidators,
+          latestEpoch,
+        });
+      },
+    );
   }
 
   protected async setLidoValidatorsWithdrawableBalances(validators: Validator[]) {
