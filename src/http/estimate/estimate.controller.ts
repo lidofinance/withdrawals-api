@@ -23,7 +23,7 @@ export class EstimateController {
 
   @Version('1')
   @Get('/')
-  @Throttle(30, 30)
+  @Throttle({ default: { limit: 30, ttl: 30000 } })
   @CacheTTL(3600 * 1000) // 1 hour
   @ApiResponse({ status: HttpStatus.OK, type: EstimateDto })
   async requestTimeV1(@Query() estimateOptions: EstimateOptionsDto): Promise<EstimateDto | null> {
