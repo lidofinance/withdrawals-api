@@ -1,6 +1,7 @@
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Log, Filter } from '@ethersproject/abstract-provider';
 import { LoggerService } from '@lido-nestjs/logger';
+import { RewardsService } from './rewards.service';
 
 const DEFAULT_RETRY_COUNT = 5;
 
@@ -15,7 +16,7 @@ export const getLogsByRetryCount = async (
   let logs = await provider.getLogs(filter);
 
   while (logs.length === 0 && retryCount > 0) {
-    logger.warn(`${eventName}: No logs found. Retrying in 200 ms...`, { service: 'rewards' });
+    logger.warn(`${eventName}: No logs found. Retrying in 200 ms...`, { service: RewardsService.SERVICE_LOG_NAME });
 
     await new Promise((resolve) => setTimeout(resolve, 200));
     logs = await provider.getLogs(filter);

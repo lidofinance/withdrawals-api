@@ -1,5 +1,3 @@
-import { CHAINS } from '@lido-nestjs/constants';
-
 export const LIDO_ETH_DESTRIBUTED_EVENT =
   'event ETHDistributed(uint256 indexed reportTimestamp, uint256 preCLBalance, uint256 postCLBalance, uint256 withdrawalsWithdrawn, uint256 executionLayerRewardsWithdrawn, uint256 postBufferedEther)';
 export const LIDO_EL_REWARDS_RECEIVED_EVENT = 'event ELRewardsReceived(uint256 amount)';
