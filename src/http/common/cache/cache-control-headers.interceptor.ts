@@ -1,5 +1,6 @@
 import { Injectable, ExecutionContext, CallHandler, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { CACHE_TTL_METADATA } from '@nestjs/cache-manager';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -14,12 +15,13 @@ import { CacheControlHeadersData } from './cache.interface';
 
 @Injectable()
 export class CacheControlHeadersInterceptor implements NestInterceptor {
-  constructor(protected readonly reflector: Reflector) {}
+  constructor(protected readonly reflector: Reflector, protected readonly configService: ConfigService) {}
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
     try {
       const ttlValueOrFactory = this.reflector.get(CACHE_TTL_METADATA, context.getHandler()) ?? null;
       const ttlMilliseconds = isFunction(ttlValueOrFactory) ? await ttlValueOrFactory(context) : ttlValueOrFactory;
-      const ttl = isNil(ttlMilliseconds) ? null : Math.floor(ttlMilliseconds / 1000);
+      const defaultTTL = this.configService.get('GLOBAL_CACHE_TTL');
+      const ttl = isNil(ttlMilliseconds) ? defaultTTL : Math.floor(ttlMilliseconds / 1000);
       const {
         maxAge = ttl,
         staleIfError = DEFAULT_STALE_IF_ERROR,

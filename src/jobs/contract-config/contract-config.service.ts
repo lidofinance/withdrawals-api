@@ -15,6 +15,8 @@ import { ContractConfigStorageService } from 'storage';
 
 @Injectable()
 export class ContractConfigService {
+  static SERVICE_LOG_NAME = 'contract config';
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(ORACLE_REPORT_SANITY_CHECKER_TOKEN) protected readonly oracleReportSanityChecker: OracleReportSanityChecker,
@@ -36,33 +38,36 @@ export class ContractConfigService {
     const job = new CronJob(cronTime, () => this.updateContractConfig());
     job.start();
 
-    this.logger.log('Service initialized', { service: 'contract config', cronTime });
+    this.logger.log('Service initialized', { service: ContractConfigService.SERVICE_LOG_NAME, cronTime });
   }
 
   @OneAtTime()
   protected async updateContractConfig(): Promise<void> {
-    await this.jobService.wrapJob({ name: 'contract config' }, async () => {
-      this.logger.log('Start update contract config', { service: 'contract config' });
+    await this.jobService.wrapJob(
+      { name: 'contract config', service: ContractConfigService.SERVICE_LOG_NAME },
+      async () => {
+        this.logger.log('Start update contract config', { service: ContractConfigService.SERVICE_LOG_NAME });
 
-      const [limits, frameConfig, veboFrameConfig] = await Promise.all([
-        this.oracleReportSanityChecker.getOracleReportLimits(),
-        this.accountingOracleHashConsensus.getFrameConfig(),
-        this.veboHashConsensus.getFrameConfig(),
-      ]);
-      this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
-      this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
-      this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
-      this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
-      this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
+        const [limits, frameConfig, veboFrameConfig] = await Promise.all([
+          this.oracleReportSanityChecker.getOracleReportLimits(),
+          this.accountingOracleHashConsensus.getFrameConfig(),
+          this.veboHashConsensus.getFrameConfig(),
+        ]);
+        this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
+        this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
+        this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
+        this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
+        this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
 
-      this.logger.log('End update contract config', {
-        service: 'contract config',
-        requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
-        maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
-        initialEpoch: frameConfig.initialEpoch.toNumber(),
-        epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
-        epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
-      });
-    });
+        this.logger.log('End update contract config', {
+          service: ContractConfigService.SERVICE_LOG_NAME,
+          requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
+          maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
+          initialEpoch: frameConfig.initialEpoch.toNumber(),
+          epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
+          epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
+        });
+      },
+    );
   }
 }
