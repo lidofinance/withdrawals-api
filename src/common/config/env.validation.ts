@@ -96,3 +96,21 @@ export function validate(config: Record<string, unknown>) {
 
   return validatedConfig;
 }
+
+export const ENV_KEYS = [
+  'NODE_ENV',
+  'PORT',
+  'CORS_WHITELIST_REGEXP',
+  'GLOBAL_THROTTLE_TTL',
+  'GLOBAL_THROTTLE_LIMIT',
+  'GLOBAL_CACHE_TTL',
+  'SENTRY_DSN',
+  'LOG_LEVEL',
+  'LOG_FORMAT',
+  'JOB_INTERVAL_VALIDATORS',
+  'JOB_INTERVAL_QUEUE_INFO',
+  'JOB_INTERVAL_CONTRACT_CONFIG',
+  'CL_API_URLS',
+  'EL_RPC_URLS',
+  'CHAIN_ID',
+];
