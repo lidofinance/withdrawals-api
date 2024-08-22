@@ -18,7 +18,7 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 3000 }))
-  PORT: number;
+  PORT: number = undefined;
 
   @IsOptional()
   @IsString()
@@ -49,16 +49,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsEnum(LogLevel)
   @Transform(({ value }) => value || LogLevel.info)
-  LOG_LEVEL: LogLevel;
+  LOG_LEVEL: LogLevel = undefined;
 
   @IsOptional()
   @IsEnum(LogFormat)
   @Transform(({ value }) => value || LogFormat.json)
-  LOG_FORMAT: LogFormat;
+  LOG_FORMAT: LogFormat = undefined;
 
   @IsOptional()
   @IsString()
-  JOB_INTERVAL_VALIDATORS;
+  JOB_INTERVAL_VALIDATORS = undefined;
 
   @IsOptional()
   @IsString()
@@ -71,17 +71,18 @@ export class EnvironmentVariables {
   @IsArray()
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
-  CL_API_URLS!: string[];
+  CL_API_URLS: string[] = undefined;
 
   @IsArray()
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
-  EL_RPC_URLS!: string[];
+  EL_RPC_URLS: string[] = undefined;
 
   @IsNumber()
   @Transform(({ value }) => Number(value))
-  CHAIN_ID!: number;
+  CHAIN_ID: number = undefined;
 }
+export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
 export function validate(config: Record<string, unknown>) {
   const validatedConfig = plainToClass(EnvironmentVariables, config);
@@ -96,21 +97,3 @@ export function validate(config: Record<string, unknown>) {
 
   return validatedConfig;
 }
-
-export const ENV_KEYS = [
-  'NODE_ENV',
-  'PORT',
-  'CORS_WHITELIST_REGEXP',
-  'GLOBAL_THROTTLE_TTL',
-  'GLOBAL_THROTTLE_LIMIT',
-  'GLOBAL_CACHE_TTL',
-  'SENTRY_DSN',
-  'LOG_LEVEL',
-  'LOG_FORMAT',
-  'JOB_INTERVAL_VALIDATORS',
-  'JOB_INTERVAL_QUEUE_INFO',
-  'JOB_INTERVAL_CONTRACT_CONFIG',
-  'CL_API_URLS',
-  'EL_RPC_URLS',
-  'CHAIN_ID',
-];
