@@ -6,7 +6,7 @@ import { Environment, LogLevel, LogFormat } from './interfaces';
 const toNumber =
   ({ defaultValue }) =>
   ({ value }) => {
-    if (value === '' || value == null || value === undefined) return defaultValue;
+    if (value === '' || value == null) return defaultValue;
     return Number(value);
   };
 
