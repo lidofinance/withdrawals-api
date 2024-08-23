@@ -18,7 +18,7 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 3000 }))
-  PORT: number = undefined;
+  PORT: number = 3000;
 
   @IsOptional()
   @IsString()
@@ -49,16 +49,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsEnum(LogLevel)
   @Transform(({ value }) => value || LogLevel.info)
-  LOG_LEVEL: LogLevel = undefined;
+  LOG_LEVEL: LogLevel = null;
 
   @IsOptional()
   @IsEnum(LogFormat)
   @Transform(({ value }) => value || LogFormat.json)
-  LOG_FORMAT: LogFormat = undefined;
+  LOG_FORMAT: LogFormat = null;
 
   @IsOptional()
   @IsString()
-  JOB_INTERVAL_VALIDATORS = undefined;
+  JOB_INTERVAL_VALIDATORS = null;
 
   @IsOptional()
   @IsString()
@@ -71,16 +71,16 @@ export class EnvironmentVariables {
   @IsArray()
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
-  CL_API_URLS: string[] = undefined;
+  CL_API_URLS: string[] = null;
 
   @IsArray()
   @ArrayMinSize(1)
   @Transform(({ value }) => value.split(','))
-  EL_RPC_URLS: string[] = undefined;
+  EL_RPC_URLS: string[] = null;
 
   @IsNumber()
   @Transform(({ value }) => Number(value))
-  CHAIN_ID: number = undefined;
+  CHAIN_ID: number = null;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
