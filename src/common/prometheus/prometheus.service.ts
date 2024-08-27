@@ -30,7 +30,7 @@ export class PrometheusService {
   });
 
   public envsInfo = this.getOrCreateMetric('Gauge', {
-    name: 'envs_info',
+    name: METRICS_PREFIX + 'envs_info',
     help: 'Environment variables information',
     labelNames: ENV_KEYS,
   });
