@@ -12,9 +12,10 @@ import { CacheModule, CacheControlHeadersInterceptor } from './common/cache';
 import { RequestTimeModule } from './request-time';
 import { NFTModule } from './nft';
 import { EstimateModule } from './estimate';
+import { ValidatorsModule } from './validators';
 
 @Module({
-  imports: [RequestTimeModule, NFTModule, EstimateModule, CacheModule, ThrottlerModule],
+  imports: [RequestTimeModule, NFTModule, EstimateModule, ValidatorsModule, CacheModule, ThrottlerModule],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_INTERCEPTOR, useClass: CacheControlHeadersInterceptor },

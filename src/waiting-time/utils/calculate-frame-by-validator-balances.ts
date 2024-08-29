@@ -17,7 +17,7 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
   let lastFrame = BigNumber.from(currentFrame);
 
   const frames = Object.keys(frameBalances);
-  let result = null;
+  let result: BigNumber = null;
 
   for (let i = 0; i < frames.length; i++) {
     const frame = frames[i];
@@ -43,8 +43,9 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
   const sweepingMean = calculateSweepingMean(totalValidators).toNumber();
   const framesOfSweepingMean = Math.ceil(sweepingMean / epochPerFrame);
 
-  const resultFrame = result.add(framesOfSweepingMean).toNumber();
-
-  // If withdrawable_epoch is less than current frame, should return next frame
-  return resultFrame < currentFrame ? currentFrame + 1 : resultFrame;
+  // todo: return back previous version of calculation after rework sweeping mean
+  // If resulted withdrawable_epoch is less than current frame, should return next frame
+  result = result.lt(currentFrame) ? BigNumber.from(currentFrame) : result;
+  const resultWithSweep = result.add(framesOfSweepingMean).toNumber();
+  return resultWithSweep;
 };

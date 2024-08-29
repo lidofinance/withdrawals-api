@@ -4,7 +4,6 @@ import * as path from 'path';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ValidatorsStorageService } from './validators.service';
 import { BigNumber } from '@ethersproject/bignumber';
-import { parseEther } from '@ethersproject/units';
 
 @Injectable()
 export class ValidatorsCacheService {
@@ -97,7 +96,7 @@ export class ValidatorsCacheService {
   protected parseFrameBalances(frameBalancesStr: string) {
     const frameBalances = JSON.parse(frameBalancesStr);
     return Object.keys(frameBalances).reduce((acc, key) => {
-      return { ...acc, [key]: parseEther(frameBalances[key]) };
+      return { ...acc, [key]: BigNumber.from(frameBalances[key]) };
     }, {});
   }
 }
