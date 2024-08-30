@@ -16,6 +16,8 @@ import { ResponseValidatorsData, Validator } from './validators.types';
 import { parseGweiToWei } from '../../common/utils/parse-gwei-to-big-number';
 import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
 import { CronExpression } from '@nestjs/schedule';
+import { PrometheusService } from '../../common/prometheus';
+import { stringifyFrameBalances } from '../../common/validators/strigify-frame-balances';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -23,6 +25,7 @@ export class ValidatorsService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
 
+    protected readonly prometheusService: PrometheusService,
     protected readonly consensusProviderService: ConsensusProviderService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
@@ -78,23 +81,34 @@ export class ValidatorsService {
 
           await unblock();
         }
-        await this.setLidoValidatorsWithdrawableBalances(data);
         this.validatorsStorageService.setTotal(totalValidators);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
 
+        const frameBalances = await this.getLidoValidatorsWithdrawableBalances(data);
+        this.validatorsStorageService.setFrameBalances(frameBalances);
         await this.validatorsCacheService.saveDataToCache();
 
         this.logger.log('End update validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           totalValidators,
           latestEpoch,
+          frameBalances: stringifyFrameBalances(frameBalances),
+        });
+
+        Object.keys(frameBalances).forEach((frame) => {
+          this.prometheusService.validatorsState
+            .labels({
+              frame,
+              balance: frameBalances[frame],
+            })
+            .inc();
         });
       },
     );
   }
 
-  protected async setLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+  protected async getLidoValidatorsWithdrawableBalances(validators: Validator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
 
@@ -111,6 +125,6 @@ export class ValidatorsService {
       await unblock();
     }
 
-    this.validatorsStorageService.setFrameBalances(frameBalances);
+    return frameBalances;
   }
 }

@@ -4,6 +4,7 @@ import * as path from 'path';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ValidatorsStorageService } from './validators.service';
 import { BigNumber } from '@ethersproject/bignumber';
+import { stringifyFrameBalances } from '../../common/validators/strigify-frame-balances';
 
 @Injectable()
 export class ValidatorsCacheService {
@@ -75,7 +76,7 @@ export class ValidatorsCacheService {
       this.validatorsStorage.getTotal(),
       this.validatorsStorage.getMaxExitEpoch(),
       this.validatorsStorage.getLastUpdate(),
-      this.stringifyFrameBalances(this.validatorsStorage.getFrameBalances()),
+      stringifyFrameBalances(this.validatorsStorage.getFrameBalances()),
     ].join(ValidatorsCacheService.CACHE_DATA_DIVIDER);
     await writeFile(cacheFileName, data);
     this.logger.log(`success save to file ${cacheFileName}`, { service: ValidatorsCacheService.SERVICE_LOG_NAME });
@@ -84,14 +85,6 @@ export class ValidatorsCacheService {
   protected getCacheFileName = () => {
     return path.join(ValidatorsCacheService.CACHE_DIR, ValidatorsCacheService.CACHE_FILE_NAME);
   };
-
-  protected stringifyFrameBalances(frameBalances: Record<string, BigNumber>) {
-    return JSON.stringify(
-      Object.keys(frameBalances).reduce((acc, key) => {
-        return { ...acc, [key]: frameBalances[key].toString() };
-      }, {}),
-    );
-  }
 
   protected parseFrameBalances(frameBalancesStr: string) {
     const frameBalances = JSON.parse(frameBalancesStr);
