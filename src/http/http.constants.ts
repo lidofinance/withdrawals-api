@@ -1,7 +1,7 @@
 export const HTTP_PATHS = {
   1: {
     nft: 'nft',
-    validators: 'validators',
+    'validators-info': 'validators-info',
     'request-time': 'request-time',
     'estimate-gas': 'estimate-gas',
   },

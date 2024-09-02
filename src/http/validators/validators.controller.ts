@@ -12,17 +12,17 @@ import { HTTP_PATHS } from 'http/http.constants';
 import { ValidatorsService } from './validators.service';
 import { ValidatorsDto } from './dto';
 
-@Controller(HTTP_PATHS[1].validators)
+@Controller()
 @ApiTags('Validators')
 @UseInterceptors(ClassSerializerInterceptor)
 export class ValidatorsController {
   constructor(protected readonly validatorsService: ValidatorsService) {}
 
   @Version('1')
-  @Get('/')
+  @Get(HTTP_PATHS[1]['validators-info'])
   @CacheTTL(20 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: ValidatorsDto })
   async validatorsV1(): Promise<ValidatorsDto> {
-    return this.validatorsService.getAllValidatorsInfo();
+    return this.validatorsService.getValidatorsInfo();
   }
 }

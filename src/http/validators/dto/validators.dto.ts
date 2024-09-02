@@ -24,4 +24,10 @@ export class ValidatorsDto {
     description: 'total number of validators in network',
   })
   totalValidators: number;
+
+  @ApiProperty({
+    example: 100000,
+    description: 'current frame',
+  })
+  currentFrame: number;
 }

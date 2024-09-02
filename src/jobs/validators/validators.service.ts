@@ -89,11 +89,13 @@ export class ValidatorsService {
         this.validatorsStorageService.setFrameBalances(frameBalances);
         await this.validatorsCacheService.saveDataToCache();
 
+        const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
         this.logger.log('End update validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           totalValidators,
           latestEpoch,
           frameBalances: stringifyFrameBalances(frameBalances),
+          currentFrame,
         });
 
         Object.keys(frameBalances).forEach((frame) => {

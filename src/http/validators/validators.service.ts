@@ -1,19 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'common/config';
 import { ValidatorsStorageService } from '../../storage';
+import { GenesisTimeService } from '../../common/genesis-time';
 
 @Injectable()
 export class ValidatorsService {
   constructor(
     protected readonly configService: ConfigService,
     protected readonly validatorsServiceStorage: ValidatorsStorageService,
+    protected readonly genesisTimeService: GenesisTimeService,
   ) {}
 
-  getAllValidatorsInfo() {
+  getValidatorsInfo() {
     const lastUpdatedAt = this.validatorsServiceStorage.getLastUpdate();
     const maxExitEpoch = Number(this.validatorsServiceStorage.getMaxExitEpoch());
     const frameBalancesBigNumber = this.validatorsServiceStorage.getFrameBalances();
     const totalValidators = this.validatorsServiceStorage.getTotal();
+    const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
     const frameBalances = Object.keys(frameBalancesBigNumber).reduce((acc, item) => {
       acc[item] = frameBalancesBigNumber[item].toString();
@@ -25,6 +28,7 @@ export class ValidatorsService {
       maxExitEpoch,
       frameBalances,
       totalValidators,
+      currentFrame,
     };
   }
 }
