@@ -17,7 +17,7 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
   let lastFrame = BigNumber.from(currentFrame);
 
   const frames = Object.keys(frameBalances);
-  let result = null;
+  let result: BigNumber = null;
 
   for (let i = 0; i < frames.length; i++) {
     const frame = frames[i];

@@ -2,6 +2,7 @@ import { getOrCreateMetric } from '@willsoto/nestjs-prometheus';
 import { Options, Metrics, Metric } from './interfaces';
 import { METRICS_PREFIX } from './prometheus.constants';
 import { RequestSourceType } from '../../http/request-time/headers/request-source-type';
+import { ENV_KEYS } from '../config';
 
 export class PrometheusService {
   protected prefix = METRICS_PREFIX;
@@ -25,7 +26,19 @@ export class PrometheusService {
   public buildInfo = this.getOrCreateMetric('Gauge', {
     name: 'build_info',
     help: 'Build information',
-    labelNames: ['name', 'version', 'env', 'network', 'startSlot'],
+    labelNames: ['name', 'version', 'env', 'network'],
+  });
+
+  public envsInfo = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'envs_info',
+    help: 'Environment variables information',
+    labelNames: ENV_KEYS,
+  });
+
+  public validatorsState = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'validators_state',
+    help: 'balances of Lido validators with withdrawable_epoch by frames',
+    labelNames: ['frame', 'balance'],
   });
 
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {
