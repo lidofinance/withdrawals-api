@@ -35,6 +35,12 @@ export class PrometheusService {
     labelNames: ENV_KEYS,
   });
 
+  public validatorsState = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'validators_state',
+    help: 'balances of Lido validators with withdrawable_epoch by frames',
+    labelNames: ['frame', 'balance'],
+  });
+
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'cl_api_requests_duration_seconds',
     help: 'CL API request duration',
