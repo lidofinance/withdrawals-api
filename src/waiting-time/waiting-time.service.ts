@@ -320,6 +320,7 @@ export class WaitingTimeService {
     const requests = this.queueInfo.getRequests();
     const requestTimestamp = request.timestamp.toNumber() * 1000;
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
+    const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
     let currentType = type;
     let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
@@ -327,6 +328,9 @@ export class WaitingTimeService {
     const isInPast = requestTimestamp + ms - Date.now() < 0;
 
     if (isInPast) {
+      this.logger.warn(
+        `Request with id ${request.id} was calculated with finalisation in past (finalizationIn=${finalizationIn}) and going to be recalculated`,
+      );
       // if calculation wrong points to past then validators is not excited in time
       // we need recalculate
       const recalculatedResult = await this.calculateWithdrawalFrame({
@@ -338,8 +342,15 @@ export class WaitingTimeService {
       });
 
       ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, requestTimestamp);
-      finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
       currentType = recalculatedResult.type;
+    }
+
+    // temporary fallback for negative results, can be deleted after validator balances computation improvements
+    if (ms < 0) {
+      this.logger.warn(
+        `Request with id ${request.id} was recalculated and finalisation still in points to past (recalculated finalizationIn=${ms}). Fallback to next frame`,
+      );
+      finalizationIn = this.genesisTimeService.timeToWithdrawalFrame(currentFrame + 1, requestTimestamp);
     }
 
     return {
