@@ -329,7 +329,7 @@ export class WaitingTimeService {
 
     if (isInPast) {
       this.logger.warn(
-        `Request with id ${request.id} was calculated with finalisation in past (finalizationIn=${finalizationIn}) and going to be recalculated`,
+        `Request with id ${request.id} was calculated with finalisation in past (finalizationIn=${ms}) and going to be recalculated`,
       );
       // if calculation wrong points to past then validators is not excited in time
       // we need recalculate
@@ -348,9 +348,10 @@ export class WaitingTimeService {
     // temporary fallback for negative results, can be deleted after validator balances computation improvements
     if (ms < 0) {
       this.logger.warn(
-        `Request with id ${request.id} was recalculated and finalisation still in points to past (recalculated finalizationIn=${ms}). Fallback to next frame`,
+        `Request with id ${request.id} was recalculated and finalisation still in past (recalculated finalizationIn=${ms}). Fallback to next frame`,
       );
-      finalizationIn = this.genesisTimeService.timeToWithdrawalFrame(currentFrame + 1, requestTimestamp);
+      finalizationIn =
+        this.genesisTimeService.timeToWithdrawalFrame(currentFrame + 1, requestTimestamp) + GAP_AFTER_REPORT;
     }
 
     return {
