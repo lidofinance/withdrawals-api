@@ -1,10 +1,15 @@
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { CHAINS } from '@lido-nestjs/constants';
 import { Injectable } from '@nestjs/common';
+import { ethers } from 'ethers';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ExecutionProviderService {
-  constructor(protected readonly provider: SimpleFallbackJsonRpcBatchProvider) {}
+  constructor(
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly configService: ConfigService,
+  ) {}
 
   /**
    * Returns network name
@@ -21,5 +26,11 @@ export class ExecutionProviderService {
   public async getChainId(): Promise<number> {
     const { chainId } = await this.provider.getNetwork();
     return chainId;
+  }
+
+  public async getLatestWithdrawals(): Promise<Array<{ validatorIndex: string }>> {
+    const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
+    const block = await provider.send('eth_getBlockByNumber', ['latest', false]);
+    return block.withdrawals;
   }
 }
