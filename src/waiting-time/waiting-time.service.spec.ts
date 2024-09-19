@@ -104,7 +104,7 @@ describe('WaitingTimeService', () => {
         {
           provide: ValidatorsStorageService,
           useValue: {
-            getTotal: jest.fn(),
+            getActiveValidatorsCount: jest.fn(),
             getFrameBalances: jest.fn(),
           },
         },
