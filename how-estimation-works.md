@@ -93,7 +93,7 @@ It's needed to select the Lido-participating validators which are already in pro
 
 #### Algorithm of calculation withdrawal frame of validators:
 
-1. The cursor goes from 0 to the last validator index in infinite loop.
+1. Withdrawals sweep cursor goes from 0 to the last validator index in infinite loop.
 2. When the cursor reaches a withdrawable validator, it withdraws ETH from that validator.
 3. The cursor can withdraw from a maximum of 16 validators per slot.
 4. We assume that all validators in network have to something to withdraw (partially or fully)
