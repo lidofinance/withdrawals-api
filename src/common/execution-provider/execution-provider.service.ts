@@ -3,11 +3,13 @@ import { CHAINS } from '@lido-nestjs/constants';
 import { Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { ConfigService } from '@nestjs/config';
+import { PrometheusService } from '../prometheus';
 
 @Injectable()
 export class ExecutionProviderService {
   constructor(
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly prometheusService: PrometheusService,
     protected readonly configService: ConfigService,
   ) {}
 
@@ -28,9 +30,18 @@ export class ExecutionProviderService {
     return chainId;
   }
 
+  // using ethers.JsonRpcProvider direct request to "eth_getBlockByNumber"
+  // default @ethersproject provider getBlock does not contain "withdrawals" property
   public async getLatestWithdrawals(): Promise<Array<{ validatorIndex: string }>> {
-    const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
-    const block = await provider.send('eth_getBlockByNumber', ['latest', false]);
-    return block.withdrawals;
+    const endTimer = this.prometheusService.elRpcRequestDuration.startTimer();
+    try {
+      const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
+      const block = await provider.send('eth_getBlockByNumber', ['latest', false]);
+      endTimer({ result: 'success' });
+      return block.withdrawals;
+    } catch (error) {
+      endTimer({ result: 'error' });
+      throw error;
+    }
   }
 }

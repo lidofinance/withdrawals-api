@@ -11,14 +11,14 @@ import { ValidatorsStorageService } from 'storage';
 import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
-import { unblock } from '../../common/utils/unblock';
+import { unblock } from 'common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
 import { ResponseValidatorsData, Validator } from './validators.types';
-import { parseGweiToWei } from '../../common/utils/parse-gwei-to-big-number';
+import { parseGweiToWei } from 'common/utils/parse-gwei-to-big-number';
 import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
 import { CronExpression } from '@nestjs/schedule';
-import { PrometheusService } from '../../common/prometheus';
-import { stringifyFrameBalances } from '../../common/validators/strigify-frame-balances';
+import { PrometheusService } from 'common/prometheus';
+import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
 
 export class ValidatorsService {
