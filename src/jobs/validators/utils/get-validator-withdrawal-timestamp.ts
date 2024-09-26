@@ -34,7 +34,7 @@ export function getValidatorWithdrawalTimestamp(
   const diff = index.sub(lastWithdrawalValidatorIndex);
   const percentOfActiveValidators = activeValidatorCount / totalValidatorsCount;
   const lengthQueueValidators = diff.lt(0)
-    ? BigNumber.from(activeValidatorCount).sub(lastWithdrawalValidatorIndex).add(index)
+    ? BigNumber.from(totalValidatorsCount).sub(lastWithdrawalValidatorIndex).add(index)
     : diff;
 
   const slots = lengthQueueValidators.div(BigNumber.from(WITHDRAWALS_VALIDATORS_PER_SLOT));
