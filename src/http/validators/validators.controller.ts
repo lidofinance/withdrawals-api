@@ -1,12 +1,5 @@
-import {
-  ClassSerializerInterceptor,
-  Controller,
-  Get,
-  HttpStatus,
-  UseInterceptors,
-  Version,
-  CacheTTL,
-} from '@nestjs/common';
+import { ClassSerializerInterceptor, Controller, Get, HttpStatus, UseInterceptors, Version } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { HTTP_PATHS } from 'http/http.constants';
 import { ValidatorsService } from './validators.service';
