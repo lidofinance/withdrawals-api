@@ -221,14 +221,10 @@ export class WaitingTimeService {
 
     // loop over all known frames with balances of withdrawing validators
     const frameBalances = this.validators.getFrameBalances();
-    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
-    const totalValidators = this.validators.getTotal();
     const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const valueFrameValidatorsBalance = calculateFrameByValidatorBalances({
       unfinilized: unfinalized.sub(fullBuffer),
       frameBalances,
-      epochPerFrame,
-      totalValidators,
       currentFrame,
       rewardsPerFrame,
     });
@@ -263,7 +259,7 @@ export class WaitingTimeService {
     latestEpoch: string,
   ): Promise<number> {
     // latest epoch of most late to exit validators
-    const totalValidators = this.validators.getTotal();
+    const totalValidators = this.validators.getActiveValidatorsCount();
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
@@ -466,7 +462,7 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const latestEpoch = this.validators.getMaxExitEpoch();
-    const totalValidators = this.validators.getTotal();
+    const totalValidators = this.validators.getActiveValidatorsCount();
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 

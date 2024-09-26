@@ -5,11 +5,11 @@ import {
   HttpStatus,
   UseInterceptors,
   Version,
-  CacheTTL,
   Param,
   Query,
   Header,
 } from '@nestjs/common';
+import { CacheTTL } from '@nestjs/cache-manager';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { HTTP_PATHS } from 'http/http.constants';

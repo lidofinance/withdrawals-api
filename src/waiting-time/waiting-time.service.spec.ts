@@ -104,7 +104,7 @@ describe('WaitingTimeService', () => {
         {
           provide: ValidatorsStorageService,
           useValue: {
-            getTotal: jest.fn(),
+            getActiveValidatorsCount: jest.fn(),
             getFrameBalances: jest.fn(),
           },
         },
@@ -142,7 +142,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(genesisTimeService, 'getFrameByTimestamp').mockImplementation(getFrameByTimestampMock);
     jest.spyOn(genesisTimeService, 'timeToWithdrawalFrame').mockImplementation(timeToWithdrawalFrameMock);
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
-    jest.spyOn(validatorsStorage, 'getTotal').mockReturnValue(10000);
+    jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
   });
