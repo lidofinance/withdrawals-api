@@ -1,18 +1,14 @@
 import { BigNumber } from '@ethersproject/bignumber';
 
-import { calculateSweepingMean } from './calculate-sweeping-mean';
-
 type calculateFrameByValidatorBalancesArgs = {
   unfinilized: BigNumber;
   rewardsPerFrame: BigNumber;
   currentFrame: number;
-  totalValidators: number;
   frameBalances: Record<string, BigNumber>;
-  epochPerFrame: number;
 };
 
 export const calculateFrameByValidatorBalances = (args: calculateFrameByValidatorBalancesArgs): number | null => {
-  const { frameBalances, unfinilized, totalValidators, epochPerFrame, rewardsPerFrame, currentFrame } = args;
+  const { frameBalances, unfinilized, rewardsPerFrame, currentFrame } = args;
   let unfinalizedAmount = unfinilized;
   let lastFrame = BigNumber.from(currentFrame);
 
@@ -38,13 +34,5 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
     }
   }
 
-  if (result === null) return null;
-
-  const sweepingMean = calculateSweepingMean(totalValidators).toNumber();
-  const framesOfSweepingMean = Math.ceil(sweepingMean / epochPerFrame);
-
-  const resultFrame = result.add(framesOfSweepingMean).toNumber();
-
-  // If withdrawable_epoch is less than current frame, should return next frame
-  return resultFrame < currentFrame ? currentFrame + 1 : resultFrame;
+  return result === null ? null : result.toNumber();
 };

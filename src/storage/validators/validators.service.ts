@@ -4,7 +4,8 @@ import { BigNumber } from '@ethersproject/bignumber';
 @Injectable()
 export class ValidatorsStorageService {
   protected maxExitEpoch: string;
-  protected total: number;
+  protected activeValidatorsCount: number;
+  protected totalValidatorsCount: number;
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
 
@@ -20,8 +21,8 @@ export class ValidatorsStorageService {
    * Get total validators
    * @returns total validators number
    */
-  public getTotal(): number {
-    return this.total;
+  public getActiveValidatorsCount(): number {
+    return this.activeValidatorsCount;
   }
 
   /**
@@ -42,10 +43,10 @@ export class ValidatorsStorageService {
 
   /**
    * Updates total validators
-   * @param total - total validators number
+   * @param activeValidatorsCount - total validators number
    */
-  public setTotal(total: number): void {
-    this.total = total;
+  public setActiveValidatorsCount(activeValidatorsCount: number): void {
+    this.activeValidatorsCount = activeValidatorsCount;
   }
 
   /**
@@ -70,5 +71,13 @@ export class ValidatorsStorageService {
    */
   public setFrameBalances(frameBalances: Record<string, BigNumber>): void {
     this.frameBalances = frameBalances;
+  }
+
+  public setTotalValidatorsCount(totalValidatorsCount: number) {
+    this.totalValidatorsCount = totalValidatorsCount;
+  }
+
+  public getTotalValidatorsCount() {
+    return this.totalValidatorsCount;
   }
 }

@@ -50,7 +50,7 @@ export class ValidatorsCacheService {
         return;
       }
 
-      this.validatorsStorage.setTotal(Number(data[0]));
+      this.validatorsStorage.setActiveValidatorsCount(Number(data[0]));
       this.validatorsStorage.setMaxExitEpoch(data[1]);
       this.validatorsStorage.setLastUpdate(Number(data[2]));
       this.validatorsStorage.setFrameBalances(this.parseFrameBalances(data[3]));
@@ -73,7 +73,7 @@ export class ValidatorsCacheService {
 
     await mkdir(ValidatorsCacheService.CACHE_DIR, { recursive: true });
     const data = [
-      this.validatorsStorage.getTotal(),
+      this.validatorsStorage.getActiveValidatorsCount(),
       this.validatorsStorage.getMaxExitEpoch(),
       this.validatorsStorage.getLastUpdate(),
       stringifyFrameBalances(this.validatorsStorage.getFrameBalances()),

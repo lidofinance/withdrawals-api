@@ -85,14 +85,21 @@ where `unfinalized` is the amount of the withdrawal request considered summed wi
 
 If there is not enough ether to fulfill the withdrawal request (`unfinalized > totalBuffer`), the previous case might be appended with the known validators are to be withdrawn (when the `withdrawable_epoch` is assigned).
 
-It's needed to select the Lido-participating validators which are already in process of withdrawal and group them by `withdrawable_epoch` to `frameBalances`, allowing to find the oracle report frame containing enough funds from:
+It's needed to select the Lido-participating validators which are already in process of withdrawal and group them by calculated frame of expected withdrawal to `frameBalances`, allowing to find the oracle report frame containing enough funds from:
 
 - buffer (`totalBuffer`)
 - projectedRewards (`rewardsPerEpoch * epochsTillTheFrame`)
-- frameBalances (`object { [frame]: [sum of balances of validators with withdrawable_epoch for certain frame] }`)
+- frameBalances (`object { [frame]: [sum of balances of validators with calculated withdrawal frame] }`)
 
-So the final formula for that case looks like this:
-`frame (which has engough validator balances) + sweepingMean`. More about `sweepingMean` [here](#sweeping mean).
+#### Algorithm of calculation withdrawal frame of validators:
+
+1. Withdrawals sweep cursor goes from 0 to the last validator index in infinite loop.
+2. When the cursor reaches a withdrawable validator, it withdraws ETH from that validator.
+3. The cursor can withdraw from a maximum of 16 validators per slot.
+4. We assume that all validators in network have to something to withdraw (partially or fully)
+5. `percentOfActiveValidators` is used to exclude inactive validators from the queue, ensuring more accurate calculations.
+6. Formula to get number of slots to wait is `(number of validators to withdraw before cursor get index of validator) / 16`
+7. By knowing number slots we can calculate frame of withdrawal 
 
 ---
 
