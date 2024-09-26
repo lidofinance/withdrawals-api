@@ -9,3 +9,5 @@ export const ORACLE_REPORTS_CRON_BY_CHAIN_ID = {
   [CHAINS.Mainnet]: '30 4/8 * * *', // 4 utc, 12 utc, 20 utc
   [CHAINS.Holesky]: CronExpression.EVERY_3_HOURS, // happens very often, not necessary sync in testnet
 };
+
+export const WITHDRAWALS_VALIDATORS_PER_SLOT = 16;

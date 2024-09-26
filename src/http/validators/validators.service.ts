@@ -15,7 +15,7 @@ export class ValidatorsService {
     const lastUpdatedAt = this.validatorsServiceStorage.getLastUpdate();
     const maxExitEpoch = Number(this.validatorsServiceStorage.getMaxExitEpoch());
     const frameBalancesBigNumber = this.validatorsServiceStorage.getFrameBalances();
-    const totalValidators = this.validatorsServiceStorage.getTotal();
+    const totalValidators = this.validatorsServiceStorage.getActiveValidatorsCount();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
     const frameBalances = Object.keys(frameBalancesBigNumber).reduce((acc, item) => {
