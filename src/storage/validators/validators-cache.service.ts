@@ -52,8 +52,8 @@ export class ValidatorsCacheService {
 
       this.validatorsStorage.setActiveValidatorsCount(Number(data[0]));
       this.validatorsStorage.setMaxExitEpoch(data[1]);
-      this.validatorsStorage.setLastUpdate(Number(data[2]));
       this.validatorsStorage.setFrameBalances(this.parseFrameBalances(data[3]));
+      this.validatorsStorage.setLastUpdate(Number(data[2]));
 
       this.logger.log(`success initialize from cache file ${cacheFileName}`, {
         service: ValidatorsCacheService.SERVICE_LOG_NAME,
