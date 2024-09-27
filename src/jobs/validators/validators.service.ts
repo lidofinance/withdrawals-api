@@ -88,7 +88,6 @@ export class ValidatorsService {
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setTotalValidatorsCount(data.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
-        this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
 
         const frameBalances = await this.getLidoValidatorsWithdrawableBalances(data);
         this.validatorsStorageService.setFrameBalances(frameBalances);
@@ -111,6 +110,8 @@ export class ValidatorsService {
             })
             .inc();
         });
+
+        this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       },
     );
   }
