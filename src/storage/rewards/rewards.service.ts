@@ -24,7 +24,7 @@ export class RewardsStorageService {
   }
 
   public getClRewardsPerFrame() {
-    return this.elRewardsPerFrame;
+    return this.clRewardsPerFrame;
   }
 
   public setClRewardsPerFrame(clRewardsPerFrame: BigNumber) {
