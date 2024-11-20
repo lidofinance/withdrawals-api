@@ -23,6 +23,10 @@ export class ValidatorsService {
       return acc;
     }, {} as Record<string, string>);
 
+    if (!lastUpdatedAt) {
+      return null;
+    }
+
     return {
       lastUpdatedAt,
       maxExitEpoch,
