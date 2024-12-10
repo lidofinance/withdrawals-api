@@ -14,6 +14,7 @@ import { RewardsService } from 'events/rewards/rewards.service';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import { WaitingTimeCalculationType } from './waiting-time.types';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 jest.mock('common/config', () => ({}));
 
@@ -24,6 +25,7 @@ describe('WaitingTimeService', () => {
   let contractConfig: ContractConfigStorageService;
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
+  let rpcBatchProvider: SimpleFallbackJsonRpcBatchProvider;
 
   // constants
   const genesisTime = 1606824023;
@@ -109,6 +111,12 @@ describe('WaitingTimeService', () => {
           },
         },
         {
+          provide: SimpleFallbackJsonRpcBatchProvider,
+          useValue: {
+            getBlock: jest.fn(),
+          },
+        },
+        {
           provide: GenesisTimeService,
           useValue: {
             getCurrentEpoch: jest.fn(),
@@ -130,6 +138,7 @@ describe('WaitingTimeService', () => {
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
+    rpcBatchProvider = moduleRef.get<SimpleFallbackJsonRpcBatchProvider>(SimpleFallbackJsonRpcBatchProvider);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
@@ -145,6 +154,8 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
+    // needed for mock only block number
+    jest.spyOn(rpcBatchProvider, 'getBlock').mockResolvedValue({ number: 21367114 } as any);
   });
 
   afterEach(async () => {

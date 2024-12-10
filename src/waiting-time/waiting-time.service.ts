@@ -38,6 +38,7 @@ import {
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
 } from './waiting-time.types';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
 export class WaitingTimeService {
@@ -51,6 +52,7 @@ export class WaitingTimeService {
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly rewardsService: RewardsService,
     protected readonly queueInfo: QueueInfoStorageService,
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -60,12 +62,14 @@ export class WaitingTimeService {
     // nextCalculationAt not needed anymore due to runtime queries to contract
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const validatorsLastUpdate = this.validators.getLastUpdate();
+    const block = await this.provider.getBlock('safe');
+    const blockNumber = block.number;
 
     const [unfinalized, buffer, vaultsBalance] = !cached
       ? await Promise.all([
-          this.contractWithdrawal.unfinalizedStETH(),
-          this.contractLido.getBufferedEther(),
-          this.rewardsService.getVaultsBalance(),
+          this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
+          this.contractLido.getBufferedEther({ blockTag: blockNumber }),
+          this.rewardsService.getVaultsBalance(blockNumber),
         ])
       : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
 
@@ -296,10 +300,13 @@ export class WaitingTimeService {
   }
 
   public async calculateRequestsTime(ids: string[]) {
+    const block = await this.provider.getBlock('safe');
+    const blockNumber = block.number;
+
     const [unfinalized, buffer, vaultsBalance] = await Promise.all([
-      this.contractWithdrawal.unfinalizedStETH(),
-      this.contractLido.getBufferedEther(),
-      this.rewardsService.getVaultsBalance(),
+      this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
+      this.contractLido.getBufferedEther({ blockTag: blockNumber }),
+      this.rewardsService.getVaultsBalance(blockNumber),
     ]);
 
     return Promise.all(
