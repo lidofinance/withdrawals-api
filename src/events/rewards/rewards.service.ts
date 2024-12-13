@@ -14,6 +14,7 @@ import {
   LIDO_ETH_DESTRIBUTED_EVENT,
   LIDO_TOKEN_REBASED_EVENT,
   LIDO_WITHDRAWALS_RECEIVED_EVENT,
+  ONE_WEEK_HOURS,
 } from './rewards.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
@@ -61,7 +62,7 @@ export class RewardsService {
   }
 
   protected async updateRewards(): Promise<void> {
-    const rewardsPerFrame = await this.getLastTotalRewardsPerFrame();
+    const rewardsPerFrame = await this.getMinLastTotalRewardsPerFrame();
 
     if (!rewardsPerFrame) {
       return;
@@ -72,15 +73,11 @@ export class RewardsService {
     this.rewardsStorage.setElRewardsPerFrame(rewardsPerFrame.elRewards);
   }
 
-  public async getLastTotalRewardsPerFrame(): Promise<{
-    clRewards: BigNumber;
-    elRewards: BigNumber;
-    allRewards: BigNumber;
-  } | null> {
-    const framesFromLastReport = await this.getFramesFromLastReport();
-    if (framesFromLastReport === null) {
+  public async getMinLastTotalRewardsPerFrame() {
+    const framesFromLastReports = await this.getFramesFromLastReports();
+    if (framesFromLastReports === null) {
       this.logger.warn(
-        'last rewards was not updated because last TokenRebase events were not found during last 48 hours.',
+        'last reward reports were not found because last TokenRebase events were not found during last week.',
         { service: RewardsService.SERVICE_LOG_NAME },
       );
       return {
@@ -90,19 +87,45 @@ export class RewardsService {
       };
     }
 
-    const { blockNumber, frames } = framesFromLastReport;
+    const rewards = await Promise.all(
+      framesFromLastReports.map(async ({ blockNumber, frames }) => {
+        const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
 
-    if (frames.eq(0)) {
-      this.logger.warn('last rewards set to 0 because frames passed from last event is 0.', {
-        service: RewardsService.SERVICE_LOG_NAME,
-      });
-      return {
-        clRewards: BigNumber.from(0),
-        elRewards: BigNumber.from(0),
-        allRewards: BigNumber.from(0),
-      };
-    }
+        return {
+          clRewards,
+          elRewards,
+        };
+      }),
+    );
 
+    let minCL = rewards[0].clRewards;
+    let minEL = rewards[0].elRewards;
+
+    // find minimum for last week
+    rewards.forEach((r) => {
+      if (minCL.lt(r.clRewards)) {
+        minCL = r.clRewards;
+      }
+
+      if (minEL.lt(r.elRewards)) {
+        minEL = r.elRewards;
+      }
+    });
+
+    const allRewards = minEL.add(minCL);
+
+    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
+      service: RewardsService.SERVICE_LOG_NAME,
+    });
+
+    return {
+      clRewards: minCL,
+      elRewards: minEL,
+      allRewards,
+    };
+  }
+
+  protected async getRewardsByBlockNumber(blockNumber: number, framesPassed: BigNumber) {
     const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
     const elRewards = (await this.getElRewards(blockNumber)) ?? BigNumber.from(0);
     const withdrawalsReceived = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
@@ -110,21 +133,12 @@ export class RewardsService {
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
     const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
 
-    const allRewards = clRewards.add(elRewards).div(frames);
-    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
-      service: RewardsService.SERVICE_LOG_NAME,
-    });
-
-    return {
-      clRewards: clRewards.div(frames),
-      elRewards: elRewards.div(frames),
-      allRewards,
-    };
+    return { clRewards: clRewards.div(framesPassed), elRewards: elRewards.div(framesPassed) };
   }
 
-  protected async get48HoursAgoBlock() {
+  protected async getHoursAgoBlock(hours: number) {
     const currentBlock = await this.provider.getBlockNumber();
-    return currentBlock - Math.ceil((2 * 24 * 60 * 60) / SECONDS_PER_SLOT);
+    return currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
   }
 
   protected async getElRewards(fromBlock: number): Promise<BigNumber> {
@@ -135,7 +149,7 @@ export class RewardsService {
       fromBlock,
       address: res.address,
     });
-    const lastLog = logs[logs.length - 1];
+    const lastLog = logs[0];
 
     if (!lastLog) {
       return BigNumber.from(0);
@@ -166,7 +180,7 @@ export class RewardsService {
 
     this.logger.log('ETHDistributed event logs', { service: RewardsService.SERVICE_LOG_NAME, logsCount: logs.length });
 
-    const lastLog = logs[logs.length - 1];
+    const lastLog = logs[0];
 
     if (!lastLog) {
       this.logger.warn('ETHDistributed event is not found for CL balance.', {
@@ -215,7 +229,7 @@ export class RewardsService {
       logsCount: logs.length,
     });
 
-    const lastLog = logs[logs.length - 1];
+    const lastLog = logs[0];
     if (!lastLog) {
       return BigNumber.from(0);
     }
@@ -233,11 +247,8 @@ export class RewardsService {
   }
 
   // reports can be skipped, so we need timeElapsed (time from last report)
-  protected async getFramesFromLastReport(): Promise<{
-    blockNumber: number;
-    frames: BigNumber;
-  } | null> {
-    const last48HoursAgoBlock = await this.get48HoursAgoBlock();
+  protected async getFramesFromLastReports() {
+    const weekAgoBlock = await this.getHoursAgoBlock(ONE_WEEK_HOURS);
 
     const res = this.contractLido.filters.TokenRebased();
 
@@ -246,51 +257,55 @@ export class RewardsService {
       {
         topics: res.topics,
         toBlock: 'latest',
-        fromBlock: last48HoursAgoBlock,
+        fromBlock: weekAgoBlock,
         address: res.address,
       },
       this.logger,
       'TokenRebased',
     );
 
-    this.logger.log('TokenRebase event logs for last 48 hours', {
+    this.logger.log('TokenRebase event logs for last week', {
       service: RewardsService.SERVICE_LOG_NAME,
       logsCount: logs.length,
     });
 
     if (logs.length === 0) {
-      this.logger.warn('TokenRebase events are not found for last 48 hours.', {
+      this.logger.warn('TokenRebase events are not found for last week.', {
         service: RewardsService.SERVICE_LOG_NAME,
       });
 
       return null;
     }
 
-    const lastLog = logs[logs.length - 1];
-    const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
-    const parsedData = parser.parseLog(lastLog);
+    const rewardsBlocks = logs.map((log) => {
+      const parser = new Interface([LIDO_TOKEN_REBASED_EVENT]);
+      const parsedData = parser.parseLog(log);
 
-    this.logger.log('last TokenRebase event for last 48 hours', {
-      service: RewardsService.SERVICE_LOG_NAME,
-      args: parsedData.args,
-      timeElapsed: parsedData.args.getValue('timeElapsed'),
-      blockNumber: lastLog.blockNumber,
+      return {
+        blockNumber: log.blockNumber,
+        frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(
+          SECONDS_PER_SLOT * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
+        ),
+      };
     });
 
-    return {
-      blockNumber: lastLog.blockNumber,
-      frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(
-        SECONDS_PER_SLOT * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
-      ),
-    };
+    this.logger.log('last TokenRebase events for last week', {
+      service: RewardsService.SERVICE_LOG_NAME,
+      rewardsBlocks,
+    });
+
+    return rewardsBlocks;
   }
 
   // it includes WithdrawalVault balance and diff between rewards and cached rewards from previous report
-  async getVaultsBalance() {
+  async getVaultsBalance(blockNumber: number) {
     const chainId = this.configService.get('CHAIN_ID');
-    const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault();
-    const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress);
-    const rewardsVaultBalance = await this.provider.getBalance(EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId]);
+    const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault({ blockTag: blockNumber });
+    const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress, blockNumber);
+    const rewardsVaultBalance = await this.provider.getBalance(
+      EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId],
+      blockNumber,
+    );
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
 
