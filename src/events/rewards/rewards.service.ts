@@ -14,6 +14,7 @@ import {
   LIDO_ETH_DESTRIBUTED_EVENT,
   LIDO_TOKEN_REBASED_EVENT,
   LIDO_WITHDRAWALS_RECEIVED_EVENT,
+  ONE_WEEK_HOURS,
 } from './rewards.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
@@ -91,8 +92,8 @@ export class RewardsService {
         const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
 
         return {
-          clRewards: clRewards,
-          elRewards: elRewards,
+          clRewards,
+          elRewards,
         };
       }),
     );
@@ -100,6 +101,7 @@ export class RewardsService {
     let minCL = rewards[0].clRewards;
     let minEL = rewards[0].elRewards;
 
+    // find minimum for last week
     rewards.forEach((r) => {
       if (minCL.lt(r.clRewards)) {
         minCL = r.clRewards;
@@ -110,7 +112,7 @@ export class RewardsService {
       }
     });
 
-    const allRewards = minEL.add(minEL);
+    const allRewards = minEL.add(minCL);
 
     this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
       service: RewardsService.SERVICE_LOG_NAME,
@@ -246,7 +248,7 @@ export class RewardsService {
 
   // reports can be skipped, so we need timeElapsed (time from last report)
   protected async getFramesFromLastReports() {
-    const weekAgoBlock = await this.getHoursAgoBlock(24 * 7);
+    const weekAgoBlock = await this.getHoursAgoBlock(ONE_WEEK_HOURS);
 
     const res = this.contractLido.filters.TokenRebased();
 
