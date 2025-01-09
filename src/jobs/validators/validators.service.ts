@@ -1,4 +1,4 @@
-import { CronJob } from 'cron';
+import { CronJob, CronTime } from 'cron';
 import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -43,14 +43,21 @@ export class ValidatorsService {
    */
   public async initialize(): Promise<void> {
     await this.validatorsCacheService.initializeFromCache();
-    await this.updateValidators();
 
     const envCronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
     const chainId = this.configService.get('CHAIN_ID');
     const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
     const cronTime = envCronTime ? envCronTime : cronByChainId;
-    const job = new CronJob(cronTime, () => this.updateValidators());
-    job.start();
+
+    await this.updateValidators();
+    const mainJob = new CronJob(cronTime, () => this.updateValidators());
+    mainJob.start();
+
+    await this.updateLidoWithdrawableValidators();
+    const lidoWithdrawableJob = new CronJob(CronExpression.EVERY_5_MINUTES, () =>
+      this.updateLidoWithdrawableValidators(),
+    );
+    lidoWithdrawableJob.start();
 
     this.logger.log('Service initialized', { service: ValidatorsService.SERVICE_LOG_NAME, cronTime });
   }
@@ -88,40 +95,21 @@ export class ValidatorsService {
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setTotalValidatorsCount(data.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
-
-        const frameBalances = await this.getLidoValidatorsWithdrawableBalances(data);
-        this.validatorsStorageService.setFrameBalances(frameBalances);
+        await this.findAndSetLidoValidatorsWithdrawableBalances(data);
         await this.validatorsCacheService.saveDataToCache();
-
-        const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
-        this.logger.log('End update validators', {
-          service: ValidatorsService.SERVICE_LOG_NAME,
-          activeValidatorCount,
-          latestEpoch,
-          frameBalances: stringifyFrameBalances(frameBalances),
-          currentFrame,
-        });
-
-        Object.keys(frameBalances).forEach((frame) => {
-          this.prometheusService.validatorsState
-            .labels({
-              frame,
-              balance: frameBalances[frame],
-            })
-            .inc();
-        });
-
+        this.logAnalyticsAboutWithdrawableBalances(activeValidatorCount, latestEpoch);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       },
     );
   }
 
-  protected async getLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: Validator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
     const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
     const frameBalances = {};
 
+    const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
       if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
         const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
@@ -134,16 +122,75 @@ export class ValidatorsService {
         const prevBalance = frameBalances[frame];
         const balance = parseGweiToWei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+        withdrawableLidoValidatorIds.push(item.index);
       }
 
       await unblock();
     }
 
-    return frameBalances;
+    this.validatorsStorageService.setFrameBalances(frameBalances);
+    this.validatorsStorageService.setWithdrawableLidoValidatorIds(withdrawableLidoValidatorIds);
+  }
+
+  // updates withdrawable lido validators based on previously identified IDs
+  @OneAtTime()
+  protected async updateLidoWithdrawableValidators() {
+    await this.jobService.wrapJob(
+      { name: 'update lido withdrawable validators', service: ValidatorsService.SERVICE_LOG_NAME },
+      async () => {
+        this.logger.log('Start update lido withdrawable validators', { service: ValidatorsService.SERVICE_LOG_NAME });
+
+        const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
+        const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
+        const frameBalances = {};
+
+        for (const validatorId of validatorIds) {
+          const stateValidator = await this.consensusProviderService.getStateValidator({
+            stateId: 'head',
+            validatorId,
+          });
+
+          const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
+            BigNumber.from(stateValidator.data.index),
+            lastWithdrawalValidatorIndex,
+            this.validatorsStorageService.getActiveValidatorsCount(),
+            this.validatorsStorageService.getTotalValidatorsCount(),
+          );
+          const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+          const prevBalance = frameBalances[frame];
+          const balance = parseGweiToWei(stateValidator.data.balance);
+          frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+        }
+
+        this.validatorsStorageService.setFrameBalances(frameBalances);
+        this.logger.log('End update lido withdrawable validators', { service: ValidatorsService.SERVICE_LOG_NAME });
+      },
+    );
   }
 
   protected async getLastWithdrawalValidatorIndex() {
     const withdrawals = await this.executionProviderService.getLatestWithdrawals();
     return BigNumber.from(withdrawals[withdrawals.length - 1].validatorIndex);
+  }
+
+  protected logAnalyticsAboutWithdrawableBalances(activeValidatorCount: number, latestEpoch: string) {
+    const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
+    const frameBalances = this.validatorsStorageService.getFrameBalances();
+    this.logger.log('End update validators', {
+      service: ValidatorsService.SERVICE_LOG_NAME,
+      activeValidatorCount,
+      latestEpoch,
+      frameBalances: stringifyFrameBalances(frameBalances),
+      currentFrame,
+    });
+
+    Object.keys(frameBalances).forEach((frame) => {
+      this.prometheusService.validatorsState
+        .labels({
+          frame,
+          balance: frameBalances[frame].toString(),
+        })
+        .inc();
+    });
   }
 }
