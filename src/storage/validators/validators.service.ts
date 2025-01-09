@@ -8,7 +8,7 @@ export class ValidatorsStorageService {
   protected totalValidatorsCount: number;
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
-  protected withdrawableLidoValidators: string[];
+  protected withdrawableLidoValidatorIds: string[];
 
   /**
    * Get max exit epoch for all validators
@@ -83,10 +83,10 @@ export class ValidatorsStorageService {
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {
-    this.withdrawableLidoValidators = withdrawableLidoValidators;
+    this.withdrawableLidoValidatorIds = withdrawableLidoValidators;
   }
 
   public getWithdrawableLidoValidatorIds() {
-    return this.withdrawableLidoValidators;
+    return this.withdrawableLidoValidatorIds;
   }
 }
