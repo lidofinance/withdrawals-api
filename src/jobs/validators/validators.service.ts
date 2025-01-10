@@ -163,7 +163,10 @@ export class ValidatorsService {
         }
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
-        this.logger.log('End update lido withdrawable validators', { service: ValidatorsService.SERVICE_LOG_NAME });
+        this.logger.log('End update lido withdrawable validators', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          frameBalances: stringifyFrameBalances(frameBalances),
+        });
       },
     );
   }
