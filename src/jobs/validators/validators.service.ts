@@ -66,7 +66,6 @@ export class ValidatorsService {
           stateId: 'head',
         });
         const data: ResponseValidatorsData = await processValidatorsStream(stream);
-        console.log('data', data);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         let activeValidatorCount = 0;

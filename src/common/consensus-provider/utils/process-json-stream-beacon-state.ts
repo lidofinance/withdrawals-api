@@ -18,7 +18,6 @@ export async function processJsonStreamBeaconState(readableStream) {
     const result = {} as BeaconState;
 
     pipeline.on('data', ({ key, value }) => {
-      console.log('key', key);
       if (keys.includes(key)) {
         result[key] = value; // Store key-value pairs in an object
       }
