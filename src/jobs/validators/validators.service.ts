@@ -13,13 +13,13 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
-import { ResponseValidatorsData, Validator } from './validators.types';
-import { parseGweiToWei } from 'common/utils/parse-gwei-to-big-number';
+import { parseGwei } from 'common/utils/parse-gwei';
 import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
 import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
+import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -66,6 +66,7 @@ export class ValidatorsService {
           stateId: 'head',
         });
         const data: ResponseValidatorsData = await processValidatorsStream(stream);
+        console.log('data', data);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         let activeValidatorCount = 0;
@@ -116,7 +117,7 @@ export class ValidatorsService {
     );
   }
 
-  protected async getLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+  protected async getLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
     const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
@@ -132,7 +133,7 @@ export class ValidatorsService {
         );
         const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
         const prevBalance = frameBalances[frame];
-        const balance = parseGweiToWei(item.balance);
+        const balance = parseGwei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
       }
 

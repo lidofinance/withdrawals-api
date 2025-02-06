@@ -9,6 +9,7 @@ import {
 } from 'storage';
 import { GenesisTimeModule } from 'common/genesis-time';
 import { RewardsModule } from 'events/rewards';
+import { SweepModule } from '../common/sweep';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RewardsModule } from 'events/rewards';
     QueueInfoStorageModule,
     ContractConfigStorageModule,
     GenesisTimeModule,
+    SweepModule,
     RewardsStorageModule,
     RewardsModule,
   ],

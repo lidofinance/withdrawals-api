@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
+import { IndexedValidator } from 'common/consensus-provider/consensus-provider.types';
 import { ConfigService } from 'common/config';
 import { LidoKey, LidoKeysData } from './lido-keys.types';
 import { KEYS_API_ADDRESS } from './lido-keys.constants';
-import { Validator } from '../validators.types';
 
 export class LidoKeysService {
   constructor(
@@ -19,7 +19,7 @@ export class LidoKeysService {
     return lidoKeys;
   }
 
-  public async getLidoValidatorsByKeys(keys: LidoKey[], validators: Validator[]) {
+  public async getLidoValidatorsByKeys(keys: LidoKey[], validators: IndexedValidator[]) {
     const keysDict = keys.reduce((acc, lidoKey) => {
       acc[lidoKey.key] = true;
       return acc;

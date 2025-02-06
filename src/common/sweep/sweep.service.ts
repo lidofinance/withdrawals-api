@@ -1,0 +1,147 @@
+import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
+import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { GenesisTimeService, SLOTS_PER_EPOCH } from '../genesis-time';
+import {
+  getMaxEffectiveBalance,
+  isFullyWithdrawableValidator,
+  isPartiallyWithdrawableValidator,
+} from '../../jobs/validators/utils/validator-state-utils';
+import { FAR_FUTURE_EPOCH } from '../../jobs/validators';
+import {
+  MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+  MAX_WITHDRAWALS_PER_PAYLOAD,
+  MIN_ACTIVATION_BALANCE,
+} from './sweep.constants';
+import { ConsensusClientService } from '../consensus-provider/consensus-client.service';
+import { parseGwei } from '../utils/parse-gwei';
+import { bigNumberMin } from '../utils/big-number-min';
+import { Withdrawal } from './sweep.types';
+import { BeaconState, IndexedValidator, Validator } from '../consensus-provider/consensus-provider.types';
+
+@Injectable()
+export class SweepService implements OnModuleInit {
+  constructor(
+    @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+    protected readonly consensusClientService: ConsensusClientService,
+    protected readonly genesisService: GenesisTimeService,
+  ) {}
+
+  public async onModuleInit(): Promise<void> {
+    const epoch = this.genesisService.getCurrentEpoch();
+    await this.getSweepDelayInEpochs([], epoch);
+  }
+
+  getConsensusVersion() {
+    // todo add call contract this.vebOracle.getConsensusVersion()
+    return 1;
+  }
+
+  public async getSweepDelayInEpochs(indexedValidators: IndexedValidator[], currentEpoch: number) {
+    const isElectraActivate = await this.consensusClientService.isElectraActivated(currentEpoch);
+    if (this.getConsensusVersion() < 3 || !isElectraActivate) {
+      return this.getSweepDelayInEpochsPreElectra(indexedValidators, currentEpoch);
+    }
+
+    const state = await this.consensusClientService.getStateStream('head');
+    return this.getSweepDelayInEpochsPostElectra(state, indexedValidators);
+  }
+
+  private getSweepDelayInEpochsPreElectra(indexedValidators: IndexedValidator[], epoch: number): number {
+    const totalWithdrawableValidators = this.getWithdrawableValidators(indexedValidators, epoch).length;
+
+    const fullSweepInEpochs = totalWithdrawableValidators / MAX_WITHDRAWALS_PER_PAYLOAD / SLOTS_PER_EPOCH;
+    return Math.floor(fullSweepInEpochs * 0.5);
+  }
+
+  // pre pectra
+  private getWithdrawableValidators(indexedValidators: IndexedValidator[], epoch: number) {
+    return indexedValidators.filter(
+      (v) =>
+        isPartiallyWithdrawableValidator(v.validator, parseGwei(v.balance)) ||
+        isFullyWithdrawableValidator(v.validator, parseGwei(v.balance), epoch),
+    );
+  }
+
+  private getSweepDelayInEpochsPostElectra(state: BeaconState, indexedValidators: IndexedValidator[]): number {
+    const withdrawalsNumberInSweepCycle = this.predictWithdrawalsNumberInSweepCycle(state, indexedValidators);
+    const fullSweepCycleInEpochs = Math.ceil(
+      withdrawalsNumberInSweepCycle / MAX_WITHDRAWALS_PER_PAYLOAD / SLOTS_PER_EPOCH,
+    );
+    return Math.floor(fullSweepCycleInEpochs / 2);
+  }
+
+  private predictWithdrawalsNumberInSweepCycle(state: BeaconState, indexedValidators: IndexedValidator[]): number {
+    const pendingPartialWithdrawals = this.getPendingPartialWithdrawals(state);
+    const validatorsWithdrawals = this.getValidatorsWithdrawals(state, pendingPartialWithdrawals, indexedValidators);
+
+    const pendingPartialWithdrawalsNumber = pendingPartialWithdrawals.length;
+    const validatorsWithdrawalsNumber = validatorsWithdrawals.length;
+
+    const partialWithdrawalsMaxRatio =
+      MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP /
+      (MAX_WITHDRAWALS_PER_PAYLOAD - MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP);
+
+    const pendingPartialWithdrawalsMaxNumberInCycle = Math.ceil(
+      validatorsWithdrawalsNumber * partialWithdrawalsMaxRatio,
+    );
+
+    const pendingPartialWithdrawalsNumberInCycle = Math.min(
+      pendingPartialWithdrawalsNumber,
+      pendingPartialWithdrawalsMaxNumberInCycle,
+    );
+
+    return validatorsWithdrawalsNumber + pendingPartialWithdrawalsNumberInCycle;
+  }
+
+  private getPendingPartialWithdrawals(state: BeaconState): Withdrawal[] {
+    const withdrawals: Withdrawal[] = [];
+
+    for (const pendingPartialWithdrawal of state.pending_partial_withdrawals) {
+      const index = pendingPartialWithdrawal.validator_index;
+      const validator: Validator = state.validators[index];
+      const hasSufficientEffectiveBalance = parseGwei(validator.effective_balance).gte(MIN_ACTIVATION_BALANCE);
+      const hasExcessBalance = parseGwei(state.balances[index]).gt(MIN_ACTIVATION_BALANCE);
+
+      if (validator.exit_epoch === FAR_FUTURE_EPOCH.toString() && hasSufficientEffectiveBalance && hasExcessBalance) {
+        const withdrawableBalance = bigNumberMin(
+          parseGwei(state.balances[index]).sub(MIN_ACTIVATION_BALANCE),
+          parseGwei(pendingPartialWithdrawal.amount),
+        );
+        withdrawals.push({ validatorIndex: index, amount: withdrawableBalance });
+      }
+    }
+    return withdrawals;
+  }
+
+  // post pectra
+  getValidatorsWithdrawals(
+    state: BeaconState,
+    partialWithdrawals: Withdrawal[],
+    indexedValidators: IndexedValidator[],
+  ): Withdrawal[] {
+    const epoch = Math.ceil(+state.slot / SLOTS_PER_EPOCH);
+    const withdrawals: Withdrawal[] = [];
+    const partiallyWithdrawnMap: Record<number, number> = {};
+
+    for (const withdrawal of partialWithdrawals) {
+      partiallyWithdrawnMap[withdrawal.validatorIndex] =
+        (partiallyWithdrawnMap[withdrawal.validatorIndex] || 0) + withdrawal.amount;
+    }
+
+    for (const indexedValidator of indexedValidators) {
+      const validatorIndex = indexedValidator.index;
+      const validator = indexedValidator.validator;
+      const partiallyWithdrawnBalance = partiallyWithdrawnMap[validatorIndex] || 0;
+      const balance = parseGwei(state.balances[validatorIndex]).sub(partiallyWithdrawnBalance);
+
+      if (isFullyWithdrawableValidator(validator, balance, epoch)) {
+        withdrawals.push({ validatorIndex, amount: balance });
+      } else if (isPartiallyWithdrawableValidator(validator, balance)) {
+        const maxEffectiveBalance = getMaxEffectiveBalance(validator);
+        withdrawals.push({ validatorIndex, amount: balance.sub(maxEffectiveBalance) });
+      }
+    }
+
+    return withdrawals;
+  }
+}
