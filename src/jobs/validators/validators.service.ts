@@ -20,6 +20,7 @@ import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
+import { SweepService } from '../../common/sweep';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -36,6 +37,7 @@ export class ValidatorsService {
     protected readonly validatorsCacheService: ValidatorsCacheService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
+    protected readonly sweepService: SweepService,
   ) {}
 
   /**
@@ -65,13 +67,16 @@ export class ValidatorsService {
         const stream = await this.consensusProviderService.getStateValidatorsStream({
           stateId: 'head',
         });
-        const data: ResponseValidatorsData = await processValidatorsStream(stream);
+        const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         let activeValidatorCount = 0;
         let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
 
-        for (const item of data) {
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
+        this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
+
+        for (const item of indexedValidators) {
           if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
             activeValidatorCount++;
           }
@@ -86,10 +91,10 @@ export class ValidatorsService {
         }
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
-        this.validatorsStorageService.setTotalValidatorsCount(data.length);
+        this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
 
-        const frameBalances = await this.getLidoValidatorsWithdrawableBalances(data);
+        const frameBalances = await this.getLidoValidatorsWithdrawableBalances(indexedValidators);
         this.validatorsStorageService.setFrameBalances(frameBalances);
         await this.validatorsCacheService.saveDataToCache();
 
