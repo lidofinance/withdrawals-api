@@ -1,4 +1,4 @@
-import { CronJob, CronTime } from 'cron';
+import { CronJob } from 'cron';
 import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -163,7 +163,7 @@ export class ValidatorsService {
           );
           const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
           const prevBalance = frameBalances[frame];
-          const balance = parseGweiToWei(stateValidator.data.balance);
+          const balance = parseGwei(stateValidator.data.balance);
           frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
         }
 
