@@ -52,7 +52,6 @@ export class SweepService implements OnModuleInit {
     const isElectraActivate = await this.consensusClientService.isElectraActivated(currentEpoch);
     const consensusVersion = await this.getConsensusVersion();
 
-    console.log('consensusVersion', consensusVersion);
     if (consensusVersion < 3 || !isElectraActivate) {
       return this.getSweepDelayInEpochsPreElectra(indexedValidators, currentEpoch);
     }

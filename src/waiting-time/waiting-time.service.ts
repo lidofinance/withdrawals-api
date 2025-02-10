@@ -291,9 +291,6 @@ export class WaitingTimeService {
 
     // time to find validators for exiting
     const sweepingMean = this.validators.getSweepMeanEpochs();
-    const sweepingMean2 = calculateSweepingMean(totalValidators);
-
-    console.log(sweepingMean, sweepingMean2.toString());
 
     // latestEpoch - epoch of last exiting validator in whole network
     // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
