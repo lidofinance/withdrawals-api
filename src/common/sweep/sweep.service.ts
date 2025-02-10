@@ -16,13 +16,21 @@ import { parseGwei } from '../utils/parse-gwei';
 import { bigNumberMin } from '../utils/big-number-min';
 import { Withdrawal } from './sweep.types';
 import { BeaconState, IndexedValidator, Validator } from '../consensus-provider/consensus-provider.types';
+import { ethers, Interface } from 'ethers';
+import { OracleV2__factory } from '../contracts/generated';
+import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from '../contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
+import { ConfigService } from '../config';
+import { ExecutionProviderService } from '../execution-provider';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
 export class SweepService implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusClientService: ConsensusClientService,
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly genesisService: GenesisTimeService,
+    protected readonly configService: ConfigService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -30,14 +38,22 @@ export class SweepService implements OnModuleInit {
     await this.getSweepDelayInEpochs([], epoch);
   }
 
-  getConsensusVersion() {
-    // todo add call contract this.vebOracle.getConsensusVersion()
-    return 1;
+  async getConsensusVersion() {
+    const chainId = this.configService.get('CHAIN_ID');
+    const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
+    const address: string = VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES[chainId];
+    const validatorExitBusOracle = OracleV2__factory.connect(address, {
+      provider,
+    });
+    return await validatorExitBusOracle.getConsensusVersion();
   }
 
   public async getSweepDelayInEpochs(indexedValidators: IndexedValidator[], currentEpoch: number) {
     const isElectraActivate = await this.consensusClientService.isElectraActivated(currentEpoch);
-    if (this.getConsensusVersion() < 3 || !isElectraActivate) {
+    const consensusVersion = await this.getConsensusVersion();
+
+    console.log('consensusVersion', consensusVersion);
+    if (consensusVersion < 3 || !isElectraActivate) {
       return this.getSweepDelayInEpochsPreElectra(indexedValidators, currentEpoch);
     }
 

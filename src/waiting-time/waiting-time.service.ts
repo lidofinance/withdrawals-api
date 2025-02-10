@@ -290,7 +290,10 @@ export class WaitingTimeService {
     const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
 
     // time to find validators for exiting
-    const sweepingMean = calculateSweepingMean(totalValidators);
+    const sweepingMean = this.validators.getSweepMeanEpochs();
+    const sweepingMean2 = calculateSweepingMean(totalValidators);
+
+    console.log(sweepingMean, sweepingMean2.toString());
 
     // latestEpoch - epoch of last exiting validator in whole network
     // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
@@ -474,7 +477,7 @@ export class WaitingTimeService {
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 
     const lidoQueueInEpoch = unfinalizedETH.div(MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)));
-    const sweepingMean = calculateSweepingMean(totalValidators);
+    const sweepingMean = this.validators.getSweepMeanEpochs();
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
     const waitingTime = potentialExitEpoch
