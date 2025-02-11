@@ -23,7 +23,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "typechain": "typechain --target=ethers-v6 --out-dir ./src/common/contracts/generated ./src/common/contracts/abi/*.json"
+    "typechain": "typechain --target=ethers-v6 --out-dir ./src/common/contracts/generated ./src/common/contracts/abi/*.json",
+    "postinstall": "yarn typechain"
   },
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",

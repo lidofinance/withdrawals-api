@@ -30,7 +30,7 @@ export class ValidatorsCacheService {
       await file.close();
       const data: string[] = fileReadResult.split(ValidatorsCacheService.CACHE_DATA_DIVIDER);
 
-      if (data.length !== 4) {
+      if (data.length !== 5) {
         this.logger.log(`invalid cache data length`, {
           service: ValidatorsCacheService.SERVICE_LOG_NAME,
           data,
@@ -52,8 +52,9 @@ export class ValidatorsCacheService {
 
       this.validatorsStorage.setActiveValidatorsCount(Number(data[0]));
       this.validatorsStorage.setMaxExitEpoch(data[1]);
-      this.validatorsStorage.setFrameBalances(this.parseFrameBalances(data[3]));
       this.validatorsStorage.setLastUpdate(Number(data[2]));
+      this.validatorsStorage.setFrameBalances(this.parseFrameBalances(data[3]));
+      this.validatorsStorage.setSweepMeanEpochs(Number(data[4]));
 
       this.logger.log(`success initialize from cache file ${cacheFileName}`, {
         service: ValidatorsCacheService.SERVICE_LOG_NAME,
@@ -77,6 +78,7 @@ export class ValidatorsCacheService {
       this.validatorsStorage.getMaxExitEpoch(),
       this.validatorsStorage.getLastUpdate(),
       stringifyFrameBalances(this.validatorsStorage.getFrameBalances()),
+      this.validatorsStorage.getSweepMeanEpochs(),
     ].join(ValidatorsCacheService.CACHE_DATA_DIVIDER);
     await writeFile(cacheFileName, data);
     this.logger.log(`success save to file ${cacheFileName}`, { service: ValidatorsCacheService.SERVICE_LOG_NAME });

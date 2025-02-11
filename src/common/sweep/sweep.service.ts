@@ -24,11 +24,12 @@ import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
 export class SweepService {
+  static SERVICE_LOG_NAME = 'sweep';
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusClientService: ConsensusClientService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
-    protected readonly genesisService: GenesisTimeService,
     protected readonly configService: ConfigService,
   ) {}
 
@@ -46,6 +47,12 @@ export class SweepService {
     const isElectraActivate = await this.consensusClientService.isElectraActivated(currentEpoch);
     const consensusVersion = await this.getConsensusVersion();
 
+    this.logger.log('check electra info', {
+      isElectraActivate,
+      consensusVersion,
+      service: SweepService.SERVICE_LOG_NAME,
+    });
+
     if (consensusVersion < 3 || !isElectraActivate) {
       return this.getSweepDelayInEpochsPreElectra(indexedValidators, currentEpoch);
     }
@@ -58,7 +65,10 @@ export class SweepService {
     const totalWithdrawableValidators = this.getWithdrawableValidatorsNumber(indexedValidators, epoch);
 
     const fullSweepInEpochs = totalWithdrawableValidators / MAX_WITHDRAWALS_PER_PAYLOAD / SLOTS_PER_EPOCH;
-    return Math.floor(fullSweepInEpochs * 0.5);
+    const result = Math.floor(fullSweepInEpochs * 0.5);
+
+    this.logger.log('calculated sweep delay in epochs pre electra', { result, service: SweepService.SERVICE_LOG_NAME });
+    return result;
   }
 
   // pre pectra
@@ -80,7 +90,13 @@ export class SweepService {
     const fullSweepCycleInEpochs = Math.ceil(
       withdrawalsNumberInSweepCycle / MAX_WITHDRAWALS_PER_PAYLOAD / SLOTS_PER_EPOCH,
     );
-    return Math.floor(fullSweepCycleInEpochs / 2);
+
+    const result = Math.floor(fullSweepCycleInEpochs * 0.5);
+    this.logger.log('calculated sweep delay in epochs post electra', {
+      result,
+      service: SweepService.SERVICE_LOG_NAME,
+    });
+    return result;
   }
 
   private predictWithdrawalsNumberInSweepCycle(state: BeaconState, indexedValidators: IndexedValidator[]): number {
