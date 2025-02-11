@@ -1,4 +1,4 @@
-import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { GenesisTimeService, SLOTS_PER_EPOCH } from '../genesis-time';
 import {
@@ -16,15 +16,14 @@ import { parseGwei } from '../utils/parse-gwei';
 import { bigNumberMin } from '../utils/big-number-min';
 import { Withdrawal } from './sweep.types';
 import { BeaconState, IndexedValidator, Validator } from '../consensus-provider/consensus-provider.types';
-import { ethers, Interface } from 'ethers';
+import { ethers } from 'ethers';
 import { OracleV2__factory } from '../contracts/generated';
 import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from '../contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
 import { ConfigService } from '../config';
-import { ExecutionProviderService } from '../execution-provider';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 
 @Injectable()
-export class SweepService implements OnModuleInit {
+export class SweepService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusClientService: ConsensusClientService,
@@ -32,11 +31,6 @@ export class SweepService implements OnModuleInit {
     protected readonly genesisService: GenesisTimeService,
     protected readonly configService: ConfigService,
   ) {}
-
-  public async onModuleInit(): Promise<void> {
-    const epoch = this.genesisService.getCurrentEpoch();
-    await this.getSweepDelayInEpochs([], epoch);
-  }
 
   async getConsensusVersion() {
     const chainId = this.configService.get('CHAIN_ID');
