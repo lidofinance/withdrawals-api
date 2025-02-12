@@ -16,7 +16,7 @@ import { RewardsService } from 'events/rewards';
 import {
   CHURN_LIMIT_QUOTIENT,
   GAP_AFTER_REPORT,
-  MAX_EFFECTIVE_BALANCE,
+  MIN_ACTIVATION_BALANCE,
   MIN_PER_EPOCH_CHURN_LIMIT,
   WITHDRAWAL_BUNKER_DELAY_FRAMES,
 } from './waiting-time.constants';
@@ -24,7 +24,6 @@ import {
   validateTimeResponseWithFallback,
   calculateUnfinalizedEthToRequestId,
   calculateFrameByValidatorBalances,
-  calculateSweepingMean,
 } from './utils';
 import { transformToRequestDto } from './dto';
 import {
@@ -277,7 +276,7 @@ export class WaitingTimeService {
 
     // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
     const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
-      MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
+      MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
     );
 
     // number of validators to exit
@@ -473,7 +472,7 @@ export class WaitingTimeService {
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 
-    const lidoQueueInEpoch = unfinalizedETH.div(MAX_EFFECTIVE_BALANCE.mul(Math.floor(churnLimit)));
+    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 

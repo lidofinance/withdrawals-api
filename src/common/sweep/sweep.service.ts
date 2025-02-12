@@ -1,16 +1,11 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { GenesisTimeService, SLOTS_PER_EPOCH } from '../genesis-time';
+import { SLOTS_PER_EPOCH } from '../genesis-time';
 import {
   isFullyWithdrawableValidator,
   isPartiallyWithdrawableValidator,
 } from '../../jobs/validators/utils/validator-state-utils';
 import { FAR_FUTURE_EPOCH } from '../../jobs/validators';
-import {
-  MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
-  MAX_WITHDRAWALS_PER_PAYLOAD,
-  MIN_ACTIVATION_BALANCE,
-} from './sweep.constants';
 import { ConsensusClientService } from '../consensus-provider/consensus-client.service';
 import { parseGwei } from '../utils/parse-gwei';
 import { bigNumberMin } from '../utils/big-number-min';
@@ -21,6 +16,11 @@ import { OracleV2__factory } from '../contracts/generated';
 import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from '../contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
 import { ConfigService } from '../config';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import {
+  MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
+  MAX_WITHDRAWALS_PER_PAYLOAD,
+  MIN_ACTIVATION_BALANCE,
+} from '../../waiting-time/waiting-time.constants';
 
 @Injectable()
 export class SweepService {
