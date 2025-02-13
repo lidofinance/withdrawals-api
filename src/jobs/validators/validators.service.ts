@@ -178,7 +178,10 @@ export class ValidatorsService {
 
   protected async getLastWithdrawalValidatorIndex() {
     const withdrawals = await this.executionProviderService.getLatestWithdrawals();
-    return BigNumber.from(withdrawals[withdrawals.length - 1].validatorIndex);
+    const lastWithdrawal = withdrawals[withdrawals.length - 1];
+
+    this.logger.log('Found last withdrawal', { lastWithdrawal });
+    return BigNumber.from(lastWithdrawal ? lastWithdrawal.validatorIndex : 0);
   }
 
   protected logAnalyticsAboutWithdrawableBalances(activeValidatorCount: number, latestEpoch: string) {
