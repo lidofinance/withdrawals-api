@@ -11,6 +11,7 @@ export class ValidatorsCacheService {
   static CACHE_FILE_NAME = 'validators-state.txt';
   static CACHE_DIR = 'cache';
   static CACHE_DATA_DIVIDER = '|';
+  static CACHE_DATA_LENGTH = 5;
   static SERVICE_LOG_NAME = 'validators cache';
   static CACHE_INVALIDATE_TIME = 3 * 3600; // 3 hours
 
@@ -30,7 +31,7 @@ export class ValidatorsCacheService {
       await file.close();
       const data: string[] = fileReadResult.split(ValidatorsCacheService.CACHE_DATA_DIVIDER);
 
-      if (data.length !== 5) {
+      if (data.length !== ValidatorsCacheService.CACHE_DATA_LENGTH) {
         this.logger.log(`invalid cache data length`, {
           service: ValidatorsCacheService.SERVICE_LOG_NAME,
           data,

@@ -1,26 +1,26 @@
+import { ethers } from 'ethers';
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { SLOTS_PER_EPOCH } from '../genesis-time';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { ConfigService } from 'common/config';
 import {
   isFullyWithdrawableValidator,
   isPartiallyWithdrawableValidator,
-} from '../../jobs/validators/utils/validator-state-utils';
-import { FAR_FUTURE_EPOCH } from '../../jobs/validators';
-import { ConsensusClientService } from '../consensus-provider/consensus-client.service';
-import { parseGwei } from '../utils/parse-gwei';
-import { bigNumberMin } from '../utils/big-number-min';
-import { Withdrawal } from './sweep.types';
-import { BeaconState, IndexedValidator, Validator } from '../consensus-provider/consensus-provider.types';
-import { ethers } from 'ethers';
-import { OracleV2__factory } from '../contracts/generated';
-import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from '../contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
-import { ConfigService } from '../config';
-import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+} from 'jobs/validators/utils/validator-state-utils';
+import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
+import { BeaconState, IndexedValidator, Validator } from 'common/consensus-provider/consensus-provider.types';
+import { parseGwei } from 'common/utils/parse-gwei';
+import { bigNumberMin } from 'common/utils/big-number-min';
+import { OracleV2__factory } from 'common/contracts/generated';
+import { FAR_FUTURE_EPOCH } from 'jobs/validators';
+import { SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from 'common/contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
 import {
   MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
   MAX_WITHDRAWALS_PER_PAYLOAD,
   MIN_ACTIVATION_BALANCE,
-} from '../../waiting-time/waiting-time.constants';
+} from 'waiting-time/waiting-time.constants';
+import { Withdrawal } from './sweep.types';
 
 @Injectable()
 export class SweepService {
