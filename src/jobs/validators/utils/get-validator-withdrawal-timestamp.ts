@@ -26,15 +26,15 @@ Examples:
 
 */
 export function getValidatorWithdrawalTimestamp(
-  index: BigNumber,
+  validatorIndex: BigNumber,
   lastWithdrawalValidatorIndex: BigNumber,
   activeValidatorCount: number,
   totalValidatorsCount: number,
 ) {
-  const diff = index.sub(lastWithdrawalValidatorIndex);
+  const diff = validatorIndex.sub(lastWithdrawalValidatorIndex);
   const percentOfActiveValidators = activeValidatorCount / totalValidatorsCount;
   const lengthQueueValidators = diff.lt(0)
-    ? BigNumber.from(totalValidatorsCount).sub(lastWithdrawalValidatorIndex).add(index)
+    ? BigNumber.from(totalValidatorsCount).sub(lastWithdrawalValidatorIndex).add(validatorIndex)
     : diff;
 
   const slots = lengthQueueValidators.div(BigNumber.from(WITHDRAWALS_VALIDATORS_PER_SLOT));

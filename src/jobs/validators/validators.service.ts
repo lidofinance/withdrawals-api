@@ -1,4 +1,4 @@
-import { CronJob, CronTime } from 'cron';
+import { CronJob } from 'cron';
 import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -13,13 +13,14 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
 import { LidoKeysService } from './lido-keys';
-import { ResponseValidatorsData, Validator } from './validators.types';
-import { parseGweiToWei } from 'common/utils/parse-gwei-to-big-number';
+import { parseGwei } from 'common/utils/parse-gwei';
 import { ValidatorsCacheService } from 'storage/validators/validators-cache.service';
 import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
+import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
+import { SweepService } from '../../common/sweep';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -36,6 +37,7 @@ export class ValidatorsService {
     protected readonly validatorsCacheService: ValidatorsCacheService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
+    protected readonly sweepService: SweepService,
   ) {}
 
   /**
@@ -72,13 +74,16 @@ export class ValidatorsService {
         const stream = await this.consensusProviderService.getStateValidatorsStream({
           stateId: 'head',
         });
-        const data: ResponseValidatorsData = await processValidatorsStream(stream);
+        const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         let activeValidatorCount = 0;
         let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
 
-        for (const item of data) {
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
+        this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
+
+        for (const item of indexedValidators) {
           if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
             activeValidatorCount++;
           }
@@ -93,9 +98,9 @@ export class ValidatorsService {
         }
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
-        this.validatorsStorageService.setTotalValidatorsCount(data.length);
+        this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
-        await this.findAndSetLidoValidatorsWithdrawableBalances(data);
+        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
         await this.validatorsCacheService.saveDataToCache();
         this.logAnalyticsAboutWithdrawableBalances(activeValidatorCount, latestEpoch);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
@@ -103,7 +108,7 @@ export class ValidatorsService {
     );
   }
 
-  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: Validator[]) {
+  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
     const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
@@ -120,7 +125,7 @@ export class ValidatorsService {
         );
         const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
         const prevBalance = frameBalances[frame];
-        const balance = parseGweiToWei(item.balance);
+        const balance = parseGwei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
         withdrawableLidoValidatorIds.push(item.index);
       }
@@ -158,7 +163,7 @@ export class ValidatorsService {
           );
           const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
           const prevBalance = frameBalances[frame];
-          const balance = parseGweiToWei(stateValidator.data.balance);
+          const balance = parseGwei(stateValidator.data.balance);
           frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
         }
 

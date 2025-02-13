@@ -4,9 +4,10 @@ import { GenesisTimeModule } from 'common/genesis-time';
 import { ValidatorsStorageModule } from 'storage';
 import { ValidatorsService } from './validators.service';
 import { LidoKeysModule } from './lido-keys';
+import { SweepModule } from '../../common/sweep';
 
 @Module({
-  imports: [JobModule, ValidatorsStorageModule, GenesisTimeModule, LidoKeysModule],
+  imports: [JobModule, ValidatorsStorageModule, GenesisTimeModule, LidoKeysModule, SweepModule],
   providers: [ValidatorsService],
   exports: [ValidatorsService],
 })

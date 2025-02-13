@@ -8,6 +8,7 @@ export class ValidatorsStorageService {
   protected totalValidatorsCount: number;
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
+  protected sweepMeanEpochs: number;
   protected withdrawableLidoValidatorIds: string[];
 
   /**
@@ -80,6 +81,14 @@ export class ValidatorsStorageService {
 
   public getTotalValidatorsCount() {
     return this.totalValidatorsCount;
+  }
+
+  public setSweepMeanEpochs(sweepMeanEpochs: number) {
+    this.sweepMeanEpochs = sweepMeanEpochs;
+  }
+
+  public getSweepMeanEpochs() {
+    return this.sweepMeanEpochs;
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {
