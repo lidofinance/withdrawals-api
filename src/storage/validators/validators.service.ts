@@ -9,7 +9,7 @@ export class ValidatorsStorageService {
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
   protected sweepMeanEpochs: number;
-  protected withdrawableLidoValidatorIds: string[];
+  protected withdrawableLidoValidatorIds: string[] = [];
 
   /**
    * Get max exit epoch for all validators
