@@ -1,7 +1,6 @@
 import { ethers } from 'ethers';
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { ConfigService } from 'common/config';
 import {
   isFullyWithdrawableValidator,
@@ -14,13 +13,13 @@ import { bigNumberMin } from 'common/utils/big-number-min';
 import { OracleV2__factory } from 'common/contracts/generated';
 import { FAR_FUTURE_EPOCH } from 'jobs/validators';
 import { SLOTS_PER_EPOCH } from 'common/genesis-time';
-import { VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES } from 'common/contracts/modules/validators-exit-bus-oracle/validators-exit-bus-oracle.constants';
 import {
   MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
   MAX_WITHDRAWALS_PER_PAYLOAD,
   MIN_ACTIVATION_BALANCE,
 } from 'waiting-time/waiting-time.constants';
 import { Withdrawal } from './sweep.types';
+import { LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
 
 @Injectable()
 export class SweepService {
@@ -28,18 +27,18 @@ export class SweepService {
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
     protected readonly consensusClientService: ConsensusClientService,
-    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly configService: ConfigService,
   ) {}
 
   async getConsensusVersion() {
-    const chainId = this.configService.get('CHAIN_ID');
     const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
-    const address: string = VALIDATORS_EXIT_BUS_ORACLE_CONTRACT_ADDRESSES[chainId];
+    const address = await this.lidoLocator.validatorsExitBusOracle();
     const validatorExitBusOracle = OracleV2__factory.connect(address, {
       provider,
     });
+
     return await validatorExitBusOracle.getConsensusVersion();
   }
 

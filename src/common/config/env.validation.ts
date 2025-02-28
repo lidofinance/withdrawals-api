@@ -1,7 +1,7 @@
 import { CronExpression } from '@nestjs/schedule';
 import { plainToClass, Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min, IsArray, ArrayMinSize } from 'class-validator';
-import { Environment, LogLevel, LogFormat } from './interfaces';
+import { ArrayMinSize, IsArray, IsEnum, IsNumber, IsOptional, IsString, Min, validateSync } from 'class-validator';
+import { Environment, LogFormat, LogLevel } from './interfaces';
 
 const toNumber =
   ({ defaultValue }) =>
@@ -81,6 +81,30 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   CHAIN_ID: number = null;
+
+  @IsOptional()
+  @IsString()
+  WITHDRAWAL_QUEUE_CONTRACT_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  LIDO_CONTRACT_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  ORACLE_REPORT_SANITY_CHECKER_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  ACCOUNTING_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  LIDO_LOCATOR_CONTRACT_DEVNET_ADDRESS = '';
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 

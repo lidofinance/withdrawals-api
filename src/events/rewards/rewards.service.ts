@@ -1,13 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import {
-  Lido,
-  LIDO_CONTRACT_TOKEN,
-  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
-  LIDO_LOCATOR_CONTRACT_TOKEN,
-  LidoLocator,
-} from '@lido-nestjs/contracts';
+import { Lido, LIDO_CONTRACT_TOKEN, LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
@@ -299,13 +293,10 @@ export class RewardsService {
 
   // it includes WithdrawalVault balance and diff between rewards and cached rewards from previous report
   async getVaultsBalance(blockNumber: number) {
-    const chainId = this.configService.get('CHAIN_ID');
     const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault({ blockTag: blockNumber });
     const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress, blockNumber);
-    const rewardsVaultBalance = await this.provider.getBalance(
-      EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId],
-      blockNumber,
-    );
+    const rewardsVaultAddress = await this.lidoLocator.elRewardsVault();
+    const rewardsVaultBalance = await this.provider.getBalance(rewardsVaultAddress, blockNumber);
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
 
