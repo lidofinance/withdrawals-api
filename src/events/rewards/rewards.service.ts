@@ -74,55 +74,62 @@ export class RewardsService {
   }
 
   public async getMinLastTotalRewardsPerFrame() {
-    const framesFromLastReports = await this.getFramesFromLastReports();
-    if (framesFromLastReports === null) {
-      this.logger.warn(
-        'last reward reports were not found because last TokenRebase events were not found during last week.',
-        { service: RewardsService.SERVICE_LOG_NAME },
-      );
-      return {
-        clRewards: BigNumber.from(0),
-        elRewards: BigNumber.from(0),
-        allRewards: BigNumber.from(0),
-      };
-    }
-
-    const rewards = await Promise.all(
-      framesFromLastReports.map(async ({ blockNumber, frames }) => {
-        const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
-
-        return {
-          clRewards,
-          elRewards,
-        };
-      }),
-    );
-
-    let minCL = rewards[0].clRewards;
-    let minEL = rewards[0].elRewards;
-
-    // find minimum for last week
-    rewards.forEach((r) => {
-      if (minCL.lt(r.clRewards)) {
-        minCL = r.clRewards;
-      }
-
-      if (minEL.lt(r.elRewards)) {
-        minEL = r.elRewards;
-      }
-    });
-
-    const allRewards = minEL.add(minCL);
-
-    this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
-      service: RewardsService.SERVICE_LOG_NAME,
-    });
-
-    return {
-      clRewards: minCL,
-      elRewards: minEL,
-      allRewards,
+    const zeroRewardsFallback = {
+      clRewards: BigNumber.from(0),
+      elRewards: BigNumber.from(0),
+      allRewards: BigNumber.from(0),
     };
+
+    try {
+      const framesFromLastReports = await this.getFramesFromLastReports();
+      if (framesFromLastReports === null) {
+        this.logger.warn(
+          'last reward reports were not found because last TokenRebase events were not found during last week.',
+          { service: RewardsService.SERVICE_LOG_NAME },
+        );
+        return zeroRewardsFallback;
+      }
+
+      const rewards = await Promise.all(
+        framesFromLastReports.map(async ({ blockNumber, frames }) => {
+          const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
+
+          return {
+            clRewards,
+            elRewards,
+          };
+        }),
+      );
+
+      let minCL = rewards[0].clRewards;
+      let minEL = rewards[0].elRewards;
+
+      // find minimum for last week
+      rewards.forEach((r) => {
+        if (minCL.lt(r.clRewards)) {
+          minCL = r.clRewards;
+        }
+
+        if (minEL.lt(r.elRewards)) {
+          minEL = r.elRewards;
+        }
+      });
+
+      const allRewards = minEL.add(minCL);
+
+      this.logger.log(`rewardsPerFrame are updated to ${allRewards.toString()}`, {
+        service: RewardsService.SERVICE_LOG_NAME,
+      });
+
+      return {
+        clRewards: minCL,
+        elRewards: minEL,
+        allRewards,
+      };
+    } catch (error) {
+      this.logger.error('error during calculation rewards per frame', error);
+      return zeroRewardsFallback;
+    }
   }
 
   protected async getRewardsByBlockNumber(blockNumber: number, framesPassed: BigNumber) {
