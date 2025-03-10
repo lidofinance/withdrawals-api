@@ -295,7 +295,7 @@ export class RewardsService {
   async getVaultsBalance(blockNumber: number) {
     const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault({ blockTag: blockNumber });
     const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress, blockNumber);
-    const rewardsVaultAddress = await this.lidoLocator.elRewardsVault();
+    const rewardsVaultAddress = await this.lidoLocator.elRewardsVault({ blockTag: blockNumber });
     const rewardsVaultBalance = await this.provider.getBalance(rewardsVaultAddress, blockNumber);
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
