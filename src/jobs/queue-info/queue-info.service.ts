@@ -30,6 +30,10 @@ export class QueueInfoService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
     this.job = new CronJob(cronTime, () => this.updateQueueInfo());
     await this.updateQueueInfo();

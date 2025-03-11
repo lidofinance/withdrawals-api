@@ -9,6 +9,7 @@ import { ConfigService } from 'common/config';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
 import { useContainer } from 'class-validator';
+import { setupServiceUnavailableMiddleware } from './common/middlewares/service-unavailable.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
@@ -76,6 +77,8 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder().setTitle(APP_DESCRIPTION).setVersion(APP_VERSION).build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(SWAGGER_URL, app, swaggerDocument);
+
+  setupServiceUnavailableMiddleware(app, configService);
 
   // app
   await app.listen(appPort, '0.0.0.0');
