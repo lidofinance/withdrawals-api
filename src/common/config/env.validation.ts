@@ -105,6 +105,10 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   LIDO_LOCATOR_CONTRACT_DEVNET_ADDRESS = '';
+
+  @IsOptional()
+  @IsString()
+  KEYS_API_BASE_PATH = '';
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
