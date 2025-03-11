@@ -44,6 +44,10 @@ export class ValidatorsService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     await this.validatorsCacheService.initializeFromCache();
 
     const envCronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');

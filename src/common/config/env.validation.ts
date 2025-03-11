@@ -1,6 +1,16 @@
 import { CronExpression } from '@nestjs/schedule';
 import { plainToClass, Transform } from 'class-transformer';
-import { IsEnum, IsNumber, IsString, IsOptional, validateSync, Min, IsArray, ArrayMinSize } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsString,
+  IsOptional,
+  validateSync,
+  Min,
+  IsArray,
+  ArrayMinSize,
+  IsBoolean,
+} from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
 
 const toNumber =
@@ -81,6 +91,11 @@ export class EnvironmentVariables {
   @IsNumber()
   @Transform(({ value }) => Number(value))
   CHAIN_ID: number = null;
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean()
+  IS_SERVICE_UNAVAILABLE = false;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 

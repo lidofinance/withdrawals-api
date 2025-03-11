@@ -32,6 +32,10 @@ export class ContractConfigService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     await this.updateContractConfig();
 
     const cronTime = this.configService.get('JOB_INTERVAL_CONTRACT_CONFIG');

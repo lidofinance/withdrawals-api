@@ -43,6 +43,10 @@ export class RewardsService {
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     await this.updateRewards();
 
     // getting total rewards per frame starts from TokenRebased event because it contains
