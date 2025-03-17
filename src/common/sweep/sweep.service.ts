@@ -121,7 +121,6 @@ export class SweepService {
       pendingPartialWithdrawalsNumber,
       pendingPartialWithdrawalsMaxNumberInCycle,
     );
-
     return validatorsWithdrawalsNumber + pendingPartialWithdrawalsNumberInCycle;
   }
 

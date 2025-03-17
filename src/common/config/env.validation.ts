@@ -96,6 +96,14 @@ export class EnvironmentVariables {
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   IS_SERVICE_UNAVAILABLE = false;
+
+  @IsOptional()
+  @IsNumber()
+  EL_RETRY_COUNT = 2;
+
+  @IsOptional()
+  @IsNumber()
+  EL_BLOCK_STEP = 500;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
