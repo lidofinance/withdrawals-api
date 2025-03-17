@@ -57,10 +57,10 @@ export class ExecutionProviderService {
     blockStep = this.configService.get('EL_BLOCK_STEP'),
   ): Promise<Log[]> {
     let logs: Log[] = [];
-    const latestBlock = await this.provider.getBlockNumber();
-
-    const fromBlock = Number(filter.fromBlock) ?? 0;
-    const toBlock = typeof filter.toBlock === 'string' ? latestBlock : Number(filter.toBlock);
+    const toBlock =
+      typeof filter.toBlock === 'number' ? filter.toBlock : (await this.provider.getBlock(filter.toBlock)).number;
+    const fromBlock =
+      typeof filter.fromBlock === 'number' ? filter.fromBlock : (await this.provider.getBlock(filter.fromBlock)).number;
 
     for (let startBlock = fromBlock; startBlock <= toBlock; startBlock += blockStep) {
       const endBlock = Math.min(startBlock + blockStep - 1, toBlock);
