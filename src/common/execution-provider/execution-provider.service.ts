@@ -53,8 +53,8 @@ export class ExecutionProviderService {
     filter: Filter,
     eventName: string,
     serviceName: string,
-    retryCount = this.configService.get('EL_RETRY_COUNT'),
-    blockStep = this.configService.get('EL_BLOCK_STEP'),
+    retryCount: number = this.configService.get('EL_RETRY_COUNT'),
+    blockStep: number = this.configService.get('EL_BLOCK_STEP'),
   ): Promise<Log[]> {
     let logs: Log[] = [];
     const toBlock =
