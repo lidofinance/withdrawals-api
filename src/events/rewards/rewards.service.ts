@@ -15,8 +15,7 @@ import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
 import { PrometheusService } from '../../common/prometheus';
-
-import { getLogsByRetryCount } from './rewards.utils';
+import { ExecutionProviderService } from '../../common/execution-provider';
 
 @Injectable()
 export class RewardsService {
@@ -31,12 +30,17 @@ export class RewardsService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly executionProvider: ExecutionProviderService,
   ) {}
 
   /**
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     await this.updateRewards();
 
     // getting total rewards per frame starts from TokenRebased event because it contains
@@ -137,12 +141,17 @@ export class RewardsService {
 
   protected async getElRewards(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.ELRewardsReceived();
-    const logs = await this.provider.getLogs({
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      'ELRewardsReceived',
+      RewardsService.SERVICE_LOG_NAME,
+    );
     const lastLog = logs[0];
 
     if (!lastLog) {
@@ -160,16 +169,15 @@ export class RewardsService {
     postCLBalance: BigNumber;
   }> {
     const res = this.contractLido.filters.ETHDistributed();
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock,
         address: res.address,
       },
-      this.logger,
       'ETHDistributed',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('ETHDistributed event logs', { service: RewardsService.SERVICE_LOG_NAME, logsCount: logs.length });
@@ -206,16 +214,15 @@ export class RewardsService {
 
   protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.WithdrawalsReceived();
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock,
         address: res.address,
       },
-      this.logger,
       'WithdrawalsReceived',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('WithdrawalsReceived event logs', {
@@ -246,16 +253,15 @@ export class RewardsService {
 
     const res = this.contractLido.filters.TokenRebased();
 
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock: weekAgoBlock,
         address: res.address,
       },
-      this.logger,
       'TokenRebased',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('TokenRebase event logs for last week', {

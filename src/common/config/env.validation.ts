@@ -1,7 +1,17 @@
 import { CronExpression } from '@nestjs/schedule';
 import { plainToClass, Transform } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsEnum, IsNumber, IsOptional, IsString, Min, validateSync } from 'class-validator';
-import { Environment, LogFormat, LogLevel } from './interfaces';
+import {
+  IsEnum,
+  IsNumber,
+  IsString,
+  IsOptional,
+  validateSync,
+  Min,
+  IsArray,
+  ArrayMinSize,
+  IsBoolean,
+} from 'class-validator';
+import { Environment, LogLevel, LogFormat } from './interfaces';
 
 const toNumber =
   ({ defaultValue }) =>
@@ -85,6 +95,19 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   KEYS_API_BASE_PATH = '';
+
+  @IsOptional()
+  @Transform(({ value }) => value === 'true')
+  @IsBoolean()
+  IS_SERVICE_UNAVAILABLE = false;
+
+  @IsOptional()
+  @IsNumber()
+  EL_RETRY_COUNT = 2;
+
+  @IsOptional()
+  @IsNumber()
+  EL_BLOCK_STEP = 500;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
