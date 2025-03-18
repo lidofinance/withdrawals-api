@@ -84,30 +84,6 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  WITHDRAWAL_QUEUE_CONTRACT_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
-  LIDO_CONTRACT_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
-  ORACLE_REPORT_SANITY_CHECKER_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
-  ACCOUNTING_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
-  VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
-  LIDO_LOCATOR_CONTRACT_DEVNET_ADDRESS = '';
-
-  @IsOptional()
-  @IsString()
   KEYS_API_BASE_PATH = '';
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());

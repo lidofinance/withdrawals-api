@@ -1,13 +1,5 @@
 import { ConfigService as ConfigServiceSource } from '@nestjs/config';
 import { EnvironmentVariables } from './env.validation';
-import {
-  AccountingOracleHashConsensusModule,
-  LidoContractModule,
-  LidoLocatorContractModule,
-  OracleReportSanityCheckerModule,
-  ValidatorsExitBusOracleHashConsensusModule,
-  WithdrawalQueueContractModule,
-} from '@lido-nestjs/contracts';
 
 export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
   /**
@@ -25,19 +17,5 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
 
   public get<T extends keyof EnvironmentVariables>(key: T): EnvironmentVariables[T] {
     return super.get(key, { infer: true }) as EnvironmentVariables[T];
-  }
-
-  public getCustomConfigContractsAddressMap() {
-    return new Map<symbol, string>([
-      [WithdrawalQueueContractModule.contractToken, this.get('WITHDRAWAL_QUEUE_CONTRACT_DEVNET_ADDRESS')],
-      [LidoContractModule.contractToken, this.get('LIDO_CONTRACT_DEVNET_ADDRESS')],
-      [OracleReportSanityCheckerModule.contractToken, this.get('ORACLE_REPORT_SANITY_CHECKER_DEVNET_ADDRESS')],
-      [AccountingOracleHashConsensusModule.contractToken, this.get('ACCOUNTING_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS')],
-      [
-        ValidatorsExitBusOracleHashConsensusModule.contractToken,
-        this.get('VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_DEVNET_ADDRESS'),
-      ],
-      [LidoLocatorContractModule.contractToken, this.get('LIDO_LOCATOR_CONTRACT_DEVNET_ADDRESS')],
-    ]);
   }
 }

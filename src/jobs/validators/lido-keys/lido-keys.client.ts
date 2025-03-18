@@ -1,18 +1,19 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from '../../../common/logger';
 import { ConfigService } from '../../../common/config';
 import { KEYS_API_PATHS } from './lido-keys.constants';
 import { LidoKeysData } from './lido-keys.types';
 
+@Injectable()
 export class LidoKeysClient {
+  protected endpoints = {
+    usedKeys: '/v1/keys?used=true',
+  };
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
   ) {}
-
-  protected endpoints: {
-    usedKeys: '/v1/keys?used=true';
-  };
 
   protected getBasePath(): string {
     const envUrl = this.configService.get('KEYS_API_BASE_PATH');
