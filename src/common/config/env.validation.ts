@@ -93,6 +93,10 @@ export class EnvironmentVariables {
   CHAIN_ID: number = null;
 
   @IsOptional()
+  @IsString()
+  KEYS_API_BASE_PATH = '';
+
+  @IsOptional()
   @Transform(({ value }) => value === 'true')
   @IsBoolean()
   IS_SERVICE_UNAVAILABLE = false;

@@ -2,21 +2,18 @@ import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { IndexedValidator } from 'common/consensus-provider/consensus-provider.types';
 import { ConfigService } from 'common/config';
-import { LidoKey, LidoKeysData } from './lido-keys.types';
-import { KEYS_API_ADDRESS } from './lido-keys.constants';
+import { LidoKey } from './lido-keys.types';
+import { LidoKeysClient } from './lido-keys.client';
 
 export class LidoKeysService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
+    protected readonly lidoKeysClient: LidoKeysClient,
   ) {}
 
   public async fetchLidoKeysData() {
-    const lidoKeysResponse = await fetch(KEYS_API_ADDRESS[this.configService.get('CHAIN_ID')], {
-      method: 'GET',
-    });
-    const lidoKeys: LidoKeysData = await lidoKeysResponse.json();
-    return lidoKeys;
+    return this.lidoKeysClient.getUsedKeys();
   }
 
   public async getLidoValidatorsByKeys(keys: LidoKey[], validators: IndexedValidator[]) {
