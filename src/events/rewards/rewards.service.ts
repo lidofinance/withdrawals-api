@@ -136,7 +136,8 @@ export class RewardsService {
 
   protected async getHoursAgoBlock(hours: number) {
     const currentBlock = await this.provider.getBlockNumber();
-    return currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
+    const blockInPast = currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
+    return Math.max(blockInPast, 0);
   }
 
   protected async getElRewards(fromBlock: number): Promise<BigNumber> {
