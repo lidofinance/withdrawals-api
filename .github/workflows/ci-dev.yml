@@ -1,4 +1,4 @@
-name: CI Dev Holesky
+name: CI Dev Hoodi
 
 on:
   workflow_dispatch:
