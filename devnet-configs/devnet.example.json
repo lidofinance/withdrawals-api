@@ -1,0 +1,10 @@
+{
+  "name":"devnet-example",
+  "WithdrawalQueue": "0x0..",
+  "Lido": "0x0..",
+  "OracleReportSanityChecker": "0x0..",
+  "AccountingOracleHashConsensus": "0x0..",
+  "ValidatorsExitBusOracleHashConsensus": "0x0..",
+  "LidoLocator": "0x0..",
+  "KeysApiBasePath": ""
+}

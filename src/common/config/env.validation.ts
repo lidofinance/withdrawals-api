@@ -12,8 +12,6 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { Environment, LogLevel, LogFormat } from './interfaces';
-import { DevnetName } from './devnets/devnet-config.interface';
-import { devnetConfigs } from './devnets/configs';
 
 const toNumber =
   ({ defaultValue }) =>
@@ -96,7 +94,6 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (devnetConfigs[value] ? devnetConfigs[value].keysApiBasePath : ''))
   KEYS_API_BASE_PATH = '';
 
   @IsOptional()
@@ -116,7 +113,7 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  DEVNET_NAME: DevnetName = null;
+  DEVNET_NAME: string = null;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 

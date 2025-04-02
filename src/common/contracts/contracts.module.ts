@@ -22,7 +22,7 @@ import { ConfigService } from '../config';
   ].map((module) =>
     module.forRootAsync({
       async useFactory(provider: ExecutionProvider, config: ConfigService) {
-        const addressMap = config.getCustomConfigContractsAddressMap();
+        const addressMap = await config.getCustomConfigContractsAddressMap();
         const address = addressMap ? addressMap.get(module.contractToken) : undefined;
         return { provider, address };
       },
