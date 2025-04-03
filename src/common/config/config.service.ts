@@ -10,7 +10,6 @@ import {
 import { EnvironmentVariables } from './env.validation';
 import { findNetworkConfig } from './networks/utils/find-network-config';
 import { KEYS_API_PATHS } from '../../jobs/validators/lido-keys/lido-keys.constants';
-import { Injectable } from '@nestjs/common';
 import { NetworkConfig } from './networks';
 
 export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
