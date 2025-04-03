@@ -13,7 +13,6 @@ import { KEYS_API_PATHS } from '../../jobs/validators/lido-keys/lido-keys.consta
 import { Injectable } from '@nestjs/common';
 import { NetworkConfig } from './networks';
 
-@Injectable()
 export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
   networkConfig: NetworkConfig;
   constructor(internalConfig?: Partial<EnvironmentVariables>) {
