@@ -8,10 +8,22 @@ import {
   WithdrawalQueueContractModule,
 } from '@lido-nestjs/contracts';
 import { EnvironmentVariables } from './env.validation';
-import { findDevnetConfig } from './utils/find-devnet-config';
+import { findNetworkConfig } from './networks/utils/find-network-config';
 import { KEYS_API_PATHS } from '../../jobs/validators/lido-keys/lido-keys.constants';
+import { Injectable } from '@nestjs/common';
+import { NetworkConfig } from './networks';
 
+@Injectable()
 export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
+  networkConfig: NetworkConfig;
+  constructor(internalConfig?: Partial<EnvironmentVariables>) {
+    super(internalConfig);
+
+    const name = this.get('CUSTOM_NETWORK_FILE_NAME');
+    if (name) {
+      this.networkConfig = findNetworkConfig(name);
+    }
+  }
   /**
    * List of env variables that should be hidden
    */
@@ -30,31 +42,33 @@ export class ConfigService extends ConfigServiceSource<EnvironmentVariables> {
   }
 
   public async getCustomConfigContractsAddressMap() {
-    const name = this.get('DEVNET_NAME');
+    const name = this.get('CUSTOM_NETWORK_FILE_NAME');
 
     if (!name) {
       return null;
     }
 
-    const devnetConfig = await findDevnetConfig(name);
+    if (!this.networkConfig) {
+      return null;
+    }
+
+    const contracts = this.networkConfig.contracts;
 
     return new Map<symbol, string>([
-      [WithdrawalQueueContractModule.contractToken, devnetConfig['WithdrawalQueue']],
-
-      [LidoContractModule.contractToken, devnetConfig['Lido']],
-      [OracleReportSanityCheckerModule.contractToken, devnetConfig['OracleReportSanityChecker']],
-      [AccountingOracleHashConsensusModule.contractToken, devnetConfig['AccountingOracleHashConsensus']],
-      [ValidatorsExitBusOracleHashConsensusModule.contractToken, devnetConfig['ValidatorsExitBusOracleHashConsensus']],
-      [LidoLocatorContractModule.contractToken, devnetConfig['LidoLocator']],
+      [WithdrawalQueueContractModule.contractToken, contracts.withdrawalQueue],
+      [LidoContractModule.contractToken, contracts.lido],
+      [OracleReportSanityCheckerModule.contractToken, contracts.oracleReportSanityChecker],
+      [AccountingOracleHashConsensusModule.contractToken, contracts.accountingOracleHashConsensus],
+      [ValidatorsExitBusOracleHashConsensusModule.contractToken, contracts.validatorsExitBusOracleHashConsensus],
+      [LidoLocatorContractModule.contractToken, contracts.lidoLocator],
     ]);
   }
 
   public async getKeysApiBasePath(): Promise<string> {
-    const name = this.get('DEVNET_NAME');
+    const name = this.get('CUSTOM_NETWORK_FILE_NAME');
 
     if (name) {
-      const devnetConfig = await findDevnetConfig(name);
-      const keysApiBasePath = devnetConfig['KeysApiBasePath'];
+      const keysApiBasePath = this.networkConfig.apis.keysApiBasePath;
 
       if (keysApiBasePath) {
         return keysApiBasePath;

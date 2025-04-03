@@ -113,7 +113,7 @@ export class EnvironmentVariables {
 
   @IsOptional()
   @IsString()
-  DEVNET_NAME: string = null;
+  CUSTOM_NETWORK_FILE_NAME: string;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 
