@@ -52,7 +52,7 @@ export class SweepService {
       service: SweepService.SERVICE_LOG_NAME,
     });
 
-    if (consensusVersion < 3 || !isElectraActivate) {
+    if (true) {
       return this.getSweepDelayInEpochsPreElectra(indexedValidators, currentEpoch);
     }
 

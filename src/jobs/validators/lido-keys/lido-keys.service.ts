@@ -16,11 +16,7 @@ export class LidoKeysService {
     return this.lidoKeysClient.getUsedKeys();
   }
 
-  public async getLidoValidatorsByKeys(keys: LidoKey[], validators: IndexedValidator[]) {
-    const keysDict = keys.reduce((acc, lidoKey) => {
-      acc[lidoKey.key] = true;
-      return acc;
-    }, {});
-    return validators.filter((v) => keysDict[v.validator?.pubkey]);
+  public async getLidoValidatorsByKeys(keys: Set<string>, validators: IndexedValidator[]) {
+    return validators.filter((v) => keys.has(v.validator?.pubkey));
   }
 }

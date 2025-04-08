@@ -80,7 +80,7 @@ export class ExecutionProviderService {
         }
 
         if (blockLogs.length === 0) {
-          this.logger.warn(
+          this.logger.debug(
             `${eventName}: No logs found for blocks ${startBlock} - ${endBlock}. Retrying in 200 ms...`,
             {
               service: serviceName,

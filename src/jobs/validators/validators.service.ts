@@ -87,6 +87,23 @@ export class ValidatorsService {
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
 
+        const lidoKeys = new Set((await this.lidoKeys.fetchLidoKeysData()).data.map((keyItem) => keyItem.key));
+        this.logger.debug('keysLength', {
+          keysDataLength: lidoKeys.size,
+          service: ValidatorsService.SERVICE_LOG_NAME,
+        });
+
+        const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
+        this.logger.debug('lastWithdrawalValidatorIndex', {
+          lastWithdrawalValidatorIndex,
+          service: ValidatorsService.SERVICE_LOG_NAME,
+        });
+
+        const frameBalances = {};
+
+        const withdrawableLidoValidatorIds: string[] = [];
+
+        let index = 0;
         for (const item of indexedValidators) {
           if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
             activeValidatorCount++;
@@ -98,69 +115,63 @@ export class ValidatorsService {
             }
           }
 
-          await unblock();
+          if (index % 100 === 0) {
+            await unblock();
+          }
+
+          index++;
         }
 
-        this.logger.debug(
-          'found validators',
-          {
-            indexedValidatorsCount: indexedValidators.length,
-            activeValidatorsCount: activeValidatorCount,
-            service: ValidatorsService.SERVICE_LOG_NAME,
-          },
-          {},
-        );
+        this.logger.debug('1st validators loop', {
+          indexedValidatorsCount: indexedValidators.length,
+          activeValidatorsCount: activeValidatorCount,
+          service: ValidatorsService.SERVICE_LOG_NAME,
+        });
 
+        // separate loop because we need to know 'activeValidatorCount' to calc withdrawal timestamp
+        let index2 = 0;
+        for (const item of indexedValidators) {
+          if (
+            lidoKeys.has(item.validator.pubkey) &&
+            item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() &&
+            BigNumber.from(item.balance).gt(0)
+          ) {
+            const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
+              BigNumber.from(item.index),
+              lastWithdrawalValidatorIndex,
+              activeValidatorCount,
+              indexedValidators.length,
+            );
+            const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+            const prevBalance = frameBalances[frame];
+            const balance = parseGwei(item.balance);
+            frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+            withdrawableLidoValidatorIds.push(item.index);
+          }
+
+          if (index2 % 100 === 0) {
+            await unblock();
+          }
+
+          index2++;
+        }
+
+        this.logger.debug('2nd validators loop', {
+          withdrawableLidoValidatorIdsLength: withdrawableLidoValidatorIds.length,
+          frameBalancesKeysLength: Object.keys(frameBalances).length,
+          service: ValidatorsService.SERVICE_LOG_NAME,
+        });
+
+        this.validatorsStorageService.setFrameBalances(frameBalances);
+        this.validatorsStorageService.setWithdrawableLidoValidatorIds(withdrawableLidoValidatorIds);
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
-        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
         await this.validatorsCacheService.saveDataToCache();
         this.logAnalyticsAboutWithdrawableBalances(activeValidatorCount, latestEpoch);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
       },
     );
-  }
-
-  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
-    const keysData = await this.lidoKeys.fetchLidoKeysData();
-    this.logger.debug('fetchLidoKeysData', {
-      keysDataLength: keysData.data.length,
-      service: ValidatorsService.SERVICE_LOG_NAME,
-    });
-    const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
-    this.logger.debug('lidoValidators', {
-      lidoValidatorsLength: lidoValidators.length,
-      service: ValidatorsService.SERVICE_LOG_NAME,
-    });
-    const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
-    this.logger.debug('lastWithdrawalValidatorIndex', {
-      lastWithdrawalValidatorIndex,
-      service: ValidatorsService.SERVICE_LOG_NAME,
-    });
-    const frameBalances = {};
-
-    const withdrawableLidoValidatorIds: string[] = [];
-    for (const item of lidoValidators) {
-      if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
-        const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
-          BigNumber.from(item.index),
-          lastWithdrawalValidatorIndex,
-          this.validatorsStorageService.getActiveValidatorsCount(),
-          this.validatorsStorageService.getTotalValidatorsCount(),
-        );
-        const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
-        const prevBalance = frameBalances[frame];
-        const balance = parseGwei(item.balance);
-        frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
-        withdrawableLidoValidatorIds.push(item.index);
-      }
-
-      await unblock();
-    }
-
-    this.validatorsStorageService.setFrameBalances(frameBalances);
-    this.validatorsStorageService.setWithdrawableLidoValidatorIds(withdrawableLidoValidatorIds);
   }
 
   // updates withdrawable lido validators based on previously identified IDs
