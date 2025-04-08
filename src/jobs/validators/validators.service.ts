@@ -101,6 +101,16 @@ export class ValidatorsService {
           await unblock();
         }
 
+        this.logger.debug(
+          'found validators',
+          {
+            indexedValidatorsCount: indexedValidators.length,
+            activeValidatorsCount: activeValidatorCount,
+            service: ValidatorsService.SERVICE_LOG_NAME,
+          },
+          {},
+        );
+
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
@@ -114,8 +124,20 @@ export class ValidatorsService {
 
   protected async findAndSetLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
+    this.logger.debug('fetchLidoKeysData', {
+      keysDataLength: keysData.data.length,
+      service: ValidatorsService.SERVICE_LOG_NAME,
+    });
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
+    this.logger.debug('lidoValidators', {
+      lidoValidatorsLength: lidoValidators.length,
+      service: ValidatorsService.SERVICE_LOG_NAME,
+    });
     const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
+    this.logger.debug('lastWithdrawalValidatorIndex', {
+      lastWithdrawalValidatorIndex,
+      service: ValidatorsService.SERVICE_LOG_NAME,
+    });
     const frameBalances = {};
 
     const withdrawableLidoValidatorIds: string[] = [];
