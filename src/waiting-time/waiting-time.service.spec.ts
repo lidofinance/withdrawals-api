@@ -108,6 +108,7 @@ describe('WaitingTimeService', () => {
           useValue: {
             getActiveValidatorsCount: jest.fn(),
             getFrameBalances: jest.fn(),
+            getSweepMeanEpochs: jest.fn(),
           },
         },
         {
@@ -153,6 +154,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(rewardsPerFrame);
     jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+    jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
     // needed for mock only block number
     jest.spyOn(rpcBatchProvider, 'getBlock').mockResolvedValue({ number: 21367114 } as any);

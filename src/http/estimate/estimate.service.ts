@@ -23,19 +23,23 @@ export class EstimateService {
 
   async getEstimate(params: EstimateOptionsDto): Promise<EstimateDto | null> {
     const { token, requestCount } = params;
+    const isSteth = token === 'steth';
+    const helperGasLimit =
+      (isSteth
+        ? WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT
+        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) * requestCount;
+
     const chainId = this.configService.get('CHAIN_ID');
     const permits = ESTIMATE_ACCOUNT_PERMITS[chainId];
-    const isSteth = token === 'steth';
+
+    if (!permits) {
+      return { gasLimit: helperGasLimit };
+    }
 
     const permit = isSteth ? permits.steth_permit : permits.wsteth_permit;
     const method = isSteth
       ? this.contract.estimateGas.requestWithdrawalsWithPermit
       : this.contract.estimateGas.requestWithdrawalsWstETHWithPermit;
-
-    const helperGasLimit =
-      (isSteth
-        ? WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT
-        : WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT) * requestCount;
 
     try {
       const gasLimit = await method(Array(Number(requestCount)).fill(BigNumber.from(100)), ESTIMATE_ACCOUNT, permit, {

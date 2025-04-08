@@ -22,15 +22,17 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typechain": "typechain --target=ethers-v6 --out-dir ./src/common/contracts/generated ./src/common/contracts/abi/*.json",
+    "postinstall": "yarn typechain"
   },
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
     "@ethersproject/units": "^5.7.0",
     "@fastify/static": "^7.0.4",
     "@lido-nestjs/consensus": "^1.5.0",
-    "@lido-nestjs/constants": "^5.2.0",
-    "@lido-nestjs/contracts": "^9.3.0",
+    "@lido-nestjs/constants": "^5.3.0",
+    "@lido-nestjs/contracts": "^9.7.0",
     "@lido-nestjs/decorators": "^1.0.0",
     "@lido-nestjs/execution": "^1.9.3",
     "@lido-nestjs/fetch": "^1.4.0",
@@ -46,6 +48,8 @@
     "@nestjs/terminus": "^9.1.4",
     "@nestjs/throttler": "^6.0.0",
     "@sentry/node": "^7.29.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@types/stream-json": "^1.7.8",
     "@willsoto/nestjs-prometheus": "^5.1.0",
     "cache-manager": "^5.7.4",
     "class-transformer": "^0.5.1",
@@ -57,7 +61,8 @@
     "rimraf": "^3.0.2",
     "rxjs": "^7.5.2",
     "stream-chain": "^2.2.5",
-    "stream-json": "^1.8.0"
+    "stream-json": "^1.9.1",
+    "typechain": "^8.3.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.4",

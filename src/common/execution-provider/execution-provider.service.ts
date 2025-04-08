@@ -1,9 +1,12 @@
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { CHAINS } from '@lido-nestjs/constants';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { ConfigService } from '@nestjs/config';
 import { PrometheusService } from '../prometheus';
+import { Filter, Log } from '@ethersproject/abstract-provider';
+import { LoggerService } from '@lido-nestjs/logger';
+import { LOGGER_PROVIDER } from '../logger';
 
 @Injectable()
 export class ExecutionProviderService {
@@ -11,6 +14,7 @@ export class ExecutionProviderService {
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
     protected readonly configService: ConfigService,
+    @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
   ) {}
 
   /**
@@ -43,5 +47,53 @@ export class ExecutionProviderService {
       endTimer({ result: 'error' });
       throw error;
     }
+  }
+
+  public async getLogsByBlockStepsWithRetry(
+    filter: Filter,
+    eventName: string,
+    serviceName: string,
+    retryCount: number = this.configService.get('EL_RETRY_COUNT'),
+    blockStep: number = this.configService.get('EL_BLOCK_STEP'),
+  ): Promise<Log[]> {
+    let logs: Log[] = [];
+    const toBlock =
+      typeof filter.toBlock === 'number' ? filter.toBlock : (await this.provider.getBlock(filter.toBlock)).number;
+    const fromBlock =
+      typeof filter.fromBlock === 'number' ? filter.fromBlock : (await this.provider.getBlock(filter.fromBlock)).number;
+
+    for (let startBlock = fromBlock; startBlock <= toBlock; startBlock += blockStep) {
+      const endBlock = Math.min(startBlock + blockStep - 1, toBlock);
+
+      const blockFilter = { ...filter, fromBlock: startBlock, toBlock: endBlock };
+
+      let attempt = 0;
+      let blockLogs: Log[] = [];
+
+      while (blockLogs.length === 0 && attempt < retryCount) {
+        try {
+          blockLogs = await this.provider.getLogs(blockFilter);
+        } catch (error) {
+          this.logger.error(`${eventName}: Error fetching logs for blocks ${startBlock} - ${endBlock}: ${error}`, {
+            service: serviceName,
+          });
+        }
+
+        if (blockLogs.length === 0) {
+          this.logger.warn(
+            `${eventName}: No logs found for blocks ${startBlock} - ${endBlock}. Retrying in 200 ms...`,
+            {
+              service: serviceName,
+            },
+          );
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
+        attempt += 1;
+      }
+
+      logs = logs.concat(blockLogs);
+    }
+
+    return logs;
   }
 }

@@ -1,13 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import {
-  Lido,
-  LIDO_CONTRACT_TOKEN,
-  EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES,
-  LIDO_LOCATOR_CONTRACT_TOKEN,
-  LidoLocator,
-} from '@lido-nestjs/contracts';
+import { Lido, LIDO_CONTRACT_TOKEN, LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
@@ -21,8 +15,7 @@ import { LOGGER_PROVIDER, LoggerService } from '../../common/logger';
 import { ConfigService } from '../../common/config';
 import { ContractConfigStorageService, RewardsStorageService } from '../../storage';
 import { PrometheusService } from '../../common/prometheus';
-
-import { getLogsByRetryCount } from './rewards.utils';
+import { ExecutionProviderService } from '../../common/execution-provider';
 
 @Injectable()
 export class RewardsService {
@@ -37,12 +30,17 @@ export class RewardsService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly executionProvider: ExecutionProviderService,
   ) {}
 
   /**
    * Initializes the job
    */
   public async initialize(): Promise<void> {
+    if (this.configService.get('IS_SERVICE_UNAVAILABLE')) {
+      return;
+    }
+
     await this.updateRewards();
 
     // getting total rewards per frame starts from TokenRebased event because it contains
@@ -138,17 +136,23 @@ export class RewardsService {
 
   protected async getHoursAgoBlock(hours: number) {
     const currentBlock = await this.provider.getBlockNumber();
-    return currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
+    const blockInPast = currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
+    return Math.max(blockInPast, 0);
   }
 
   protected async getElRewards(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.ELRewardsReceived();
-    const logs = await this.provider.getLogs({
-      topics: res.topics,
-      toBlock: 'latest',
-      fromBlock,
-      address: res.address,
-    });
+
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
+      {
+        topics: res.topics,
+        toBlock: 'latest',
+        fromBlock,
+        address: res.address,
+      },
+      'ELRewardsReceived',
+      RewardsService.SERVICE_LOG_NAME,
+    );
     const lastLog = logs[0];
 
     if (!lastLog) {
@@ -166,16 +170,15 @@ export class RewardsService {
     postCLBalance: BigNumber;
   }> {
     const res = this.contractLido.filters.ETHDistributed();
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock,
         address: res.address,
       },
-      this.logger,
       'ETHDistributed',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('ETHDistributed event logs', { service: RewardsService.SERVICE_LOG_NAME, logsCount: logs.length });
@@ -212,16 +215,15 @@ export class RewardsService {
 
   protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {
     const res = this.contractLido.filters.WithdrawalsReceived();
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock,
         address: res.address,
       },
-      this.logger,
       'WithdrawalsReceived',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('WithdrawalsReceived event logs', {
@@ -252,16 +254,15 @@ export class RewardsService {
 
     const res = this.contractLido.filters.TokenRebased();
 
-    const logs = await getLogsByRetryCount(
-      this.provider,
+    const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
       {
         topics: res.topics,
         toBlock: 'latest',
         fromBlock: weekAgoBlock,
         address: res.address,
       },
-      this.logger,
       'TokenRebased',
+      RewardsService.SERVICE_LOG_NAME,
     );
 
     this.logger.log('TokenRebase event logs for last week', {
@@ -299,13 +300,10 @@ export class RewardsService {
 
   // it includes WithdrawalVault balance and diff between rewards and cached rewards from previous report
   async getVaultsBalance(blockNumber: number) {
-    const chainId = this.configService.get('CHAIN_ID');
     const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault({ blockTag: blockNumber });
     const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress, blockNumber);
-    const rewardsVaultBalance = await this.provider.getBalance(
-      EXECUTION_REWARDS_VAULT_CONTRACT_ADDRESSES[chainId],
-      blockNumber,
-    );
+    const rewardsVaultAddress = await this.lidoLocator.elRewardsVault({ blockTag: blockNumber });
+    const rewardsVaultBalance = await this.provider.getBalance(rewardsVaultAddress, blockNumber);
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
 
