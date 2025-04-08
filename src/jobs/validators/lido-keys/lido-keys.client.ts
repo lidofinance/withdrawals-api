@@ -1,33 +1,27 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from '../../../common/logger';
 import { ConfigService } from '../../../common/config';
-import { KEYS_API_PATHS } from './lido-keys.constants';
 import { LidoKeysData } from './lido-keys.types';
 
 @Injectable()
-export class LidoKeysClient {
+export class LidoKeysClient implements OnModuleInit {
   protected endpoints = {
     usedKeys: '/v1/keys?used=true',
   };
+
+  protected basePath: string;
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
   ) {}
 
-  protected getBasePath(): string {
-    const envUrl = this.configService.get('KEYS_API_BASE_PATH');
-
-    if (envUrl) {
-      return envUrl;
-    }
-
-    const chainId = this.configService.get('CHAIN_ID');
-    return KEYS_API_PATHS[chainId];
+  async onModuleInit() {
+    this.basePath = await this.configService.getKeysApiBasePath();
   }
 
   public async getUsedKeys() {
-    const url = this.getBasePath() + this.endpoints.usedKeys;
+    const url = this.basePath + this.endpoints.usedKeys;
     const lidoKeysResponse = await fetch(url, {
       method: 'GET',
     });
