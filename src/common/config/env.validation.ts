@@ -102,12 +102,18 @@ export class EnvironmentVariables {
   IS_SERVICE_UNAVAILABLE = false;
 
   @IsOptional()
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   EL_RETRY_COUNT = 2;
 
   @IsOptional()
+  @Transform(({ value }) => Number(value))
   @IsNumber()
   EL_BLOCK_STEP = 500;
+
+  @IsOptional()
+  @IsString()
+  CUSTOM_NETWORK_FILE_NAME: string;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 

@@ -1,0 +1,13 @@
+{
+  "contracts": {
+    "withdrawalQueue": "0x0..",
+    "lido": "0x0..",
+    "oracleReportSanityChecker": "0x0..",
+    "accountingOracleHashConsensus": "0x0..",
+    "validatorsExitBusOracleHashConsensus": "0x0..",
+    "lidoLocator": "0x0.."
+  },
+  "apis": {
+    "keysApiBasePath": ""
+  }
+}
