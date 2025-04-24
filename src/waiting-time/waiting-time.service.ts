@@ -58,9 +58,16 @@ export class WaitingTimeService {
   public async getWaitingTimeInfo(args: GetWaitingTimeInfoV2Args): Promise<GetWaitingTimeInfoV2Result> {
     const { amount, cached } = args;
 
+    if (this.checkIsInitializing()) {
+      return {
+        status: WaitingTimeStatus.initializing,
+        nextCalculationAt: null,
+        requestInfo: null,
+      };
+    }
+
     // nextCalculationAt not needed anymore due to runtime queries to contract
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-    const validatorsLastUpdate = this.validators.getLastUpdate();
     const block = await this.provider.getBlock('safe');
     const blockNumber = block.number;
 
@@ -71,14 +78,6 @@ export class WaitingTimeService {
           this.rewardsService.getVaultsBalance(blockNumber),
         ])
       : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
-
-    if (!unfinalized || !validatorsLastUpdate) {
-      return {
-        status: WaitingTimeStatus.initializing,
-        nextCalculationAt,
-        requestInfo: null,
-      };
-    }
 
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
@@ -362,12 +361,13 @@ export class WaitingTimeService {
     };
   }
 
-  private checkIsInitializing() {
+  public checkIsInitializing() {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
+    const contractConfigLastUpdate = this.contractConfig.getLastUpdate();
 
-    const isInitialized = validatorsLastUpdate && queueInfoLastUpdate && requests;
+    const isInitialized = validatorsLastUpdate && queueInfoLastUpdate && requests && contractConfigLastUpdate;
 
     if (!isInitialized) {
       return {
