@@ -34,9 +34,14 @@ export class QueueInfoService {
       return;
     }
 
+    try {
+      await this.updateQueueInfo();
+    } catch (error) {
+      this.logger.error(error);
+    }
+
     const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
     this.job = new CronJob(cronTime, () => this.updateQueueInfo());
-    await this.updateQueueInfo();
 
     this.job.start();
 
@@ -82,7 +87,6 @@ export class QueueInfoService {
         this.queueInfoStorageService.setMinStethAmount(minStethAmount);
         this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
         this.queueInfoStorageService.setDepositableEther(depositableEther);
-        this.queueInfoStorageService.setBufferedEther(bufferedEther);
         this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
         this.queueInfoStorageService.setNextUpdate(this.getNextUpdateDate());
 
