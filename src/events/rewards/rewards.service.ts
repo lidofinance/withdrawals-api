@@ -86,15 +86,25 @@ export class RewardsService {
     }
 
     const rewards = await Promise.all(
-      framesFromLastReports.map(async ({ blockNumber, frames }) => {
-        const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
+      framesFromLastReports
+        .filter(({ frames }) => !frames.eq(0))
+        .map(async ({ blockNumber, frames }) => {
+          const { clRewards, elRewards } = await this.getRewardsByBlockNumber(blockNumber, frames);
 
-        return {
-          clRewards,
-          elRewards,
-        };
-      }),
+          return {
+            clRewards,
+            elRewards,
+          };
+        }),
     );
+
+    if (rewards.length === 0) {
+      return {
+        clRewards: BigNumber.from(0),
+        elRewards: BigNumber.from(0),
+        allRewards: BigNumber.from(0),
+      };
+    }
 
     let minCL = rewards[0].clRewards;
     let minEL = rewards[0].elRewards;
