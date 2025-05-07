@@ -10,9 +10,8 @@ export class QueueInfoStorageService {
   protected minStethAmount: BigNumber;
   protected maxStethAmount: BigNumber;
   protected depositableEther: BigNumber;
-  protected bufferedEther: BigNumber;
   protected lastRequestId: BigNumber;
-  protected requests: WithdrawalRequest[];
+  protected requests: WithdrawalRequest[] = [];
   protected nextUpdate: Date;
 
   /**
@@ -117,14 +116,6 @@ export class QueueInfoStorageService {
 
   public getRequests(): WithdrawalRequest[] {
     return this.requests;
-  }
-
-  public setBufferedEther(bufferedEther: BigNumber): void {
-    this.bufferedEther = bufferedEther;
-  }
-
-  public getBufferedEther(): BigNumber | undefined {
-    return this.bufferedEther;
   }
 
   public setNextUpdate(nextUpdate: Date): void {

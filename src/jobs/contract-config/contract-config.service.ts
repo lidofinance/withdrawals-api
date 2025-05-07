@@ -36,7 +36,11 @@ export class ContractConfigService {
       return;
     }
 
-    await this.updateContractConfig();
+    try {
+      await this.updateContractConfig();
+    } catch (error) {
+      this.logger.error(error);
+    }
 
     const cronTime = this.configService.get('JOB_INTERVAL_CONTRACT_CONFIG');
     const job = new CronJob(cronTime, () => this.updateContractConfig());
@@ -57,11 +61,13 @@ export class ContractConfigService {
           this.accountingOracleHashConsensus.getFrameConfig(),
           this.veboHashConsensus.getFrameConfig(),
         ]);
+
         this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
         this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
         this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
+        this.contractConfig.setLastUpdate(Math.floor(Date.now() / 1000));
 
         this.logger.log('End update contract config', {
           service: ContractConfigService.SERVICE_LOG_NAME,
