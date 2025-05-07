@@ -184,22 +184,34 @@ export class ValidatorsService {
         const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
         const frameBalances = {};
 
-        for (const validatorId of validatorIds) {
-          const stateValidator = await this.consensusProviderService.getStateValidator({
-            stateId: 'head',
-            validatorId,
-          });
+        const batchSize = 20;
+        for (let i = 0; i < validatorIds.length; i += batchSize) {
+          const batch = validatorIds.slice(i, i + batchSize);
 
-          const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
-            BigNumber.from(stateValidator.data.index),
-            lastWithdrawalValidatorIndex,
-            this.validatorsStorageService.getActiveValidatorsCount(),
-            this.validatorsStorageService.getTotalValidatorsCount(),
+          const stateValidators = await Promise.all(
+            batch.map((validatorId) =>
+              this.consensusProviderService.getStateValidator({
+                stateId: 'head',
+                validatorId,
+              }),
+            ),
           );
-          const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
-          const prevBalance = frameBalances[frame];
-          const balance = parseGwei(stateValidator.data.balance);
-          frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+
+          for (let j = 0; j < batch.length; j++) {
+            const validatorId = batch[j];
+            const stateValidator = stateValidators[j];
+
+            const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
+              BigNumber.from(stateValidator.data.index),
+              lastWithdrawalValidatorIndex,
+              this.validatorsStorageService.getActiveValidatorsCount(),
+              this.validatorsStorageService.getTotalValidatorsCount(),
+            );
+            const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+            const prevBalance = frameBalances[frame];
+            const balance = parseGwei(stateValidator.data.balance);
+            frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+          }
         }
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
