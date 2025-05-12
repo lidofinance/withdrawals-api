@@ -22,20 +22,15 @@ export class RequestTimeService {
   ) {}
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
+    const isInitializing = this.waitingTimeService.checkIsInitializing();
+    if (!isInitializing) {
+      return {
+        status: WaitingTimeStatus.initializing,
+      };
+    }
+
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    if (!validatorsLastUpdate) {
-      return {
-        status: WaitingTimeStatus.initializing,
-      };
-    }
-
     const unfinalizedETH = this.queueInfo.getStETH();
-    if (!unfinalizedETH) {
-      return {
-        status: WaitingTimeStatus.initializing,
-      };
-    }
-
     const additionalStETH = parseEther(params.amount || '0');
     const queueStETH = unfinalizedETH.add(additionalStETH);
 

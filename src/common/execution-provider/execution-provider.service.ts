@@ -39,13 +39,30 @@ export class ExecutionProviderService {
   public async getLatestWithdrawals(): Promise<Array<{ validatorIndex: string }>> {
     const endTimer = this.prometheusService.elRpcRequestDuration.startTimer();
     try {
-      const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
-      const block = await provider.send('eth_getBlockByNumber', ['latest', false]);
+      const block = await this.sendWithFallback('eth_getBlockByNumber', ['latest', false]);
       endTimer({ result: 'success' });
       return block.withdrawals;
     } catch (error) {
       endTimer({ result: 'error' });
       throw error;
+    }
+  }
+
+  public async sendWithFallback(method: string, params: Array<any>) {
+    const elRpcUrls: string[] = this.configService.get('EL_RPC_URLS');
+
+    for (let i = 0; i < elRpcUrls.length; i++) {
+      const url = elRpcUrls[i];
+      try {
+        const provider = new ethers.JsonRpcProvider(url);
+        return await provider.send(method, params);
+      } catch (error) {
+        if (i === elRpcUrls.length - 1) {
+          throw error;
+        } else {
+          this.logger.warn(`RPC provider [${i}] failed. Switching to the next provider.`);
+        }
+      }
     }
   }
 
@@ -80,7 +97,7 @@ export class ExecutionProviderService {
         }
 
         if (blockLogs.length === 0) {
-          this.logger.warn(
+          this.logger.debug(
             `${eventName}: No logs found for blocks ${startBlock} - ${endBlock}. Retrying in 200 ms...`,
             {
               service: serviceName,
