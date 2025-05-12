@@ -60,7 +60,7 @@ export class ExecutionProviderService {
         if (i === elRpcUrls.length - 1) {
           throw error;
         } else {
-          this.logger.warn(`RPC provider with index ${i}. Trying next.`);
+          this.logger.warn(`RPC provider [${i}] failed. Switching to the next provider.`);
         }
       }
     }
@@ -97,7 +97,7 @@ export class ExecutionProviderService {
         }
 
         if (blockLogs.length === 0) {
-          this.logger.warn(
+          this.logger.debug(
             `${eventName}: No logs found for blocks ${startBlock} - ${endBlock}. Retrying in 200 ms...`,
             {
               service: serviceName,
