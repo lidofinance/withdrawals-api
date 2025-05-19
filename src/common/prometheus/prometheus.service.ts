@@ -35,10 +35,24 @@ export class PrometheusService {
     labelNames: ENV_KEYS,
   });
 
-  public validatorsState = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'validators_state',
-    help: 'balances of Lido validators with withdrawable_epoch by frames',
-    labelNames: ['frame', 'balance'],
+  public sumValidatorsBalances = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'sum_validators_balances',
+    help: 'sum balances of Lido validators with withdrawable_epoch',
+  });
+
+  public balancesStateUnfinalized = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'balances_state_unfinalized',
+    help: 'Unfinalized ETH balance',
+  });
+
+  public balancesStateBuffer = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'balances_state_buffer',
+    help: 'Buffer ETH balance',
+  });
+
+  public balancesStateVaults = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'balances_state_vaults',
+    help: 'Vaults ETH balance',
   });
 
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {

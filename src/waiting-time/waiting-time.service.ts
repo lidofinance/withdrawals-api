@@ -11,6 +11,7 @@ import {
 } from 'storage';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { PrometheusService } from 'common/prometheus';
 import { RewardsService } from 'events/rewards';
 
 import {
@@ -38,6 +39,7 @@ import {
   GetWaitingTimeInfoV2Result,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { toEth } from '../common/utils/to-eth';
 
 @Injectable()
 export class WaitingTimeService {
@@ -52,15 +54,23 @@ export class WaitingTimeService {
     protected readonly rewardsService: RewardsService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly prometheusService: PrometheusService,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
   public async getWaitingTimeInfo(args: GetWaitingTimeInfoV2Args): Promise<GetWaitingTimeInfoV2Result> {
     const { amount, cached } = args;
 
+    if (this.checkIsInitializing()) {
+      return {
+        status: WaitingTimeStatus.initializing,
+        nextCalculationAt: null,
+        requestInfo: null,
+      };
+    }
+
     // nextCalculationAt not needed anymore due to runtime queries to contract
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-    const validatorsLastUpdate = this.validators.getLastUpdate();
     const block = await this.provider.getBlock('safe');
     const blockNumber = block.number;
 
@@ -72,13 +82,9 @@ export class WaitingTimeService {
         ])
       : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
 
-    if (!unfinalized || !validatorsLastUpdate) {
-      return {
-        status: WaitingTimeStatus.initializing,
-        nextCalculationAt,
-        requestInfo: null,
-      };
-    }
+    this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
+    this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
+    this.prometheusService.balancesStateVaults.set(toEth(vaultsBalance).toNumber());
 
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
@@ -308,6 +314,10 @@ export class WaitingTimeService {
       this.rewardsService.getVaultsBalance(blockNumber),
     ]);
 
+    this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
+    this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
+    this.prometheusService.balancesStateVaults.set(toEth(vaultsBalance).toNumber());
+
     return Promise.all(
       ids.map((requestId) => this.getWaitingTimeInfoById({ requestId, unfinalized, buffer, vaultsBalance })),
     );
@@ -362,12 +372,13 @@ export class WaitingTimeService {
     };
   }
 
-  private checkIsInitializing() {
+  public checkIsInitializing() {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
+    const contractConfigLastUpdate = this.contractConfig.getLastUpdate();
 
-    const isInitialized = validatorsLastUpdate && queueInfoLastUpdate && requests;
+    const isInitialized = validatorsLastUpdate && queueInfoLastUpdate && requests && contractConfigLastUpdate;
 
     if (!isInitialized) {
       return {

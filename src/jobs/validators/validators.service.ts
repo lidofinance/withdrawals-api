@@ -21,6 +21,7 @@ import { stringifyFrameBalances } from 'common/validators/strigify-frame-balance
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService } from '../../common/sweep';
+import { toEth } from '../../common/utils/to-eth';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -55,11 +56,20 @@ export class ValidatorsService {
     const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
     const cronTime = envCronTime ? envCronTime : cronByChainId;
 
-    await this.updateValidators();
+    try {
+      await this.updateValidators();
+    } catch (error) {
+      this.logger.error(error);
+    }
     const mainJob = new CronJob(cronTime, () => this.updateValidators());
     mainJob.start();
 
-    await this.updateLidoWithdrawableValidators();
+    try {
+      await this.updateLidoWithdrawableValidators();
+    } catch (error) {
+      this.logger.error(error);
+    }
+
     const lidoWithdrawableJob = new CronJob(CronExpression.EVERY_5_MINUTES, () =>
       this.updateLidoWithdrawableValidators(),
     );
@@ -175,22 +185,33 @@ export class ValidatorsService {
         const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
         const frameBalances = {};
 
-        for (const validatorId of validatorIds) {
-          const stateValidator = await this.consensusProviderService.getStateValidator({
-            stateId: 'head',
-            validatorId,
-          });
+        const batchSize = 20;
+        for (let i = 0; i < validatorIds.length; i += batchSize) {
+          const batch = validatorIds.slice(i, i + batchSize);
 
-          const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
-            BigNumber.from(stateValidator.data.index),
-            lastWithdrawalValidatorIndex,
-            this.validatorsStorageService.getActiveValidatorsCount(),
-            this.validatorsStorageService.getTotalValidatorsCount(),
+          const stateValidators = await Promise.all(
+            batch.map((validatorId) =>
+              this.consensusProviderService.getStateValidator({
+                stateId: 'head',
+                validatorId,
+              }),
+            ),
           );
-          const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
-          const prevBalance = frameBalances[frame];
-          const balance = parseGwei(stateValidator.data.balance);
-          frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+
+          for (let j = 0; j < batch.length; j++) {
+            const stateValidator = stateValidators[j];
+
+            const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
+              BigNumber.from(stateValidator.data.index),
+              lastWithdrawalValidatorIndex,
+              this.validatorsStorageService.getActiveValidatorsCount(),
+              this.validatorsStorageService.getTotalValidatorsCount(),
+            );
+            const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+            const prevBalance = frameBalances[frame];
+            const balance = parseGwei(stateValidator.data.balance);
+            frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+          }
         }
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
@@ -221,13 +242,10 @@ export class ValidatorsService {
       currentFrame,
     });
 
-    Object.keys(frameBalances).forEach((frame) => {
-      this.prometheusService.validatorsState
-        .labels({
-          frame,
-          balance: frameBalances[frame].toString(),
-        })
-        .inc();
-    });
+    const sum = Object.keys(frameBalances).reduce((acc, item) => {
+      return acc.add(frameBalances[item]);
+    }, BigNumber.from(0));
+
+    this.prometheusService.sumValidatorsBalances.set(toEth(sum).toNumber());
   }
 }

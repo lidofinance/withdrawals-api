@@ -15,6 +15,7 @@ WORKDIR /app
 
 COPY --from=building /app/dist ./dist
 COPY --from=building /app/node_modules ./node_modules
+COPY ./network-configs ./network-configs
 COPY ./package.json ./
 
 USER node
