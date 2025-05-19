@@ -15,6 +15,7 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import { WaitingTimeCalculationType } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { PrometheusService } from '../common/prometheus';
 
 jest.mock('common/config', () => ({}));
 
@@ -25,6 +26,7 @@ describe('WaitingTimeService', () => {
   let contractConfig: ContractConfigStorageService;
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
+  let prometheusService: PrometheusService;
   let rpcBatchProvider: SimpleFallbackJsonRpcBatchProvider;
 
   // constants
@@ -131,6 +133,10 @@ describe('WaitingTimeService', () => {
           provide: RewardsService,
           useValue: {},
         },
+        {
+          provide: PrometheusService,
+          useValue: {},
+        },
       ],
     }).compile();
 
@@ -140,6 +146,7 @@ describe('WaitingTimeService', () => {
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
     rpcBatchProvider = moduleRef.get<SimpleFallbackJsonRpcBatchProvider>(SimpleFallbackJsonRpcBatchProvider);
+    prometheusService = moduleRef.get<PrometheusService>(PrometheusService);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);

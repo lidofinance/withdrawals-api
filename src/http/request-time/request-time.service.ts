@@ -1,6 +1,5 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 
-import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { parseEther } from '@ethersproject/units';
 
@@ -54,18 +53,8 @@ export class RequestTimeService {
     };
   }
 
-  async getRequestTimeV2({
-    amount,
-    cached,
-  }: {
-    amount: string;
-    cached?: {
-      unfinalized: BigNumber;
-      buffer: BigNumber;
-      vaultsBalance: BigNumber;
-    };
-  }): Promise<RequestTimeV2Dto | null> {
-    return await this.waitingTimeService.getWaitingTimeInfo({ amount, cached });
+  async getRequestTimeV2({ amount }: { amount: string }): Promise<RequestTimeV2Dto | null> {
+    return await this.waitingTimeService.getWaitingTimeInfo({ amount });
   }
 
   async getTimeRequests(requestOptions: RequestsTimeOptionsDto) {

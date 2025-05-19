@@ -11,6 +11,7 @@ import {
 } from 'storage';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { PrometheusService } from 'common/prometheus';
 import { RewardsService } from 'events/rewards';
 
 import {
@@ -38,6 +39,7 @@ import {
   GetWaitingTimeInfoV2Result,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { toEth } from '../common/utils/to-eth';
 
 @Injectable()
 export class WaitingTimeService {
@@ -52,6 +54,7 @@ export class WaitingTimeService {
     protected readonly rewardsService: RewardsService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
+    protected readonly prometheusService: PrometheusService,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -78,6 +81,10 @@ export class WaitingTimeService {
           this.rewardsService.getVaultsBalance(blockNumber),
         ])
       : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
+
+    this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
+    this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
+    this.prometheusService.balancesStateVaults.set(toEth(vaultsBalance).toNumber());
 
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
@@ -306,6 +313,10 @@ export class WaitingTimeService {
       this.contractLido.getBufferedEther({ blockTag: blockNumber }),
       this.rewardsService.getVaultsBalance(blockNumber),
     ]);
+
+    this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
+    this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
+    this.prometheusService.balancesStateVaults.set(toEth(vaultsBalance).toNumber());
 
     return Promise.all(
       ids.map((requestId) => this.getWaitingTimeInfoById({ requestId, unfinalized, buffer, vaultsBalance })),
