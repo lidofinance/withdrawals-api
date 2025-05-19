@@ -21,6 +21,7 @@ import { stringifyFrameBalances } from 'common/validators/strigify-frame-balance
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService } from '../../common/sweep';
+import { toEth } from '../../common/utils/to-eth';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -198,7 +199,6 @@ export class ValidatorsService {
           );
 
           for (let j = 0; j < batch.length; j++) {
-            const validatorId = batch[j];
             const stateValidator = stateValidators[j];
 
             const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
@@ -242,13 +242,10 @@ export class ValidatorsService {
       currentFrame,
     });
 
-    Object.keys(frameBalances).forEach((frame) => {
-      this.prometheusService.validatorsState
-        .labels({
-          frame,
-          balance: frameBalances[frame].toString(),
-        })
-        .inc();
-    });
+    const sum = Object.keys(frameBalances).reduce((acc, item) => {
+      return acc.add(frameBalances[item]);
+    }, BigNumber.from(0));
+
+    this.prometheusService.sumValidatorsBalances.set(toEth(sum).toNumber());
   }
 }
