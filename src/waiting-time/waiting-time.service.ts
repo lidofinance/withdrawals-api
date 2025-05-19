@@ -82,6 +82,10 @@ export class WaitingTimeService {
         ])
       : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
 
+    this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
+    this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
+    this.prometheusService.balancesStateVaults.set(toEth(vaultsBalance).toNumber());
+
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
 
