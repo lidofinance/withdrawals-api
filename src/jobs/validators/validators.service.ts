@@ -126,8 +126,19 @@ export class ValidatorsService {
         this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
         await this.validatorsCacheService.saveDataToCache();
-        this.logAnalyticsAboutWithdrawableBalances(activeValidatorCount, latestEpoch);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+
+        this.logAnalyticsAboutFrameBalances();
+
+        const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
+        const frameBalances = this.validatorsStorageService.getFrameBalances();
+        this.logger.log('End update validators', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          activeValidatorCount,
+          latestEpoch,
+          frameBalances: stringifyFrameBalances(frameBalances),
+          currentFrame,
+        });
       },
     );
   }
@@ -219,6 +230,7 @@ export class ValidatorsService {
           service: ValidatorsService.SERVICE_LOG_NAME,
           frameBalances: stringifyFrameBalances(frameBalances),
         });
+        this.logAnalyticsAboutFrameBalances();
       },
     );
   }
@@ -231,16 +243,20 @@ export class ValidatorsService {
     return BigNumber.from(lastWithdrawal ? lastWithdrawal.validatorIndex : 0);
   }
 
-  protected logAnalyticsAboutWithdrawableBalances(activeValidatorCount: number, latestEpoch: string) {
+  protected logAnalyticsAboutFrameBalances() {
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
     const frameBalances = this.validatorsStorageService.getFrameBalances();
-    this.logger.log('End update validators', {
-      service: ValidatorsService.SERVICE_LOG_NAME,
-      activeValidatorCount,
-      latestEpoch,
-      frameBalances: stringifyFrameBalances(frameBalances),
-      currentFrame,
+
+    const someFrame = Object.keys(frameBalances).some((frame) => {
+      return +frame < currentFrame;
     });
+
+    if (someFrame) {
+      this.logger.warn('frameBalances contains frames in past', {
+        frameBalances: stringifyFrameBalances(frameBalances),
+        currentFrame,
+      });
+    }
 
     const sum = Object.keys(frameBalances).reduce((acc, item) => {
       return acc.add(frameBalances[item]);
