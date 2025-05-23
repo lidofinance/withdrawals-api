@@ -357,8 +357,9 @@ export class WaitingTimeService {
       currentType = recalculatedResult.type;
     }
 
+    const isInPastFallback = requestTimestamp + ms - Date.now() < 0;
     // temporary fallback for negative results, can be deleted after validator balances computation improvements
-    if (ms < 0) {
+    if (isInPastFallback) {
       this.logger.warn(
         `Request with id ${request.id} was recalculated and finalisation still in past (recalculated finalizationIn=${ms}). Fallback to next frame`,
       );
