@@ -260,8 +260,6 @@ export class WaitingTimeService {
       .filter((f) => Boolean(f))
       .reduce((prev, curr) => (prev.frame < curr.frame ? prev : curr));
 
-    console.log([frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
-
     return minFrameObject;
   }
 
