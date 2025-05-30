@@ -142,6 +142,11 @@ export class WaitingTimeService {
       this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
       currentExitValidatorsDiffEpochs;
 
+    console.log('currentExitValidatorsDiffEpochs', currentExitValidatorsDiffEpochs);
+    console.log('currentEpoch', currentEpoch);
+    console.log('maxExitEpochInPast', maxExitEpochInPast);
+    console.log('maxExitEpoch', Number(maxExitEpoch));
+
     const { frame, type: precalculatedType } = await this.calculateWithdrawalFrame({
       unfinalized: queueStETH,
       buffer,
@@ -260,6 +265,8 @@ export class WaitingTimeService {
       .filter((f) => Boolean(f))
       .reduce((prev, curr) => (prev.frame < curr.frame ? prev : curr));
 
+    console.log([frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]);
+
     return minFrameObject;
   }
 
@@ -267,26 +274,26 @@ export class WaitingTimeService {
     unfinalizedETH: BigNumber,
     latestEpoch: string,
   ): Promise<number> {
-    // latest epoch of most late to exit validators
     const totalValidators = this.validators.getActiveValidatorsCount();
 
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
-    const epochPerFrame = this.contractConfig.getEpochsPerFrame();
+    const churnLimit = Math.floor(Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT));
+    console.log('churnLimit', churnLimit);
+    const epochsPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
-    const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
+    const rewardsPerEpoch = rewardsPerFrame.div(epochsPerFrame);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
 
     // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
     const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
-      MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
+      MIN_ACTIVATION_BALANCE.mul(churnLimit).add(rewardsPerEpoch),
     );
 
     // number of validators to exit
-    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
+    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(churnLimit);
 
     // Validator Exit Bus Oracle (VEBO) has max validator to exit per VEBO frame
     // according to this limitation, this is VEBO frames needed to exit
@@ -296,6 +303,11 @@ export class WaitingTimeService {
 
     // time to find validators for exiting
     const sweepingMean = this.validators.getSweepMeanEpochs();
+
+    // const latestEpoch =
+    //   this.validators.getMaxExitEpoch() === null
+    //     ? this.genesisTimeService.getCurrentEpoch() + 5
+    //     : this.validators.getMaxExitEpoch();
 
     // latestEpoch - epoch of last exiting validator in whole network
     // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
