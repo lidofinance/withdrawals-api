@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BigNumber } from '@ethersproject/bignumber';
-import { LIDO_CONTRACT_TOKEN, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
+import { Lido, LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
 import { parseEther } from 'ethers';
 
 import {
@@ -22,21 +22,21 @@ import {
   WITHDRAWAL_BUNKER_DELAY_FRAMES,
 } from './waiting-time.constants';
 import {
-  validateTimeResponseWithFallback,
-  calculateUnfinalizedEthToRequestId,
   calculateFrameByValidatorBalances,
+  calculateUnfinalizedEthToRequestId,
+  validateTimeResponseWithFallback,
 } from './utils';
 import { transformToRequestDto } from './dto';
 import {
-  WaitingTimeStatus,
-  CheckInPastCaseArgs,
   CalculateWaitingTimeV2Args,
-  WaitingTimeCalculationType,
   CalculateWaitingTimeV2Result,
-  GetWaitingTimeInfoByIdResult,
+  CheckInPastCaseArgs,
   GetWaitingTimeInfoByIdArgs,
+  GetWaitingTimeInfoByIdResult,
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
+  WaitingTimeCalculationType,
+  WaitingTimeStatus,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
@@ -158,6 +158,22 @@ export class WaitingTimeService {
       type: precalculatedType,
     });
     const requestDto = transformToRequestDto(request);
+
+    // temporary fallback for exitValidators case
+    // because of possible wrong calculation churn limit after pectra upgrade
+    if (type === WaitingTimeCalculationType.exitValidators) {
+      return {
+        requestInfo: {
+          requestId: requestDto.id,
+          requestedAt: requestDto.timestamp,
+          finalizationIn: null,
+          finalizationAt: null,
+          type,
+        },
+        status: WaitingTimeStatus.calculating,
+        nextCalculationAt,
+      };
+    }
 
     return {
       requestInfo: {
