@@ -22,6 +22,7 @@ import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawa
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
+import { getChurnLimit } from './utils/getChurnLimit';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -91,20 +92,22 @@ export class ValidatorsService {
         const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
-        let activeValidatorCount = 0;
-        let latestEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
-
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
+
+        let activeValidatorCount = 0;
+        let maxExitEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
+        let totalActiveBalance = BigNumber.from(0);
 
         for (const item of indexedValidators) {
           if (['active_ongoing', 'active_exiting', 'active_slashed'].includes(item.status)) {
             activeValidatorCount++;
+            totalActiveBalance = totalActiveBalance.add(item.balance);
           }
 
           if (item.validator.exit_epoch !== FAR_FUTURE_EPOCH.toString()) {
-            if (BigNumber.from(item.validator.exit_epoch).gt(BigNumber.from(latestEpoch))) {
-              latestEpoch = item.validator.exit_epoch;
+            if (BigNumber.from(item.validator.exit_epoch).gt(BigNumber.from(maxExitEpoch))) {
+              maxExitEpoch = item.validator.exit_epoch;
             }
           }
 
@@ -122,8 +125,9 @@ export class ValidatorsService {
         );
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
+        this.validatorsStorageService.setChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
-        this.validatorsStorageService.setMaxExitEpoch(latestEpoch);
+        this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
         await this.validatorsCacheService.saveDataToCache();
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
@@ -135,7 +139,7 @@ export class ValidatorsService {
         this.logger.log('End update validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           activeValidatorCount,
-          latestEpoch,
+          maxExitEpoch,
           frameBalances: stringifyFrameBalances(frameBalances),
           currentFrame,
         });

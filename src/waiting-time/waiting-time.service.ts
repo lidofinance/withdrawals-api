@@ -40,6 +40,7 @@ import {
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
+import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
 
 @Injectable()
 export class WaitingTimeService {
@@ -137,10 +138,9 @@ export class WaitingTimeService {
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
 
-    const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
+    const currentExitValidatorsDiffEpochs = Math.max(Number(maxExitEpoch) - currentEpoch, MAX_SEED_LOOKAHEAD);
     const maxExitEpochInPast =
-      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
-      currentExitValidatorsDiffEpochs;
+      this.genesisTimeService.getEpochByTimestamp(requestTimestamp) + currentExitValidatorsDiffEpochs;
 
     const { frame, type: precalculatedType } = await this.calculateWithdrawalFrame({
       unfinalized: queueStETH,
@@ -267,15 +267,12 @@ export class WaitingTimeService {
     unfinalizedETH: BigNumber,
     latestEpoch: string,
   ): Promise<number> {
-    // latest epoch of most late to exit validators
-    const totalValidators = this.validators.getActiveValidatorsCount();
-
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+    const churnLimit = this.validators.getChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
-    const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
+    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
