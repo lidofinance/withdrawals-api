@@ -9,6 +9,7 @@ export class ValidatorsStorageService {
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
   protected sweepMeanEpochs: number;
+  protected churnLimit: number;
   protected withdrawableLidoValidatorIds: string[] = [];
 
   /**
@@ -89,6 +90,14 @@ export class ValidatorsStorageService {
 
   public getSweepMeanEpochs() {
     return this.sweepMeanEpochs;
+  }
+
+  public setChurnLimit(churnLimit: number) {
+    this.churnLimit = churnLimit;
+  }
+
+  public getChurnLimit() {
+    return this.churnLimit;
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {
