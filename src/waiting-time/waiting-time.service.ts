@@ -40,6 +40,7 @@ import {
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
+import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
 
 @Injectable()
 export class WaitingTimeService {
@@ -89,14 +90,14 @@ export class WaitingTimeService {
     const additionalStETH = parseEther(amount || '0');
     const queueStETH = unfinalized.add(additionalStETH);
 
-    const latestEpoch = this.validators.getMaxExitEpoch();
+    const maxExitEpoch = this.getMaxExitEpoch();
 
     const { frame, type } = await this.calculateWithdrawalFrame({
       unfinalized: queueStETH,
       vaultsBalance,
       buffer,
       requestTimestamp: Date.now(),
-      latestEpoch,
+      latestEpoch: maxExitEpoch.toString(),
     });
     const ms = this.genesisTimeService.timeToWithdrawalFrame(frame, Date.now());
     const finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
@@ -131,16 +132,15 @@ export class WaitingTimeService {
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
     const request = requests.find((item) => item.id.eq(BigNumber.from(requestId)));
 
-    const maxExitEpoch = this.validators.getMaxExitEpoch();
+    const maxExitEpoch = this.getMaxExitEpoch();
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
     const requestTimestamp = request.timestamp.toNumber() * 1000;
 
-    const currentExitValidatorsDiffEpochs = Number(maxExitEpoch) - currentEpoch;
+    const currentExitValidatorsDiffEpochs = Math.max(Number(maxExitEpoch) - currentEpoch, MAX_SEED_LOOKAHEAD);
     const maxExitEpochInPast =
-      this.genesisTimeService.getEpochByTimestamp(request.timestamp.toNumber() * 1000) +
-      currentExitValidatorsDiffEpochs;
+      this.genesisTimeService.getEpochByTimestamp(requestTimestamp) + currentExitValidatorsDiffEpochs;
 
     const { frame, type: precalculatedType } = await this.calculateWithdrawalFrame({
       unfinalized: queueStETH,
@@ -267,15 +267,12 @@ export class WaitingTimeService {
     unfinalizedETH: BigNumber,
     latestEpoch: string,
   ): Promise<number> {
-    // latest epoch of most late to exit validators
-    const totalValidators = this.validators.getActiveValidatorsCount();
-
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+    const churnLimit = this.validators.getChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
-    const rewardsPerDay = await this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerDay.div(epochPerFrame);
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
+    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
 
     const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
@@ -328,7 +325,7 @@ export class WaitingTimeService {
   private async checkInPastCase(args: CheckInPastCaseArgs) {
     const { request, vaultsBalance, buffer, type, frame } = args;
 
-    const maxExitEpoch = this.validators.getMaxExitEpoch();
+    const maxExitEpoch = this.getMaxExitEpoch();
     const requests = this.queueInfo.getRequests();
     const requestTimestamp = request.timestamp.toNumber() * 1000;
     const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
@@ -480,14 +477,14 @@ export class WaitingTimeService {
 
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-    const latestEpoch = this.validators.getMaxExitEpoch();
+    const maxExitEpoch = this.getMaxExitEpoch();
     const totalValidators = this.validators.getActiveValidatorsCount();
 
     const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
 
     const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();
-    const potentialExitEpoch = BigNumber.from(latestEpoch).add(lidoQueueInEpoch).add(sweepingMean);
+    const potentialExitEpoch = BigNumber.from(maxExitEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
     const waitingTime = potentialExitEpoch
       .sub(currentEpoch)
@@ -496,5 +493,13 @@ export class WaitingTimeService {
       .div(60 * 60 * 24);
 
     return Math.round(waitingTime.toNumber());
+  }
+
+  // returns max exit epoch of validators with fallback to current epoch if max exit epoch already passed
+  public getMaxExitEpoch() {
+    const maxExitEpoch = this.validators.getMaxExitEpoch();
+    const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+
+    return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
   }
 }
