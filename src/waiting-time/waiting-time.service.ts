@@ -12,7 +12,7 @@ import {
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
-import { RewardsService } from 'events/rewards';
+import { RewardEventsService } from 'events/reward-events';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -52,7 +52,7 @@ export class WaitingTimeService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
-    protected readonly rewardsService: RewardsService,
+    protected readonly rewardsService: RewardEventsService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
