@@ -334,7 +334,7 @@ export class WaitingTimeService {
     let currentType = type;
     let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
     let finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
-    const isInPast = requestTimestamp + ms - Date.now() < 0;
+    const isInPast = requestTimestamp + finalizationIn - Date.now() < 0;
 
     if (isInPast) {
       this.logger.warn(
@@ -355,7 +355,7 @@ export class WaitingTimeService {
       currentType = recalculatedResult.type;
     }
 
-    const isInPastFallback = requestTimestamp + ms - Date.now() < 0;
+    const isInPastFallback = requestTimestamp + finalizationIn - Date.now() < 0;
     // temporary fallback for negative results, can be deleted after validator balances computation improvements
     if (isInPastFallback) {
       this.logger.warn(
