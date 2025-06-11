@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
-import { WaitingTimeCalculationType } from '../../../waiting-time';
+import { WaitingTimeCalculationType } from './withdrawal-time-calculation-type.enum';
 
 @Entity('withdrawal_request_info')
 export class WithdrawalRequestInfoEntity {
@@ -33,30 +33,8 @@ export class WithdrawalRequestInfoEntity {
   firstCalculatedFinalizationType: WaitingTimeCalculationType;
 
   // last
-  @Column({ name: 'last_calculated_finalization_timestamp', type: 'timestamptz', nullable: true })
-  lastCalculatedFinalizationTimestamp: Date;
-
-  @Column({
-    name: 'last_calculated_finalization_type',
-    type: 'enum',
-    enum: WaitingTimeCalculationType,
-    enumName: 'waiting_time_calculation_type',
-    nullable: true,
-  })
-  lastCalculatedFinalizationType: WaitingTimeCalculationType;
-
-  // min
-  @Column({ name: 'min_calculated_finalization_timestamp', type: 'timestamptz', nullable: true })
-  minCalculatedFinalizationTimestamp: Date;
-
-  @Column({
-    name: 'min_calculated_finalization_type',
-    type: 'enum',
-    enum: WaitingTimeCalculationType,
-    enumName: 'waiting_time_calculation_type',
-    nullable: true,
-  })
-  minCalculatedFinalizationType: WaitingTimeCalculationType;
+  @Column({ name: 'finalized_at', type: 'timestamptz', nullable: true })
+  finalizedAt: Date;
 
   @Column({ name: 'max_exit_epoch_at_request_timestamp', type: 'int', nullable: true })
   maxExitEpochAtRequestTimestamp: number;

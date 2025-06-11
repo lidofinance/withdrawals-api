@@ -12,11 +12,11 @@ import {
   WithdrawalRequestedEvent,
   WithdrawalsFinalizedEvent,
 } from '@lido-nestjs/contracts/dist/generated/WithdrawalQueue';
-import { WithdrawalRequestInfoEntity } from '../../common/database/entities/withdrawal-request-info.entity';
 import { GenesisTimeService } from '../../common/genesis-time';
 import { WaitingTimeService } from '../../waiting-time';
 import { GAP_AFTER_REPORT } from '../../waiting-time/waiting-time.constants';
 import { RewardEventsService } from '../reward-events';
+import { WithdrawalRequestInfoEntity } from 'waiting-time/entities/withdrawal-request-info.entity';
 
 @Injectable()
 export class WithdrawalEventsService {
@@ -113,8 +113,6 @@ export class WithdrawalEventsService {
   }
 
   async handleWithdrawalsFinalized(event: WithdrawalsFinalizedEvent) {
-    this.logger.log('event WithdrawalsFinalizedEvent triggered', { service: WithdrawalEventsService.SERVICE_LOG_NAME });
-
     const data = this.withdrawalQueueContract.interface.parseLog(event).args as WithdrawalsFinalizedEvent['args'];
     const finalizedAt = data.timestamp.toNumber() * 1000;
 
@@ -123,13 +121,13 @@ export class WithdrawalEventsService {
     });
 
     withdrawalRequestInfos.forEach((withdrawalRequestInfo) => {
-      withdrawalRequestInfo.lastCalculatedFinalizationTimestamp = new Date(finalizedAt);
+      withdrawalRequestInfo.finalizedAt = new Date(finalizedAt);
     });
 
     await this.withdrawalRequestInfoEntityRepository.save(withdrawalRequestInfos);
 
     for (const withdrawalRequestInfo of withdrawalRequestInfos) {
-      if (withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() > finalizedAt) {
+      if (withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() < finalizedAt) {
         this.logger.warn(
           `first calculated finalization time is incorrect, id: ${
             withdrawalRequestInfo.requestId

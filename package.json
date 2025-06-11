@@ -28,8 +28,8 @@
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "typeorm:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
     "typeorm:migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/common/database/database.config.ts",
-    "typeorm:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./dist/common/database/ormconfig",
-    "typeorm:schema:drop": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:drop -d ./dist/common/database/ormconfig"
+    "typeorm:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./dist/common/database/database.config",
+    "typeorm:schema:drop": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:drop -d ./dist/common/database/database.config"
   },
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",

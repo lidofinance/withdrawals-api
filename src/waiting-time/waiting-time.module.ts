@@ -10,9 +10,12 @@ import {
 import { GenesisTimeModule } from 'common/genesis-time';
 import { RewardEventsModule } from 'events/reward-events';
 import { SweepModule } from '../common/sweep';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { WithdrawalRequestInfoEntity } from './entities/withdrawal-request-info.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([WithdrawalRequestInfoEntity]),
     ValidatorsStorageModule,
     QueueInfoStorageModule,
     ContractConfigStorageModule,
