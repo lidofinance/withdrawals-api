@@ -8,18 +8,21 @@ import {
   ValidatorsStorageModule,
 } from 'storage';
 import { GenesisTimeModule } from 'common/genesis-time';
-import { RewardsModule } from 'events/rewards';
+import { RewardEventsModule } from 'events/reward-events';
 import { SweepModule } from '../common/sweep';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { WithdrawalRequestInfoEntity } from './entities/withdrawal-request-info.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([WithdrawalRequestInfoEntity]),
     ValidatorsStorageModule,
     QueueInfoStorageModule,
     ContractConfigStorageModule,
     GenesisTimeModule,
     SweepModule,
     RewardsStorageModule,
-    RewardsModule,
+    RewardEventsModule,
   ],
   exports: [WaitingTimeService],
   providers: [WaitingTimeService],

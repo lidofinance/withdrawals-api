@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
-import { RewardsService } from './rewards.service';
+import { RewardEventsService } from './reward-events.service';
 import { JobModule } from '../../common/job';
 import { ContractConfigStorageModule, RewardsStorageModule } from '../../storage';
 
 @Module({
   imports: [JobModule, RewardsStorageModule, ContractConfigStorageModule],
-  providers: [RewardsService],
-  exports: [RewardsService],
+  providers: [RewardEventsService],
+  exports: [RewardEventsService],
 })
-export class RewardsModule {}
+export class RewardEventsModule {}
