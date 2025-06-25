@@ -44,21 +44,6 @@ export class WithdrawalRequestInfoEntity {
 
   @CreateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
+
+  // todo backtrace of all balances
 }
-
-// RequestInfo {
-//     - id
-//     - updatedAt
-//     - createdAt
-//     - requestId
-//     - requestTimestamp
-//     - amount
-
-//     - firstCalculatedFinalizationTimestamp
-//     - firstCalculatedFinalizationType
-//     - lastCalculatedFinalizationTimestamp
-//     - lastCalculatedFinalizationType
-//     - minCalculatedFinalizationTimestamp
-//     - minCalculatedFinalizationType
-//     - maxExitEpochAtRequestTimestamp
-// }

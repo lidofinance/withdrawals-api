@@ -51,10 +51,16 @@ export class WithdrawalEventsService {
   }
 
   subscribeWithdrawalRequested() {
-    const withdrawalRequestedEvent = this.withdrawalQueueContract.filters.WithdrawalRequested();
-    this.provider.on(withdrawalRequestedEvent, async (event: WithdrawalRequestedEvent) => {
-      this.logger.log('event WithdrawalRequested triggered', { service: WithdrawalEventsService.SERVICE_LOG_NAME });
-      await this.handleWithdrawalRequested(event);
+    const withdrawalRequestedEventFilter = this.withdrawalQueueContract.filters.WithdrawalRequested();
+    this.provider.on(withdrawalRequestedEventFilter, async (event: WithdrawalRequestedEvent) => {
+      try {
+        this.logger.log('event WithdrawalRequested triggered', { service: WithdrawalEventsService.SERVICE_LOG_NAME });
+        await this.handleWithdrawalRequested(event);
+      } catch (error) {
+        this.logger.error(`event WithdrawalRequested failed with error ${error}`, {
+          service: WithdrawalEventsService.SERVICE_LOG_NAME,
+        });
+      }
     });
   }
 
@@ -105,10 +111,16 @@ export class WithdrawalEventsService {
   }
 
   subscribeWithdrawalsFinalized() {
-    const withdrawalRequestedEvent = this.withdrawalQueueContract.filters.WithdrawalsFinalized();
-    this.provider.on(withdrawalRequestedEvent, async (event: WithdrawalsFinalizedEvent) => {
-      this.logger.log('event WithdrawalsFinalized triggered', { service: WithdrawalEventsService.SERVICE_LOG_NAME });
-      await this.handleWithdrawalsFinalized(event);
+    const withdrawalFinalizedEventFilter = this.withdrawalQueueContract.filters.WithdrawalsFinalized();
+    this.provider.on(withdrawalFinalizedEventFilter, async (event: WithdrawalsFinalizedEvent) => {
+      try {
+        this.logger.log('event WithdrawalsFinalized triggered', { service: WithdrawalEventsService.SERVICE_LOG_NAME });
+        await this.handleWithdrawalsFinalized(event);
+      } catch (error) {
+        this.logger.error(`event WithdrawalsFinalized failed with error ${error}`, {
+          service: WithdrawalEventsService.SERVICE_LOG_NAME,
+        });
+      }
     });
   }
 
