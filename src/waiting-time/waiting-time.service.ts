@@ -510,7 +510,7 @@ export class WaitingTimeService {
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
   }
 
-  // returns block of processing ref lost or latest block if ref lost in future
+  // returns block of processing ref slot or latest block depending on if report submit or processing
   async getLatestOrBlockProcessingRefSlot() {
     const address = await this.lidoLocator.accountingOracle();
     const accountingOracle = OracleV2__factory.connect(address, {
@@ -527,7 +527,7 @@ export class WaitingTimeService {
       return block.number;
     } else {
       const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-      this.logger.debug(`using processing ref slot from block ${blockNumber}`);
+      this.logger.debug(`using processing ref slot of block ${blockNumber}`);
       return blockNumber;
     }
   }
