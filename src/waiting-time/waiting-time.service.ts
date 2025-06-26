@@ -1,6 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BigNumber } from '@ethersproject/bignumber';
-import { LIDO_CONTRACT_TOKEN, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
+import {
+  LIDO_CONTRACT_TOKEN,
+  Lido,
+  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
+  WithdrawalQueue,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
+  LidoLocator,
+} from '@lido-nestjs/contracts';
 import { parseEther } from 'ethers';
 
 import {
@@ -41,6 +48,7 @@ import {
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
+import { OracleV2__factory } from '../common/contracts/generated';
 
 @Injectable()
 export class WaitingTimeService {
@@ -56,6 +64,7 @@ export class WaitingTimeService {
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
+    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -72,8 +81,7 @@ export class WaitingTimeService {
 
     // nextCalculationAt not needed anymore due to runtime queries to contract
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-    const block = await this.provider.getBlock('safe');
-    const blockNumber = block.number;
+    const blockNumber = await this.getLatestOrBlockProcessingRefSlot();
 
     const [unfinalized, buffer, vaultsBalance] = !cached
       ? await Promise.all([
@@ -302,8 +310,7 @@ export class WaitingTimeService {
   }
 
   public async calculateRequestsTime(ids: string[]) {
-    const block = await this.provider.getBlock('safe');
-    const blockNumber = block.number;
+    const blockNumber = await this.getLatestOrBlockProcessingRefSlot();
 
     const [unfinalized, buffer, vaultsBalance] = await Promise.all([
       this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
@@ -501,5 +508,27 @@ export class WaitingTimeService {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
+  }
+
+  // returns block of processing ref slot or latest block depending on if report submit or processing
+  async getLatestOrBlockProcessingRefSlot() {
+    const address = await this.lidoLocator.accountingOracle();
+    const accountingOracle = OracleV2__factory.connect(address, {
+      provider: this.provider as any,
+    });
+
+    const processingState = await accountingOracle.getProcessingState();
+    const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
+
+    const block = await this.provider.getBlock('latest');
+
+    if (processingState.dataSubmitted) {
+      this.logger.debug(`using latest block ${block.number}`);
+      return block.number;
+    } else {
+      const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+      this.logger.debug(`using processing ref slot of block ${blockNumber}`);
+      return blockNumber;
+    }
   }
 }

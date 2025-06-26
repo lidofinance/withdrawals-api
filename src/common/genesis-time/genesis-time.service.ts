@@ -90,5 +90,10 @@ export class GenesisTimeService implements OnModuleInit {
     return Math.floor(this.getSlotByTimestamp(timestamp) / SLOTS_PER_EPOCH);
   }
 
+  async getBlockBySlot(slot: number) {
+    const block = await this.consensusService.getBlockV2({ blockId: `${slot}` });
+    return Number((block.data as any).message.body.execution_payload.block_number);
+  }
+
   protected genesisTime = -1;
 }
