@@ -1,6 +1,6 @@
-import { ethers } from 'ethers';
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
 import { ConfigService } from 'common/config';
 import {
   isFullyWithdrawableValidator,
@@ -19,7 +19,7 @@ import {
   MIN_ACTIVATION_BALANCE,
 } from 'waiting-time/waiting-time.constants';
 import { Withdrawal } from './sweep.types';
-import { LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
+import { ExecutionProvider } from '../execution-provider';
 
 @Injectable()
 export class SweepService {
@@ -30,13 +30,13 @@ export class SweepService {
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
     protected readonly consensusClientService: ConsensusClientService,
     protected readonly configService: ConfigService,
+    protected readonly provider: ExecutionProvider,
   ) {}
 
   async getConsensusVersion() {
-    const provider = new ethers.JsonRpcProvider(this.configService.get('EL_RPC_URLS')[0]);
     const address = await this.lidoLocator.validatorsExitBusOracle();
     const validatorExitBusOracle = OracleV2__factory.connect(address, {
-      provider,
+      provider: this.provider as any,
     });
 
     return await validatorExitBusOracle.getConsensusVersion();

@@ -22,7 +22,7 @@ export class RequestTimeService {
 
   async getRequestTime(params: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     const isInitializing = this.waitingTimeService.checkIsInitializing();
-    if (!isInitializing) {
+    if (isInitializing) {
       return {
         status: WaitingTimeStatus.initializing,
       };

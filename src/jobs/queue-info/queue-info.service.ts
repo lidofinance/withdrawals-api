@@ -7,7 +7,7 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { QueueInfoStorageService } from 'storage';
 import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
+import { WithdrawalRequest } from 'storage/queue-info/queue-info.types';
 
 @Injectable()
 export class QueueInfoService {
@@ -34,16 +34,16 @@ export class QueueInfoService {
       return;
     }
 
+    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
+    this.job = new CronJob(cronTime, () => this.updateQueueInfo());
+
+    this.job.start();
+
     try {
       await this.updateQueueInfo();
     } catch (error) {
       this.logger.error(error);
     }
-
-    const cronTime = this.configService.get('JOB_INTERVAL_QUEUE_INFO');
-    this.job = new CronJob(cronTime, () => this.updateQueueInfo());
-
-    this.job.start();
 
     this.logger.log('Service initialized', { service: QueueInfoService.SERVICE_LOG_NAME, cronTime });
   }
