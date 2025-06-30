@@ -8,7 +8,11 @@ import {
 } from 'storage';
 import { WaitingTimeService } from './waiting-time.service';
 import { BigNumber } from '@ethersproject/bignumber';
-import { LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import {
+  LIDO_CONTRACT_TOKEN,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
+  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
+} from '@lido-nestjs/contracts';
 import { GenesisTimeService } from 'common/genesis-time/genesis-time.service';
 import { RewardEventsService } from 'events/reward-events/reward-events.service';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
@@ -94,6 +98,10 @@ describe('WaitingTimeService', () => {
             getBufferedEther: jest.fn(),
             getDepositableEther: jest.fn(),
           },
+        },
+        {
+          provide: LIDO_LOCATOR_CONTRACT_TOKEN,
+          useValue: {},
         },
         {
           provide: RewardsStorageService,
