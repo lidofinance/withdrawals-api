@@ -36,9 +36,6 @@ export class WithdrawalRequestInfoEntity {
   @Column({ name: 'finalized_at', type: 'timestamptz', nullable: true })
   finalizedAt: Date;
 
-  @Column({ name: 'max_exit_epoch_at_request_timestamp', type: 'int', nullable: true })
-  maxExitEpochAtRequestTimestamp: number;
-
   @UpdateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

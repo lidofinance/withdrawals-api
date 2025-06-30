@@ -55,6 +55,12 @@ export class PrometheusService {
     help: 'Vaults ETH balance',
   });
 
+  public requestFinalizationDiff = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'request_finalization_diff',
+    help: 'Request finalization diff from first estimated',
+    labelNames: ['requestId'],
+  });
+
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'cl_api_requests_duration_seconds',
     help: 'CL API request duration',

@@ -353,7 +353,7 @@ export class WaitingTimeService {
       const wrInfo = await this.withdrawalRequestInfoEntityRepository.findOne({
         where: { requestId: request.id.toNumber() },
       });
-      finalizationIn = wrInfo.firstCalculatedFinalizationTimestamp.getTime() - Date.now();
+      finalizationIn = wrInfo.firstCalculatedFinalizationTimestamp.getTime() - requestTimestamp;
       currentType = wrInfo.firstCalculatedFinalizationType;
     }
 

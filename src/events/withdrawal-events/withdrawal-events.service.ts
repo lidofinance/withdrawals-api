@@ -67,8 +67,6 @@ export class WithdrawalEventsService {
   async handleWithdrawalRequested(event: WithdrawalRequestedEvent) {
     const blockNumber = event.blockNumber;
     const data = this.withdrawalQueueContract.interface.parseLog(event).args as WithdrawalRequestedEvent['args'];
-    console.log('WithdrawalRequestedEvent requestId', data.requestId.toString(), data);
-    // todo: maybe? save to array of all requests instead of cron
 
     const maxExitEpoch = this.waitingTimeService.getMaxExitEpoch();
 
@@ -108,6 +106,13 @@ export class WithdrawalEventsService {
 
     // save to db result about first calculate
     await this.withdrawalRequestInfoEntityRepository.save(wrInfo);
+
+    this.logger.log(
+      `saved WithdrawalRequestInfo requestId=${
+        wrInfo.requestId
+      } with predicted finalization at ${firstCalculatedFinalizationTimestamp.toISOString()}`,
+      { requestId: wrInfo.requestId, service: WithdrawalEventsService.SERVICE_LOG_NAME },
+    );
   }
 
   subscribeWithdrawalsFinalized() {
@@ -139,7 +144,14 @@ export class WithdrawalEventsService {
     await this.withdrawalRequestInfoEntityRepository.save(withdrawalRequestInfos);
 
     for (const withdrawalRequestInfo of withdrawalRequestInfos) {
-      if (withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() < finalizedAt) {
+      const requestFinalizationDiff =
+        withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() - finalizedAt;
+
+      this.prometheusService.requestFinalizationDiff
+        .labels({ requestId: withdrawalRequestInfo.requestId })
+        .set(requestFinalizationDiff);
+
+      if (requestFinalizationDiff < 0) {
         this.logger.warn(
           `first calculated finalization time is incorrect, id: ${
             withdrawalRequestInfo.requestId
