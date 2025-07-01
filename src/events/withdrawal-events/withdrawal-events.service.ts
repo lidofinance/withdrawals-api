@@ -65,6 +65,7 @@ export class WithdrawalEventsService {
   }
 
   async handleWithdrawalRequested(event: WithdrawalRequestedEvent) {
+    // todo add refslot number or blockNumber
     const blockNumber = event.blockNumber;
     const data = this.withdrawalQueueContract.interface.parseLog(event).args as WithdrawalRequestedEvent['args'];
 
@@ -80,7 +81,6 @@ export class WithdrawalEventsService {
       this.rewardsService.getVaultsBalance(blockNumber),
     ]);
 
-    // todo: fix unfinalized bc it can be more then at request time because few requests may be in one block
     const firstCalculatedFinalization = await this.waitingTimeService.calculateWithdrawalFrame({
       unfinalized,
       buffer,
@@ -102,6 +102,8 @@ export class WithdrawalEventsService {
       amount: data.amountOfStETH.toString(),
       firstCalculatedFinalizationTimestamp,
       firstCalculatedFinalizationType: firstCalculatedFinalization.type,
+      minCalculatedFinalizationTimestamp: firstCalculatedFinalizationTimestamp,
+      minCalculatedFinalizationType: firstCalculatedFinalization.type,
     });
 
     // save to db result about first calculate

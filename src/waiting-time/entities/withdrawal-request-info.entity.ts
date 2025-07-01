@@ -46,9 +46,9 @@ export class WithdrawalRequestInfoEntity {
   @Column({ name: 'finalized_at', type: 'timestamptz', nullable: true })
   finalizedAt: Date;
 
-  @UpdateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @CreateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

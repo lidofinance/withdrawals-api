@@ -193,7 +193,11 @@ export class WaitingTimeService {
     this.prometheusService.intermediateRequestFinalizationAt.labels({ requestId }).set(finalizationAt.getTime() / 1000);
     const foundWRInfo = await this.withdrawalRequestInfoEntityRepository.findOneBy({ requestId });
 
-    if (foundWRInfo && finalizationAt < foundWRInfo.minCalculatedFinalizationTimestamp) {
+    if (
+      foundWRInfo &&
+      (finalizationAt < foundWRInfo.minCalculatedFinalizationTimestamp ||
+        foundWRInfo.minCalculatedFinalizationTimestamp === null)
+    ) {
       foundWRInfo.minCalculatedFinalizationTimestamp = finalizationAt;
       foundWRInfo.minCalculatedFinalizationType = type;
       await this.withdrawalRequestInfoEntityRepository.save(foundWRInfo);
