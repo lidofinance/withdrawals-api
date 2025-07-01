@@ -12,6 +12,7 @@ import { ContractsModule } from 'common/contracts';
 import { AppService } from './app.service';
 import { HTTPModule } from '../http';
 import { EventsModule } from '../events';
+import { DatabaseModule } from '../common/database/database.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { EventsModule } from '../events';
     HealthModule,
     PrometheusModule,
     ConfigModule,
+    DatabaseModule,
     JobsModule,
     EventsModule,
     ContractsModule,

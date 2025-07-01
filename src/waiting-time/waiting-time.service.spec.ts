@@ -14,7 +14,7 @@ import {
   WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
 } from '@lido-nestjs/contracts';
 import { GenesisTimeService } from 'common/genesis-time/genesis-time.service';
-import { RewardsService } from 'events/rewards/rewards.service';
+import { RewardEventsService } from 'events/reward-events/reward-events.service';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import { WaitingTimeCalculationType } from './waiting-time.types';
@@ -139,7 +139,7 @@ describe('WaitingTimeService', () => {
           },
         },
         {
-          provide: RewardsService,
+          provide: RewardEventsService,
           useValue: {},
         },
         {
