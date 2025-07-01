@@ -144,19 +144,39 @@ export class WithdrawalEventsService {
     await this.withdrawalRequestInfoEntityRepository.save(withdrawalRequestInfos);
 
     for (const withdrawalRequestInfo of withdrawalRequestInfos) {
-      const requestFinalizationDiff =
+      const firstRequestFinalizationDiff =
+        withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() - finalizedAt;
+      const minRequestFinalizationDiff =
         withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() - finalizedAt;
 
-      this.prometheusService.requestFinalizationDiff
+      this.prometheusService.firstCalculatedFinalizationDiff
         .labels({ requestId: withdrawalRequestInfo.requestId })
-        .set(requestFinalizationDiff);
+        .set(firstRequestFinalizationDiff);
 
-      if (requestFinalizationDiff < 0) {
+      this.prometheusService.minCalculatedFinalizationDiff
+        .labels({ requestId: withdrawalRequestInfo.requestId })
+        .set(minRequestFinalizationDiff);
+
+      this.prometheusService.requestFinalizationAt
+        .labels({ requestId: withdrawalRequestInfo.requestId })
+        .set(withdrawalRequestInfo.finalizedAt.getTime() / 1000);
+
+      if (firstRequestFinalizationDiff < 0) {
         this.logger.warn(
           `first calculated finalization time is incorrect, id: ${
             withdrawalRequestInfo.requestId
           } first: ${withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.toISOString()}, type: ${
             withdrawalRequestInfo.firstCalculatedFinalizationType
+          } , actual: ${new Date(finalizedAt).toISOString()}`,
+        );
+      }
+
+      if (minRequestFinalizationDiff < 0) {
+        this.logger.warn(
+          `min calculated finalization time is incorrect, id: ${
+            withdrawalRequestInfo.requestId
+          } first: ${withdrawalRequestInfo.minCalculatedFinalizationTimestamp.toISOString()}, type: ${
+            withdrawalRequestInfo.minCalculatedFinalizationType
           } , actual: ${new Date(finalizedAt).toISOString()}`,
         );
       }

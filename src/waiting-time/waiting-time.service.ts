@@ -171,18 +171,33 @@ export class WaitingTimeService {
       type: precalculatedType,
     });
     const requestDto = transformToRequestDto(request);
+    const finalizationAt = new Date(requestTimestamp + finalizationIn);
+
+    // call asynchronously save to save time response
+    this.saveMinFinalizationAtToRepository(+requestId, finalizationAt, type);
 
     return {
       requestInfo: {
         requestId: requestDto.id,
         requestedAt: requestDto.timestamp,
         finalizationIn: requestTimestamp + finalizationIn - Date.now(),
-        finalizationAt: new Date(requestTimestamp + finalizationIn).toISOString(),
+        finalizationAt: finalizationAt.toISOString(),
         type,
       },
       status: WaitingTimeStatus.calculated,
       nextCalculationAt,
     };
+  }
+
+  async saveMinFinalizationAtToRepository(requestId: number, finalizationAt: Date, type: WaitingTimeCalculationType) {
+    this.prometheusService.intermediateRequestFinalizationAt.labels({ requestId }).set(finalizationAt.getTime() / 1000);
+    const foundWRInfo = await this.withdrawalRequestInfoEntityRepository.findOneBy({ requestId });
+
+    if (foundWRInfo && finalizationAt < foundWRInfo.minCalculatedFinalizationTimestamp) {
+      foundWRInfo.minCalculatedFinalizationTimestamp = finalizationAt;
+      foundWRInfo.minCalculatedFinalizationType = type;
+      await this.withdrawalRequestInfoEntityRepository.save(foundWRInfo);
+    }
   }
 
   public async calculateWithdrawalFrame(args: CalculateWaitingTimeV2Args): Promise<CalculateWaitingTimeV2Result> {

@@ -19,7 +19,6 @@ export class WithdrawalRequestInfoEntity {
   @Column({ name: 'request_timestamp', type: 'timestamptz' })
   requestTimestamp: Date;
 
-  // first
   @Column({ name: 'first_calculated_finalization_timestamp', type: 'timestamptz', nullable: true })
   firstCalculatedFinalizationTimestamp: Date;
 
@@ -32,7 +31,18 @@ export class WithdrawalRequestInfoEntity {
   })
   firstCalculatedFinalizationType: WaitingTimeCalculationType;
 
-  // last
+  @Column({ name: 'min_calculated_finalization_timestamp', type: 'timestamptz', nullable: true })
+  minCalculatedFinalizationTimestamp: Date;
+
+  @Column({
+    name: 'min_calculated_finalization_type',
+    type: 'enum',
+    enum: WaitingTimeCalculationType,
+    enumName: 'waiting_time_calculation_type',
+    nullable: true,
+  })
+  minCalculatedFinalizationType: WaitingTimeCalculationType;
+
   @Column({ name: 'finalized_at', type: 'timestamptz', nullable: true })
   finalizedAt: Date;
 
@@ -41,6 +51,4 @@ export class WithdrawalRequestInfoEntity {
 
   @CreateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
-
-  // todo backtrace of all balances
 }
