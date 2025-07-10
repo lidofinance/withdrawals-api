@@ -168,7 +168,6 @@ export class WaitingTimeService {
     const requestDto = transformToRequestDto(request);
     const finalizationAt = new Date(requestTimestamp + finalizationIn);
 
-    // call asynchronously save to save pr
     this.prometheusService.intermediateRequestFinalizationAt
       .labels({ requestId })
       .set(Math.floor(finalizationAt.getTime() / 1000));
