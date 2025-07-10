@@ -1,6 +1,4 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, WithdrawalQueue } from '@lido-nestjs/contracts';
 
@@ -16,7 +14,6 @@ import { GenesisTimeService } from '../../common/genesis-time';
 import { WaitingTimeService } from '../../waiting-time';
 import { GAP_AFTER_REPORT } from '../../waiting-time/waiting-time.constants';
 import { RewardEventsService } from '../reward-events';
-import { WithdrawalRequestInfoEntity } from 'waiting-time/entities/withdrawal-request-info.entity';
 
 @Injectable()
 export class WithdrawalEventsService {
@@ -26,8 +23,6 @@ export class WithdrawalEventsService {
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly withdrawalQueueContract: WithdrawalQueue,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly lidoContract: Lido,
-    @InjectRepository(WithdrawalRequestInfoEntity)
-    protected readonly withdrawalRequestInfoEntityRepository: Repository<WithdrawalRequestInfoEntity>,
     protected readonly prometheusService: PrometheusService,
     protected readonly configService: ConfigService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
@@ -95,25 +90,19 @@ export class WithdrawalEventsService {
         GAP_AFTER_REPORT,
     );
 
-    const wrInfo = this.withdrawalRequestInfoEntityRepository.create({
-      requestId: data.requestId.toNumber(),
-      requestEpoch: this.genesisTimeService.getEpochByTimestamp(requestTimestamp),
-      requestTimestamp: new Date(requestTimestamp),
-      amount: data.amountOfStETH.toString(),
-      firstCalculatedFinalizationTimestamp,
-      firstCalculatedFinalizationType: firstCalculatedFinalization.type,
-      minCalculatedFinalizationTimestamp: firstCalculatedFinalizationTimestamp,
-      minCalculatedFinalizationType: firstCalculatedFinalization.type,
-    });
+    this.prometheusService.intermediateRequestFinalizationAt
+      .labels({ requestId: data.requestId.toString() })
+      .set(Math.floor(firstCalculatedFinalizationTimestamp.getTime() / 1000));
 
-    // save to db result about first calculate
-    await this.withdrawalRequestInfoEntityRepository.save(wrInfo);
+    this.prometheusService.firstRequestFinalizationAt
+      .labels({ requestId: data.requestId.toString() })
+      .set(Math.floor(firstCalculatedFinalizationTimestamp.getTime() / 1000));
 
-    this.logger.log(
+    this.logger.debug(
       `saved WithdrawalRequestInfo requestId=${
-        wrInfo.requestId
+        data.requestId
       } with predicted finalization at ${firstCalculatedFinalizationTimestamp.toISOString()}`,
-      { requestId: wrInfo.requestId, service: WithdrawalEventsService.SERVICE_LOG_NAME },
+      { service: WithdrawalEventsService.SERVICE_LOG_NAME },
     );
   }
 
@@ -134,54 +123,10 @@ export class WithdrawalEventsService {
   async handleWithdrawalsFinalized(event: WithdrawalsFinalizedEvent) {
     const data = this.withdrawalQueueContract.interface.parseLog(event).args as WithdrawalsFinalizedEvent['args'];
     const finalizedAt = data.timestamp.toNumber() * 1000;
+    const reportId = `report-${data.from}-${data.to}`;
 
-    const withdrawalRequestInfos = await this.withdrawalRequestInfoEntityRepository.find({
-      where: { requestId: Between(data.from.toNumber(), data.to.toNumber()) },
-    });
-
-    withdrawalRequestInfos.forEach((withdrawalRequestInfo) => {
-      withdrawalRequestInfo.finalizedAt = new Date(finalizedAt);
-    });
-
-    await this.withdrawalRequestInfoEntityRepository.save(withdrawalRequestInfos);
-
-    for (const withdrawalRequestInfo of withdrawalRequestInfos) {
-      const firstRequestFinalizationDiff =
-        withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() - finalizedAt;
-      const minRequestFinalizationDiff =
-        withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.getTime() - finalizedAt;
-
-      this.prometheusService.firstCalculatedFinalizationDiff
-        .labels({ requestId: withdrawalRequestInfo.requestId })
-        .set(firstRequestFinalizationDiff);
-
-      this.prometheusService.minCalculatedFinalizationDiff
-        .labels({ requestId: withdrawalRequestInfo.requestId })
-        .set(minRequestFinalizationDiff);
-
-      this.prometheusService.requestFinalizationAt
-        .labels({ requestId: withdrawalRequestInfo.requestId })
-        .set(withdrawalRequestInfo.finalizedAt.getTime() / 1000);
-
-      if (firstRequestFinalizationDiff < 0) {
-        this.logger.warn(
-          `first calculated finalization time is incorrect, id: ${
-            withdrawalRequestInfo.requestId
-          } first: ${withdrawalRequestInfo.firstCalculatedFinalizationTimestamp.toISOString()}, type: ${
-            withdrawalRequestInfo.firstCalculatedFinalizationType
-          } , actual: ${new Date(finalizedAt).toISOString()}`,
-        );
-      }
-
-      if (minRequestFinalizationDiff < 0) {
-        this.logger.warn(
-          `min calculated finalization time is incorrect, id: ${
-            withdrawalRequestInfo.requestId
-          } first: ${withdrawalRequestInfo.minCalculatedFinalizationTimestamp.toISOString()}, type: ${
-            withdrawalRequestInfo.minCalculatedFinalizationType
-          } , actual: ${new Date(finalizedAt).toISOString()}`,
-        );
-      }
+    for (let i = data.from.toNumber(); i < data.to.toNumber(); i++) {
+      this.prometheusService.requestFinalizedAt.labels({ requestId: i, reportId }).set(Math.floor(finalizedAt / 1000));
     }
   }
 }

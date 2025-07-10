@@ -55,28 +55,22 @@ export class PrometheusService {
     help: 'Vaults ETH balance',
   });
 
-  public firstCalculatedFinalizationDiff = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'first_request_finalization_diff',
-    help: 'Request finalization diff from first estimated',
-    labelNames: ['requestId'],
-  });
-
-  public minCalculatedFinalizationDiff = this.getOrCreateMetric('Gauge', {
-    name: METRICS_PREFIX + 'min_request_finalization_diff',
-    help: 'Request finalization diff from min estimated',
-    labelNames: ['requestId'],
-  });
-
   public intermediateRequestFinalizationAt = this.getOrCreateMetric('Gauge', {
     name: METRICS_PREFIX + 'intermediate_request_finalization_at',
     help: 'Intermediate request finalization at',
     labelNames: ['requestId'],
   });
 
-  public requestFinalizationAt = this.getOrCreateMetric('Gauge', {
+  public firstRequestFinalizationAt = this.getOrCreateMetric('Gauge', {
+    name: METRICS_PREFIX + 'first_request_finalization_at',
+    help: 'First calculated request finalization at',
+    labelNames: ['requestId'],
+  });
+
+  public requestFinalizedAt = this.getOrCreateMetric('Gauge', {
     name: METRICS_PREFIX + 'request_finalized_at',
     help: 'Request finalized at',
-    labelNames: ['requestId'],
+    labelNames: ['requestId', 'reportId'],
   });
 
   public clApiRequestDuration = this.getOrCreateMetric('Histogram', {

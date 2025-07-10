@@ -5,5 +5,4 @@ export const LIDO_WITHDRAWALS_RECEIVED_EVENT = 'event WithdrawalsReceived(uint25
 export const LIDO_TOKEN_REBASED_EVENT =
   'event TokenRebased(uint256 indexed reportTimestamp, uint256 timeElapsed, uint256 preTotalShares, uint256 preTotalEther, uint256 postTotalShares, uint256 postTotalEther, uint256 sharesMintedAsFees)';
 
-// todo: return 7
-export const ONE_WEEK_HOURS = 24 * 1;
+export const ONE_WEEK_HOURS = 24 * 7;

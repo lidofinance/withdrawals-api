@@ -24,12 +24,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typechain": "typechain --target=ethers-v6 --out-dir ./src/common/contracts/generated ./src/common/contracts/abi/*.json",
-    "postinstall": "yarn typechain",
-    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "typeorm:migration:create": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create",
-    "typeorm:migration:generate": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/common/database/database.config.ts",
-    "typeorm:migration:run": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./dist/common/database/database.config",
-    "typeorm:schema:drop": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js schema:drop -d ./dist/common/database/database.config"
+    "postinstall": "yarn typechain"
   },
   "dependencies": {
     "@ethersproject/bignumber": "^5.7.0",
@@ -52,7 +47,6 @@
     "@nestjs/swagger": "^7.4.2",
     "@nestjs/terminus": "^9.1.4",
     "@nestjs/throttler": "^6.0.0",
-    "@nestjs/typeorm": "^11.0.0",
     "@sentry/node": "^7.29.0",
     "@typechain/ethers-v6": "^0.5.1",
     "@types/stream-json": "^1.7.8",
@@ -62,15 +56,13 @@
     "class-validator": "^0.14.0",
     "ethers": "^6.13.2",
     "node-abort-controller": "^3.0.1",
-    "pg": "^8.16.0",
     "prom-client": "^14.1.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.5.2",
     "stream-chain": "^2.2.5",
     "stream-json": "^1.9.1",
-    "typechain": "^8.3.2",
-    "typeorm": "^0.3.24"
+    "typechain": "^8.3.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.4",

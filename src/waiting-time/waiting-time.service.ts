@@ -47,9 +47,6 @@ import {
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { WithdrawalRequestInfoEntity } from './entities/withdrawal-request-info.entity';
 import { WaitingTimeCalculationType } from './entities/withdrawal-time-calculation-type.enum';
 import { OracleV2__factory } from '../common/contracts/generated';
 
@@ -67,8 +64,6 @@ export class WaitingTimeService {
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
-    @InjectRepository(WithdrawalRequestInfoEntity)
-    protected readonly withdrawalRequestInfoEntityRepository: Repository<WithdrawalRequestInfoEntity>,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
   ) {}
 
@@ -173,8 +168,10 @@ export class WaitingTimeService {
     const requestDto = transformToRequestDto(request);
     const finalizationAt = new Date(requestTimestamp + finalizationIn);
 
-    // call asynchronously save to save time response
-    this.saveMinFinalizationAtToRepository(+requestId, finalizationAt, type);
+    // call asynchronously save to save pr
+    this.prometheusService.intermediateRequestFinalizationAt
+      .labels({ requestId })
+      .set(Math.floor(finalizationAt.getTime() / 1000));
 
     return {
       requestInfo: {
@@ -187,21 +184,6 @@ export class WaitingTimeService {
       status: WaitingTimeStatus.calculated,
       nextCalculationAt,
     };
-  }
-
-  async saveMinFinalizationAtToRepository(requestId: number, finalizationAt: Date, type: WaitingTimeCalculationType) {
-    this.prometheusService.intermediateRequestFinalizationAt.labels({ requestId }).set(finalizationAt.getTime() / 1000);
-    const foundWRInfo = await this.withdrawalRequestInfoEntityRepository.findOneBy({ requestId });
-
-    if (
-      foundWRInfo &&
-      (finalizationAt < foundWRInfo.minCalculatedFinalizationTimestamp ||
-        foundWRInfo.minCalculatedFinalizationTimestamp === null)
-    ) {
-      foundWRInfo.minCalculatedFinalizationTimestamp = finalizationAt;
-      foundWRInfo.minCalculatedFinalizationType = type;
-      await this.withdrawalRequestInfoEntityRepository.save(foundWRInfo);
-    }
   }
 
   public async calculateWithdrawalFrame(args: CalculateWaitingTimeV2Args): Promise<CalculateWaitingTimeV2Result> {
@@ -354,33 +336,43 @@ export class WaitingTimeService {
   // Utilities methods
 
   private async checkInPastCase(args: CheckInPastCaseArgs) {
-    const { request, type, frame } = args;
+    const { request, vaultsBalance, buffer, type, frame } = args;
 
+    const maxExitEpoch = this.getMaxExitEpoch();
+    const requests = this.queueInfo.getRequests();
     const requestTimestamp = request.timestamp.toNumber() * 1000;
+    const queueStETH = calculateUnfinalizedEthToRequestId(requests, request);
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
     let currentType = type;
-    const ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
+    let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
     let finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
     const isInPast = requestTimestamp + finalizationIn - Date.now() < 0;
 
     if (isInPast) {
       this.logger.warn(
-        `Request with id ${request.id} was calculated with finalisation in past (finalizationIn=${ms}, type=${currentType}). Fallback to first calculated finalization timestamp from DB.`,
+        `Request with id ${request.id} was calculated with finalisation in past (finalizationIn=${ms}, type=${currentType}) and going to be recalculated`,
       );
-      // fallback to DB saved first calculation
-      const wrInfo = await this.withdrawalRequestInfoEntityRepository.findOne({
-        where: { requestId: request.id.toNumber() },
+      // if calculation wrong points to past then validators is not excited in time
+      // we need recalculate
+      const recalculatedResult = await this.calculateWithdrawalFrame({
+        unfinalized: queueStETH,
+        buffer,
+        vaultsBalance,
+        requestTimestamp,
+        latestEpoch: maxExitEpoch.toString(),
       });
-      finalizationIn = wrInfo.firstCalculatedFinalizationTimestamp.getTime() - requestTimestamp;
-      currentType = wrInfo.firstCalculatedFinalizationType;
+
+      ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, requestTimestamp);
+      finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
+      currentType = recalculatedResult.type;
     }
 
     const isInPastFallback = requestTimestamp + finalizationIn - Date.now() < 0;
     // temporary fallback for negative results, can be deleted after validator balances computation improvements
     if (isInPastFallback) {
       this.logger.warn(
-        `Request with id ${request.id} was taken from DB and finalisation still in past (recalculated finalizationIn=${ms}). Fallback to next frame`,
+        `Request with id ${request.id} was recalculated and finalisation still in past (recalculated finalizationIn=${ms}). Fallback to next frame`,
       );
       finalizationIn =
         this.genesisTimeService.timeToWithdrawalFrame(currentFrame + 1, requestTimestamp) + GAP_AFTER_REPORT;

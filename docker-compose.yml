@@ -1,11 +1,43 @@
 version: '3.7'
 
 services:
-  main:
-    container_name: main
-    build: ./
-    restart: always
-    environment:
-      - PORT=3000
+  withdrawals-api:
+    build: .
     ports:
-      - '3000:3000'
+      - "3000:3000"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 6g
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./.volumes/withdrawals-api/cache:/app/cache
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    expose:
+      - 9090
+    ports:
+      - "0.0.0.0:9090:9090/tcp"
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    links:
+      - prometheus:prometheus
+    volumes:
+      - ./.volumes/grafana:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+
+volumes:
+  prometheus_data:
+
