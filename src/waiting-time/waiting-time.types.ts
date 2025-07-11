@@ -1,7 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
 
 import { WithdrawalRequest } from 'storage';
-import { WaitingTimeCalculationType } from './entities/withdrawal-time-calculation-type.enum';
 
 export enum WaitingTimeStatus {
   initializing = 'initializing',
@@ -66,3 +65,13 @@ export type CalculateWaitingTimeV2Result = {
   type: WaitingTimeCalculationType;
   frame: number;
 };
+
+export enum WaitingTimeCalculationType {
+  buffer = 'buffer',
+  bunker = 'bunker',
+  vaultsBalance = 'vaultsBalance',
+  rewardsOnly = 'rewardsOnly',
+  validatorBalances = 'validatorBalances',
+  requestTimestampMargin = 'requestTimestampMargin',
+  exitValidators = 'exitValidators',
+}

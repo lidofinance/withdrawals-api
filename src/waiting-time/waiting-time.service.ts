@@ -43,11 +43,11 @@ import {
   GetWaitingTimeInfoByIdArgs,
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
+  WaitingTimeCalculationType,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
-import { WaitingTimeCalculationType } from './entities/withdrawal-time-calculation-type.enum';
 import { OracleV2__factory } from '../common/contracts/generated';
 
 @Injectable()
