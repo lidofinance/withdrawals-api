@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 
 import { EventsService } from './events.service';
-import { RewardsModule } from './rewards';
+import { RewardEventsModule } from './reward-events';
+import { WithdrawalEventsModule } from './withdrawal-events';
 
 @Module({
-  imports: [RewardsModule],
+  imports: [RewardEventsModule, WithdrawalEventsModule],
   providers: [EventsService],
 })
 export class EventsModule {}

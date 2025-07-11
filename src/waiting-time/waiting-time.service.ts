@@ -19,7 +19,7 @@ import {
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
-import { RewardsService } from 'events/rewards';
+import { RewardEventsService } from 'events/reward-events';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -38,12 +38,12 @@ import {
   WaitingTimeStatus,
   CheckInPastCaseArgs,
   CalculateWaitingTimeV2Args,
-  WaitingTimeCalculationType,
   CalculateWaitingTimeV2Result,
   GetWaitingTimeInfoByIdResult,
   GetWaitingTimeInfoByIdArgs,
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
+  WaitingTimeCalculationType,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
@@ -60,7 +60,7 @@ export class WaitingTimeService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
-    protected readonly rewardsService: RewardsService,
+    protected readonly rewardsService: RewardEventsService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
@@ -166,13 +166,18 @@ export class WaitingTimeService {
       type: precalculatedType,
     });
     const requestDto = transformToRequestDto(request);
+    const finalizationAt = new Date(requestTimestamp + finalizationIn);
+
+    this.prometheusService.intermediateRequestFinalizationAt
+      .labels({ requestId })
+      .set(Math.floor(finalizationAt.getTime() / 1000));
 
     return {
       requestInfo: {
         requestId: requestDto.id,
         requestedAt: requestDto.timestamp,
         finalizationIn: requestTimestamp + finalizationIn - Date.now(),
-        finalizationAt: new Date(requestTimestamp + finalizationIn).toISOString(),
+        finalizationAt: finalizationAt.toISOString(),
         type,
       },
       status: WaitingTimeStatus.calculated,

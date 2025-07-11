@@ -8,7 +8,7 @@ import {
   ValidatorsStorageModule,
 } from 'storage';
 import { GenesisTimeModule } from 'common/genesis-time';
-import { RewardsModule } from 'events/rewards';
+import { RewardEventsModule } from 'events/reward-events';
 import { SweepModule } from '../common/sweep';
 
 @Module({
@@ -19,7 +19,7 @@ import { SweepModule } from '../common/sweep';
     GenesisTimeModule,
     SweepModule,
     RewardsStorageModule,
-    RewardsModule,
+    RewardEventsModule,
   ],
   exports: [WaitingTimeService],
   providers: [WaitingTimeService],
