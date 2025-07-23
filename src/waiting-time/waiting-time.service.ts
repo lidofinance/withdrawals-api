@@ -531,9 +531,14 @@ export class WaitingTimeService {
       this.logger.debug(`using latest block ${block.number}`);
       return block.number;
     } else {
-      const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-      this.logger.debug(`using processing ref slot of block ${blockNumber}`);
-      return blockNumber;
+      try {
+        const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+        this.logger.debug(`using processing ref slot of block ${blockNumber}`);
+        return blockNumber;
+      } catch (e) {
+        this.logger.error('error during getBlockBySlot', e);
+        return block.number;
+      }
     }
   }
 }
