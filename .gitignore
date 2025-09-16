@@ -41,5 +41,3 @@ lerna-debug.log*
 cache
 
 /src/common/contracts/generated
-
-.volumes

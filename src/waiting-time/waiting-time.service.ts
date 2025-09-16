@@ -19,7 +19,7 @@ import {
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
-import { RewardEventsService } from 'events/reward-events';
+import { RewardsService } from 'events/rewards';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -38,12 +38,12 @@ import {
   WaitingTimeStatus,
   CheckInPastCaseArgs,
   CalculateWaitingTimeV2Args,
+  WaitingTimeCalculationType,
   CalculateWaitingTimeV2Result,
   GetWaitingTimeInfoByIdResult,
   GetWaitingTimeInfoByIdArgs,
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
-  WaitingTimeCalculationType,
 } from './waiting-time.types';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
@@ -60,7 +60,7 @@ export class WaitingTimeService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
-    protected readonly rewardsService: RewardEventsService,
+    protected readonly rewardsService: RewardsService,
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
@@ -166,18 +166,13 @@ export class WaitingTimeService {
       type: precalculatedType,
     });
     const requestDto = transformToRequestDto(request);
-    const finalizationAt = new Date(requestTimestamp + finalizationIn);
-
-    this.prometheusService.intermediateRequestFinalizationAt
-      .labels({ requestId })
-      .set(Math.floor(finalizationAt.getTime() / 1000));
 
     return {
       requestInfo: {
         requestId: requestDto.id,
         requestedAt: requestDto.timestamp,
         finalizationIn: requestTimestamp + finalizationIn - Date.now(),
-        finalizationAt: finalizationAt.toISOString(),
+        finalizationAt: new Date(requestTimestamp + finalizationIn).toISOString(),
         type,
       },
       status: WaitingTimeStatus.calculated,
@@ -531,14 +526,9 @@ export class WaitingTimeService {
       this.logger.debug(`using latest block ${block.number}`);
       return block.number;
     } else {
-      try {
-        const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-        this.logger.debug(`using processing ref slot of block ${blockNumber}`);
-        return blockNumber;
-      } catch (e) {
-        this.logger.error('error during getBlockBySlot', e);
-        return block.number;
-      }
+      const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+      this.logger.debug(`using processing ref slot of block ${blockNumber}`);
+      return blockNumber;
     }
   }
 }

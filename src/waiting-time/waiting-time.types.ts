@@ -9,6 +9,16 @@ export enum WaitingTimeStatus {
   calculated = 'calculated',
 }
 
+export enum WaitingTimeCalculationType {
+  buffer = 'buffer',
+  bunker = 'bunker',
+  vaultsBalance = 'vaultsBalance',
+  rewardsOnly = 'rewardsOnly',
+  validatorBalances = 'validatorBalances',
+  requestTimestampMargin = 'requestTimestampMargin',
+  exitValidators = 'exitValidators',
+}
+
 export type GetWaitingTimeInfoV2Args = {
   amount: string;
   cached?: {
@@ -65,13 +75,3 @@ export type CalculateWaitingTimeV2Result = {
   type: WaitingTimeCalculationType;
   frame: number;
 };
-
-export enum WaitingTimeCalculationType {
-  buffer = 'buffer',
-  bunker = 'bunker',
-  vaultsBalance = 'vaultsBalance',
-  rewardsOnly = 'rewardsOnly',
-  validatorBalances = 'validatorBalances',
-  requestTimestampMargin = 'requestTimestampMargin',
-  exitValidators = 'exitValidators',
-}
