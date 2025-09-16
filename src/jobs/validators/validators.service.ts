@@ -71,7 +71,7 @@ export class ValidatorsService {
       this.logger.error(error);
     }
 
-    const lidoWithdrawableJob = new CronJob(CronExpression.EVERY_5_MINUTES, () =>
+    const lidoWithdrawableJob = new CronJob(CronExpression.EVERY_30_MINUTES, () =>
       this.updateLidoWithdrawableValidators(),
     );
     lidoWithdrawableJob.start();
