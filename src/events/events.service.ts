@@ -1,14 +1,12 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
-import { RewardEventsService } from './reward-events';
-import { WithdrawalEventsService } from './withdrawal-events';
+import { RewardsService } from './rewards';
 
 @Injectable()
 export class EventsService implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
-    protected readonly rewardsService: RewardEventsService,
-    protected readonly withdrawalsService: WithdrawalEventsService,
+    protected readonly rewardsService: RewardsService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -20,6 +18,6 @@ export class EventsService implements OnModuleInit {
    * Initializes event listeners
    */
   protected async initialize(): Promise<void> {
-    await Promise.all([this.rewardsService.initialize(), this.withdrawalsService.initialize()]);
+    await Promise.all([this.rewardsService.initialize()]);
   }
 }
