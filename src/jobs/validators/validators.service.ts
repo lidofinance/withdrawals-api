@@ -8,7 +8,7 @@ import { ExecutionProviderService } from 'common/execution-provider';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD, DAYS_10 } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
@@ -22,7 +22,7 @@ import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawa
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
-import { getChurnLimit } from './utils/getChurnLimit';
+import { getChurnLimit } from './utils/get-churn-limit';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -140,7 +140,7 @@ export class ValidatorsService {
           service: ValidatorsService.SERVICE_LOG_NAME,
           activeValidatorCount,
           maxExitEpoch,
-          frameBalances: stringifyFrameBalances(frameBalances),
+          frameBalances: frameBalances ? stringifyFrameBalances(frameBalances) : null,
           currentFrame,
         });
       },
@@ -199,32 +199,40 @@ export class ValidatorsService {
         const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
         const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
         const frameBalances = {};
+        const now = Date.now();
+        const time10daysAhead = now + DAYS_10;
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
           const batch = validatorIds.slice(i, i + batchSize);
 
-          const stateValidators = await Promise.all(
-            batch.map((validatorId) =>
-              this.consensusProviderService.getStateValidator({
-                stateId: 'head',
-                validatorId,
-              }),
-            ),
-          );
+          const stateValidators = await this.consensusProviderService.getStateValidators({
+            stateId: 'head',
+            id: batch,
+          });
 
           for (let j = 0; j < batch.length; j++) {
-            const stateValidator = stateValidators[j];
+            const stateValidator = stateValidators.data[j];
+            const withdrawableTimestamp = this.genesisTimeService.getTimestampByEpoch(
+              +stateValidator.validator.withdrawable_epoch,
+            );
 
-            const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
-              BigNumber.from(stateValidator.data.index),
+            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp(
+              BigNumber.from(stateValidator.index),
               lastWithdrawalValidatorIndex,
               this.validatorsStorageService.getActiveValidatorsCount(),
               this.validatorsStorageService.getTotalValidatorsCount(),
             );
-            const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+
+            // consider only validator which is in 10 days ahead from current epoch
+            // or withdrawable epoch less estimated withdrawal time
+            if (withdrawableTimestamp > estimatedWithdrawalTimestamp || withdrawableTimestamp > time10daysAhead) {
+              continue;
+            }
+
+            const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
             const prevBalance = frameBalances[frame];
-            const balance = parseGwei(stateValidator.data.balance);
+            const balance = parseGwei(stateValidator.balance);
             frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
           }
         }

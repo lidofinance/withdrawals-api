@@ -95,5 +95,9 @@ export class GenesisTimeService implements OnModuleInit {
     return Number((block.data as any).message.body.execution_payload.block_number);
   }
 
+  getTimestampByEpoch(epoch: number) {
+    return this.genesisTime * 1000 + epoch * SLOTS_PER_EPOCH * SECONDS_PER_SLOT * 1000;
+  }
+
   protected genesisTime = -1;
 }
