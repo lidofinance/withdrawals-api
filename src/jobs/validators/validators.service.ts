@@ -186,7 +186,6 @@ export class ValidatorsService {
         const prevBalance = frameBalances[frame];
         const balance = parseGwei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
-        console.log(item.index, new Date(estimatedWithdrawalTimestamp).toISOString());
         withdrawableLidoValidatorIds.push(item.index);
       }
 
