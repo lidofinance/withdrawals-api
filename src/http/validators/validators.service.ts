@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'common/config';
 import { ValidatorsStorageService } from '../../storage';
 import { GenesisTimeService } from '../../common/genesis-time';
+import { BigNumber } from '@ethersproject/bignumber';
 
 @Injectable()
 export class ValidatorsService {
@@ -18,18 +19,25 @@ export class ValidatorsService {
     const totalValidators = this.validatorsServiceStorage.getActiveValidatorsCount();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
+    if (!lastUpdatedAt) {
+      return null;
+    }
+
     const frameBalances = Object.keys(frameBalancesBigNumber).reduce((acc, item) => {
       acc[item] = frameBalancesBigNumber[item].toString();
       return acc;
     }, {} as Record<string, string>);
 
-    if (!lastUpdatedAt) {
-      return null;
-    }
+    const frameBalancesSum = Object.keys(frameBalancesBigNumber)
+      .reduce((acc, item) => {
+        return acc.add(item);
+      }, BigNumber.from(0))
+      .toString();
 
     return {
       lastUpdatedAt,
       maxExitEpoch,
+      frameBalancesSum,
       frameBalances,
       totalValidators,
       currentFrame,
