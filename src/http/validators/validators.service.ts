@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'common/config';
 import { ValidatorsStorageService } from '../../storage';
 import { GenesisTimeService } from '../../common/genesis-time';
-import { BigNumber } from '@ethersproject/bignumber';
 
 @Injectable()
 export class ValidatorsService {
