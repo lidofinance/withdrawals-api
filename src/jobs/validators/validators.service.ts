@@ -8,7 +8,7 @@ import { ExecutionProviderService } from 'common/execution-provider';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD, DAYS_10 } from './validators.constants';
+import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
@@ -18,7 +18,7 @@ import { ValidatorsCacheService } from 'storage/validators/validators-cache.serv
 import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
-import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
+import { getValidatorWithdrawalTimestampV2 } from './utils/get-validator-withdrawal-timestamp';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
@@ -164,17 +164,25 @@ export class ValidatorsService {
       service: ValidatorsService.SERVICE_LOG_NAME,
     });
     const frameBalances = {};
+    const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+    const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
+    const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
+    const now = Date.now();
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
       if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
-        const withdrawalTimestamp = getValidatorWithdrawalTimestamp(
-          BigNumber.from(item.index),
+        const withdrawableEpoch = +item.validator.withdrawable_epoch.toString();
+        const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestampV2({
+          validatorIndex: BigNumber.from(item.index),
           lastWithdrawalValidatorIndex,
-          this.validatorsStorageService.getActiveValidatorsCount(),
-          this.validatorsStorageService.getTotalValidatorsCount(),
-        );
-        const frame = this.genesisTimeService.getFrameByTimestamp(withdrawalTimestamp) + 1;
+          totalValidatorsCount,
+          activeValidatorCount,
+          currentEpoch,
+          withdrawableEpoch,
+          nowMs: now,
+        });
+        const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
         const prevBalance = frameBalances[frame];
         const balance = parseGwei(item.balance);
         frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
@@ -198,9 +206,11 @@ export class ValidatorsService {
 
         const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
         const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
-        const frameBalances = {};
+        const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
+        const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
+        const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const now = Date.now();
-        const time10daysAhead = now + DAYS_10;
+        const frameBalances = {};
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
@@ -213,22 +223,17 @@ export class ValidatorsService {
 
           for (let j = 0; j < batch.length; j++) {
             const stateValidator = stateValidators.data[j];
-            const withdrawableTimestamp = this.genesisTimeService.getTimestampByEpoch(
-              +stateValidator.validator.withdrawable_epoch,
-            );
 
-            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp(
-              BigNumber.from(stateValidator.index),
+            const withdrawableEpoch = +stateValidator.validator.withdrawable_epoch.toString();
+            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestampV2({
+              validatorIndex: BigNumber.from(stateValidator.index),
+              totalValidatorsCount,
+              activeValidatorCount,
               lastWithdrawalValidatorIndex,
-              this.validatorsStorageService.getActiveValidatorsCount(),
-              this.validatorsStorageService.getTotalValidatorsCount(),
-            );
-
-            // consider only validator which is in 10 days ahead from current epoch
-            // or withdrawable epoch less estimated withdrawal time
-            if (withdrawableTimestamp > estimatedWithdrawalTimestamp || withdrawableTimestamp > time10daysAhead) {
-              continue;
-            }
+              currentEpoch,
+              withdrawableEpoch,
+              nowMs: now,
+            });
 
             const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
             const prevBalance = frameBalances[frame];

@@ -11,4 +11,3 @@ export const ORACLE_REPORTS_CRON_BY_CHAIN_ID = {
 };
 
 export const WITHDRAWALS_VALIDATORS_PER_SLOT = 16;
-export const DAYS_10 = 10 * 24 * 60 * 60 * 1000;
