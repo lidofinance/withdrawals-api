@@ -18,14 +18,14 @@ export class ValidatorsService {
     const totalValidators = this.validatorsServiceStorage.getActiveValidatorsCount();
     const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
+    if (!lastUpdatedAt) {
+      return null;
+    }
+
     const frameBalances = Object.keys(frameBalancesBigNumber).reduce((acc, item) => {
       acc[item] = frameBalancesBigNumber[item].toString();
       return acc;
     }, {} as Record<string, string>);
-
-    if (!lastUpdatedAt) {
-      return null;
-    }
 
     return {
       lastUpdatedAt,
