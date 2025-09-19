@@ -1,6 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
 import { WITHDRAWALS_VALIDATORS_PER_SLOT } from '../validators.constants';
-import { SECONDS_PER_SLOT } from 'common/genesis-time';
+import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 /*
 #### Algorithm of calculation withdrawal frame of validators:
@@ -41,4 +41,51 @@ export function getValidatorWithdrawalTimestamp(
   const seconds = slots.toNumber() * SECONDS_PER_SLOT * percentOfActiveValidators;
 
   return Date.now() + seconds * 1000;
+}
+
+export function getValidatorWithdrawalTimestampV2({
+  validatorIndex,
+  lastWithdrawalValidatorIndex,
+  activeValidatorCount,
+  totalValidatorsCount,
+  currentEpoch,
+  withdrawableEpoch,
+  nowMs = Date.now(),
+  validatorsPerSlot = WITHDRAWALS_VALIDATORS_PER_SLOT,
+  slotsPerEpoch = SLOTS_PER_EPOCH,
+  secondsPerSlot = SECONDS_PER_SLOT,
+}: {
+  validatorIndex: BigNumber;
+  lastWithdrawalValidatorIndex: BigNumber;
+  totalValidatorsCount: number;
+  activeValidatorCount: number;
+  currentEpoch: number;
+  withdrawableEpoch: number;
+  nowMs?: number;
+  validatorsPerSlot?: number;
+  slotsPerEpoch?: number;
+  secondsPerSlot?: number;
+}): number {
+  const total = totalValidatorsCount;
+  const vIdx = validatorIndex.toNumber();
+  const lastIdx = lastWithdrawalValidatorIndex.toNumber();
+  const percentOfActiveValidators = activeValidatorCount / totalValidatorsCount;
+
+  const epochsUntilWE = Math.max(0, withdrawableEpoch - currentEpoch);
+  const slotsUntilWE = epochsUntilWE * slotsPerEpoch;
+
+  const expectedIndexAdvanceToWE = Math.floor((slotsUntilWE * validatorsPerSlot) / percentOfActiveValidators);
+  const cursorAtWE = (lastIdx + (expectedIndexAdvanceToWE % total)) % total;
+
+  const start = (cursorAtWE + 1) % total;
+
+  const queuePosInclusive = ((vIdx - start + total) % total) + 1;
+  const expectedActivesToProcess = Math.ceil((queuePosInclusive - 1) * percentOfActiveValidators) + 1;
+
+  const slotsAfterWE = Math.ceil(expectedActivesToProcess / validatorsPerSlot);
+
+  const totalSlots = slotsUntilWE + slotsAfterWE;
+
+  const totalSeconds = totalSlots * secondsPerSlot;
+  return nowMs + totalSeconds * 1000;
 }
