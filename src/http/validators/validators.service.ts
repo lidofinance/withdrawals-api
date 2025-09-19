@@ -28,16 +28,9 @@ export class ValidatorsService {
       return acc;
     }, {} as Record<string, string>);
 
-    const frameBalancesSum = Object.keys(frameBalancesBigNumber)
-      .reduce((acc, item) => {
-        return acc.add(item);
-      }, BigNumber.from(0))
-      .toString();
-
     return {
       lastUpdatedAt,
       maxExitEpoch,
-      frameBalancesSum,
       frameBalances,
       totalValidators,
       currentFrame,
