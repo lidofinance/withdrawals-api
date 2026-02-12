@@ -1,4 +1,4 @@
-FROM node:20-alpine as building
+FROM node:24-alpine as building
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY ./src ./src
 RUN yarn install --frozen-lockfile --non-interactive && yarn cache clean
 RUN yarn build
 
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
