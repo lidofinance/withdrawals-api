@@ -17,6 +17,7 @@ COPY --from=building /app/dist ./dist
 COPY --from=building /app/node_modules ./node_modules
 COPY ./network-configs ./network-configs
 COPY ./package.json ./
+COPY ./build-info.json ./
 
 USER node
 

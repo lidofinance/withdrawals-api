@@ -5,7 +5,7 @@ import { ConfigService, ENV_KEYS, EnvironmentVariables } from 'common/config';
 import { PrometheusService } from 'common/prometheus';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ExecutionProviderService } from 'common/execution-provider';
-import { APP_NAME, APP_VERSION } from './app.constants';
+import { APP_NAME, APP_VERSION, APP_BRANCH, APP_COMMIT } from './app.constants';
 import { commonPatterns, satanizer } from '@lidofinance/satanizer';
 
 @Injectable()
@@ -44,9 +44,11 @@ export class AppService implements OnModuleInit {
     const env = this.configService.get('NODE_ENV');
     const version = APP_VERSION;
     const name = APP_NAME;
+    const branch = APP_BRANCH;
+    const commit = APP_COMMIT;
 
-    this.prometheusService.buildInfo.labels({ env, network, name, version }).inc();
-    this.logger.log('Init app', { env, network, name, version });
+    this.prometheusService.buildInfo.labels({ name, version, env, network, branch, commit }).inc();
+    this.logger.log('Init app', { name, version, env, network, branch, commit });
   }
 
   protected prometheusEnvsInfoMetrics() {
