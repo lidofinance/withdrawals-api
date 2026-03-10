@@ -26,7 +26,7 @@ export class PrometheusService {
   public buildInfo = this.getOrCreateMetric('Gauge', {
     name: 'build_info',
     help: 'Build information',
-    labelNames: ['name', 'version', 'env', 'network'],
+    labelNames: ['name', 'version', 'env', 'network', 'branch', 'commit'],
   });
 
   public envsInfo = this.getOrCreateMetric('Gauge', {
