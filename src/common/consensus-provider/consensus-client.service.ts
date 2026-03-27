@@ -1,21 +1,30 @@
 import { ConsensusProviderService } from './index';
 import { Injectable } from '@nestjs/common';
 import { processJsonStreamBeaconState } from './utils/process-json-stream-beacon-state';
-import { BeaconState } from './consensus-provider.types';
-import { API_GET_STATE_URL } from './consensus-provider.constants';
+import { BeaconStateSweepData, PendingPartialWithdrawal } from './consensus-provider.types';
+import { API_GET_PENDING_PARTIAL_WITHDRAWALS_URL, API_GET_STATE_URL } from './consensus-provider.constants';
 
 @Injectable()
 export class ConsensusClientService {
   constructor(protected readonly consensusService: ConsensusProviderService) {}
 
-  public async isElectraActivated(epoch: number) {
-    const spec = await this.consensusService.getSpec();
-    return epoch >= +spec.data.ELECTRA_FORK_EPOCH;
+  public async getStateSweepData(stateId: string): Promise<BeaconStateSweepData> {
+    const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
+    const result = await processJsonStreamBeaconState(stream, [
+      'slot',
+      'next_withdrawal_validator_index',
+      'latest_full_slot',
+      'latest_withdrawals_root',
+    ]);
+
+    return result as BeaconStateSweepData;
   }
 
-  public async getStateStream(stateId: string): Promise<BeaconState> {
-    const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
-    const result = await processJsonStreamBeaconState(stream);
-    return result as BeaconState;
+  public async getPendingPartialWithdrawals(stateId: string): Promise<PendingPartialWithdrawal[]> {
+    const result = await this.consensusService.fetch<{
+      data?: PendingPartialWithdrawal[];
+    }>(API_GET_PENDING_PARTIAL_WITHDRAWALS_URL(stateId));
+
+    return result.data ?? [];
   }
 }

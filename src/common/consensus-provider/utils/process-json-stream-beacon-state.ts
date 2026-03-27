@@ -4,9 +4,9 @@ import { streamObject } from 'stream-json/streamers/StreamObject';
 import { chain } from 'stream-chain';
 import { BeaconState } from '../consensus-provider.types';
 
-const keys = ['slot', 'pending_partial_withdrawals', 'validators', 'balances'] as const;
+const defaultKeys = ['slot', 'next_withdrawal_validator_index', 'latest_full_slot', 'latest_withdrawals_root'] as const;
 
-export async function processJsonStreamBeaconState(readableStream) {
+export async function processJsonStreamBeaconState(readableStream, keys: readonly string[] = defaultKeys) {
   return new Promise((resolve, reject) => {
     const pipeline = chain([
       readableStream, // Incoming ReadableStream

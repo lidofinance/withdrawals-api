@@ -134,12 +134,11 @@ export class RewardsService {
   }
 
   protected async getRewardsByBlockNumber(blockNumber: number, framesPassed: BigNumber) {
-    const { preCLBalance, postCLBalance } = await this.getEthDistributed(blockNumber);
+    const { preCLBalance, postCLBalance, withdrawalsWithdrawn } = await this.getEthDistributed(blockNumber);
     const elRewards = (await this.getElRewards(blockNumber)) ?? BigNumber.from(0);
-    const withdrawalsReceived = (await this.getWithdrawalsReceived(blockNumber)) ?? BigNumber.from(0);
 
     const clValidatorsBalanceDiff = postCLBalance.sub(preCLBalance);
-    const clRewards = clValidatorsBalanceDiff.add(withdrawalsReceived);
+    const clRewards = clValidatorsBalanceDiff.add(withdrawalsWithdrawn);
 
     return { clRewards: clRewards.div(framesPassed), elRewards: elRewards.div(framesPassed) };
   }
@@ -178,6 +177,7 @@ export class RewardsService {
   protected async getEthDistributed(fromBlock: number): Promise<{
     preCLBalance: BigNumber;
     postCLBalance: BigNumber;
+    withdrawalsWithdrawn: BigNumber;
   }> {
     const res = this.contractLido.filters.ETHDistributed();
     const logs = await this.executionProvider.getLogsByBlockStepsWithRetry(
@@ -205,6 +205,7 @@ export class RewardsService {
       return {
         preCLBalance: BigNumber.from(0),
         postCLBalance: BigNumber.from(0),
+        withdrawalsWithdrawn: BigNumber.from(0),
       };
     }
     const parser = new Interface([LIDO_ETH_DESTRIBUTED_EVENT]);
@@ -215,12 +216,14 @@ export class RewardsService {
       args: parsedData.args,
       preCLBalance: parsedData.args.getValue('preCLBalance'),
       postCLBalance: parsedData.args.getValue('postCLBalance'),
+      withdrawalsWithdrawn: parsedData.args.getValue('withdrawalsWithdrawn'),
       blockNumber: lastLog.blockNumber,
     });
 
     const preCLBalance = BigNumber.from(parsedData.args.getValue('preCLBalance'));
     const postCLBalance = BigNumber.from(parsedData.args.getValue('postCLBalance'));
-    return { preCLBalance, postCLBalance };
+    const withdrawalsWithdrawn = BigNumber.from(parsedData.args.getValue('withdrawalsWithdrawn'));
+    return { preCLBalance, postCLBalance, withdrawalsWithdrawn };
   }
 
   protected async getWithdrawalsReceived(fromBlock: number): Promise<BigNumber> {

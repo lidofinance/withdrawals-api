@@ -14,13 +14,19 @@ export interface PendingPartialWithdrawal {
   withdrawable_epoch: string;
 }
 
+export interface BeaconStateSweepData {
+  slot: string;
+  next_withdrawal_validator_index?: string;
+  latest_full_slot?: string;
+  latest_withdrawals_root?: string;
+}
+
 /**
  * Spec reference:
  * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#beaconstate
  * included only used properties
  */
-export interface BeaconState {
-  slot: string;
+export interface BeaconState extends BeaconStateSweepData {
   pending_partial_withdrawals: PendingPartialWithdrawal[];
   validators: Validator[];
   balances: string[];
