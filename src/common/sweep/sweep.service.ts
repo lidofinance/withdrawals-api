@@ -10,9 +10,9 @@ import {
   PendingPartialWithdrawal,
   Validator,
 } from 'common/consensus-provider/consensus-provider.types';
+import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { parseGwei } from 'common/utils/parse-gwei';
 import { bigNumberMin } from 'common/utils/big-number-min';
-import { FAR_FUTURE_EPOCH } from 'jobs/validators';
 import { SLOTS_PER_EPOCH } from 'common/genesis-time';
 import {
   MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,

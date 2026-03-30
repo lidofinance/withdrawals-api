@@ -3,6 +3,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ValidatorsService } from './validators';
 import { QueueInfoService } from './queue-info';
 import { ContractConfigService } from './contract-config';
+import { SpecJobService } from './spec';
 
 @Injectable()
 export class JobsService implements OnModuleInit {
@@ -12,6 +13,7 @@ export class JobsService implements OnModuleInit {
     protected readonly validatorsService: ValidatorsService,
     protected readonly queueInfoService: QueueInfoService,
     protected readonly contractConfigService: ContractConfigService,
+    protected readonly specJobService: SpecJobService,
   ) {}
 
   public async onModuleInit(): Promise<void> {
@@ -27,6 +29,7 @@ export class JobsService implements OnModuleInit {
       this.validatorsService.initialize(),
       this.queueInfoService.initialize(),
       this.contractConfigService.initialize(),
+      this.specJobService.initialize(),
     ]);
   }
 }

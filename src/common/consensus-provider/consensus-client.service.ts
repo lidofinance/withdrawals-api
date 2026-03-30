@@ -2,7 +2,11 @@ import { ConsensusProviderService } from './index';
 import { Injectable } from '@nestjs/common';
 import { processJsonStreamBeaconState } from './utils/process-json-stream-beacon-state';
 import { BeaconStateSweepData, PendingPartialWithdrawal } from './consensus-provider.types';
-import { API_GET_PENDING_PARTIAL_WITHDRAWALS_URL, API_GET_STATE_URL } from './consensus-provider.constants';
+import {
+  API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL,
+  API_GET_PENDING_PARTIAL_WITHDRAWALS_URL,
+  API_GET_STATE_URL,
+} from './consensus-provider.constants';
 
 @Injectable()
 export class ConsensusClientService {
@@ -26,5 +30,11 @@ export class ConsensusClientService {
     }>(API_GET_PENDING_PARTIAL_WITHDRAWALS_URL(stateId));
 
     return result.data ?? [];
+  }
+
+  public async getExecutionPayloadEnvelopeBlockNumber(blockId: string): Promise<number> {
+    const result = await this.consensusService.fetch<any>(API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL(blockId));
+
+    return Number(result.data.message.payload.block_number);
   }
 }

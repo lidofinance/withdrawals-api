@@ -3,13 +3,14 @@ import { Inject } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
 import { ConfigService } from 'common/config';
+import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
 import { ExecutionProviderService } from 'common/execution-provider';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { FAR_FUTURE_EPOCH, ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import { ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
@@ -19,7 +20,7 @@ import { ValidatorsCacheService } from 'storage/validators/validators-cache.serv
 import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
-import { getValidatorWithdrawalTimestampV2 } from './utils/get-validator-withdrawal-timestamp';
+import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
@@ -165,20 +166,20 @@ export class ValidatorsService {
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
     const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
     const now = Date.now();
-    const headSweepState = await this.getHeadWithdrawalSweepState(totalValidatorsCount);
+    const withdrawalSweepState = await this.getWithdrawalSweepState(totalValidatorsCount);
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
       if (item.validator.withdrawable_epoch !== FAR_FUTURE_EPOCH.toString() && BigNumber.from(item.balance).gt(0)) {
         const withdrawableEpoch = +item.validator.withdrawable_epoch.toString();
-        const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestampV2({
+        const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp({
           validatorIndex: BigNumber.from(item.index),
-          sweepCursorValidatorIndex: headSweepState.sweepCursorValidatorIndex,
+          sweepCursorValidatorIndex: withdrawalSweepState.sweepCursorValidatorIndex,
           totalValidatorsCount,
           activeValidatorCount,
           currentEpoch,
           withdrawableEpoch,
-          blockedByDeferredSlots: headSweepState.hasDeferredWithdrawals ? 1 : 0,
+          blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
           nowMs: now,
         });
         const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
@@ -209,7 +210,7 @@ export class ValidatorsService {
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const now = Date.now();
         const frameBalances = {};
-        const headSweepState = await this.getHeadWithdrawalSweepState(totalValidatorsCount);
+        const withdrawalSweepState = await this.getWithdrawalSweepState(totalValidatorsCount);
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
@@ -224,14 +225,14 @@ export class ValidatorsService {
             const stateValidator = stateValidators.data[j];
 
             const withdrawableEpoch = +stateValidator.validator.withdrawable_epoch.toString();
-            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestampV2({
+            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp({
               validatorIndex: BigNumber.from(stateValidator.index),
               totalValidatorsCount,
               activeValidatorCount,
-              sweepCursorValidatorIndex: headSweepState.sweepCursorValidatorIndex,
+              sweepCursorValidatorIndex: withdrawalSweepState.sweepCursorValidatorIndex,
               currentEpoch,
               withdrawableEpoch,
-              blockedByDeferredSlots: headSweepState.hasDeferredWithdrawals ? 1 : 0,
+              blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
               nowMs: now,
             });
 
@@ -260,17 +261,24 @@ export class ValidatorsService {
     return BigNumber.from(lastWithdrawal ? lastWithdrawal.validatorIndex : 0);
   }
 
-  protected async getHeadWithdrawalSweepState(totalValidatorsCount: number): Promise<WithdrawalSweepState> {
-    const state = await this.consensusClientService.getStateSweepData('head');
+  protected async getWithdrawalSweepState(
+    totalValidatorsCount: number,
+    stateId = 'head',
+  ): Promise<WithdrawalSweepState> {
+    const state = await this.consensusClientService.getStateSweepData(stateId);
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
     if (nextWithdrawalValidatorIndex !== undefined) {
-      const hasDeferredWithdrawals =
-        state.latest_full_slot !== undefined && BigNumber.from(state.latest_full_slot).lt(BigNumber.from(state.slot));
+      const blockedByDeferredSlots =
+        state.latest_full_slot !== undefined
+          ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
+          : 0;
+      const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
 
       const sweepState: WithdrawalSweepState = {
         sweepCursorValidatorIndex: BigNumber.from(nextWithdrawalValidatorIndex),
         hasDeferredWithdrawals,
+        blockedByDeferredSlots,
         stateSlot: state.slot,
         latestFullSlot: state.latest_full_slot,
         source: 'consensus',
@@ -280,6 +288,7 @@ export class ValidatorsService {
         service: ValidatorsService.SERVICE_LOG_NAME,
         sweepCursorValidatorIndex: sweepState.sweepCursorValidatorIndex.toString(),
         hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
+        blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
         stateSlot: sweepState.stateSlot,
         latestFullSlot: sweepState.latestFullSlot,
       });
@@ -301,6 +310,7 @@ export class ValidatorsService {
     return {
       sweepCursorValidatorIndex,
       hasDeferredWithdrawals: false,
+      blockedByDeferredSlots: 0,
       source: 'execution',
     };
   }

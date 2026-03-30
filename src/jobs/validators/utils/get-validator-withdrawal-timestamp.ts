@@ -22,7 +22,7 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
  * @param secondsPerSlot Slot duration in seconds.
  * @returns Estimated Unix timestamp in milliseconds when the validator is expected to be swept.
  */
-export function getValidatorWithdrawalTimestampV2({
+export function getValidatorWithdrawalTimestamp({
   validatorIndex,
   sweepCursorValidatorIndex,
   activeValidatorCount,

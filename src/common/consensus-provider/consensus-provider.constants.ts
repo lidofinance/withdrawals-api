@@ -8,3 +8,5 @@ export const CONSENSUS_REQUEST_TIMEOUT = 1800_000;
 export const API_GET_STATE_URL = (stateId: string) => `/eth/v2/debug/beacon/states/${stateId}`;
 export const API_GET_PENDING_PARTIAL_WITHDRAWALS_URL = (stateId: string) =>
   `/eth/v1/beacon/states/${stateId}/pending_partial_withdrawals`;
+export const API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL = (blockId: string) =>
+  `/eth/v1/beacon/execution_payload_envelope/${blockId}`;

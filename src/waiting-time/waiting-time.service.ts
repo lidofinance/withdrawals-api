@@ -516,19 +516,26 @@ export class WaitingTimeService {
     const accountingOracle = OracleV2__factory.connect(address, {
       provider: this.provider as any,
     });
-
-    const processingState = await accountingOracle.getProcessingState();
-    const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
-
     const block = await this.provider.getBlock('latest');
+
+    const processingState = await accountingOracle.getProcessingState({ blockTag: block.number });
 
     if (processingState.dataSubmitted) {
       this.logger.debug(`using latest block ${block.number}`);
       return block.number;
     } else {
-      const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-      this.logger.debug(`using processing ref slot of block ${blockNumber}`);
-      return blockNumber;
+      try {
+        const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
+        const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+        this.logger.debug(`using processing ref slot of block ${blockNumber}`);
+        return blockNumber;
+      } catch (e) {
+        this.logger.error(e);
+        this.logger.warn(
+          `using fallback latest block ${block.number} because failed ref slot ${processingState.currentFrameRefSlot} `,
+        );
+        return block.number;
+      }
     }
   }
 }
