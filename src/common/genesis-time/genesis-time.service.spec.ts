@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { GenesisTimeService } from './genesis-time.service';
 import { ConsensusProviderService } from '../consensus-provider';
+import { ConsensusClientService } from '../consensus-provider/consensus-client.service';
 import { ContractConfigStorageService } from '../../storage';
 
 jest.mock('common/config', () => ({}));
@@ -10,6 +11,7 @@ describe('GenesisTimeService', () => {
   let moduleRef: TestingModule;
   let service: GenesisTimeService;
   let consensusProvider: ConsensusProviderService;
+  let consensusClientService: ConsensusClientService;
   let contractConfig: ContractConfigStorageService;
 
   beforeAll(() => {
@@ -31,9 +33,13 @@ describe('GenesisTimeService', () => {
           useValue: {
             getGenesis: jest.fn(),
             getSpec: jest.fn(),
-            getBlockHeaders: jest.fn(),
             getBlockV2: jest.fn(),
-            fetch: jest.fn(),
+          },
+        },
+        {
+          provide: ConsensusClientService,
+          useValue: {
+            getExecutionPayloadEnvelopeBlockNumber: jest.fn(),
           },
         },
         {
@@ -48,11 +54,14 @@ describe('GenesisTimeService', () => {
 
     service = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     consensusProvider = moduleRef.get<ConsensusProviderService>(ConsensusProviderService);
+    consensusClientService = moduleRef.get<ConsensusClientService>(ConsensusClientService);
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
   });
 
   afterEach(async () => {
-    await moduleRef.close();
+    if (moduleRef) {
+      await moduleRef.close();
+    }
     jest.resetAllMocks();
   });
 
@@ -167,33 +176,15 @@ describe('GenesisTimeService', () => {
         GLOAS_FORK_EPOCH: '5',
       },
     });
-    jest.spyOn(consensusProvider, 'getBlockHeaders').mockResolvedValue({
-      data: [
-        {
-          root: '0xpost-gloas-root',
-          header: {
-            message: {
-              slot: '200',
-            },
-          },
-        },
-      ],
-    } as any);
-    const fetchSpy = jest.spyOn(consensusProvider, 'fetch').mockResolvedValue({
-      data: {
-        message: {
-          payload: {
-            block_number: '12345',
-          },
-        },
-      },
-    });
+    const getEnvelopeBlockNumberSpy = jest
+      .spyOn(consensusClientService, 'getExecutionPayloadEnvelopeBlockNumber')
+      .mockResolvedValue(12345);
     const getBlockV2Spy = jest.spyOn(consensusProvider, 'getBlockV2');
 
     await moduleRef.init();
 
     await expect(service.getBlockBySlot(200)).resolves.toBe(12345);
-    expect(fetchSpy).toHaveBeenCalledWith('/eth/v1/beacon/execution_payload_envelope/0xpost-gloas-root');
+    expect(getEnvelopeBlockNumberSpy).toHaveBeenCalledWith('200');
     expect(getBlockV2Spy).not.toHaveBeenCalled();
   });
 
@@ -208,19 +199,7 @@ describe('GenesisTimeService', () => {
         GLOAS_FORK_EPOCH: '10',
       },
     });
-    jest.spyOn(consensusProvider, 'getBlockHeaders').mockResolvedValue({
-      data: [
-        {
-          root: '0xpre-gloas-root',
-          header: {
-            message: {
-              slot: '200',
-            },
-          },
-        },
-      ],
-    } as any);
-    const fetchSpy = jest.spyOn(consensusProvider, 'fetch');
+    const getEnvelopeBlockNumberSpy = jest.spyOn(consensusClientService, 'getExecutionPayloadEnvelopeBlockNumber');
     const getBlockV2Spy = jest.spyOn(consensusProvider, 'getBlockV2').mockResolvedValue({
       data: {
         message: {
@@ -236,53 +215,7 @@ describe('GenesisTimeService', () => {
     await moduleRef.init();
 
     await expect(service.getBlockBySlot(200)).resolves.toBe(67890);
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(getBlockV2Spy).toHaveBeenCalledWith({ blockId: '0xpre-gloas-root' });
-  });
-
-  it(`falls back to the latest existing block at or before slot`, async () => {
-    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
-      data: {
-        genesis_time: '1606824023',
-      },
-    });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {
-        GLOAS_FORK_EPOCH: '5',
-      },
-    });
-    const getBlockHeadersSpy = jest
-      .spyOn(consensusProvider, 'getBlockHeaders')
-      .mockRejectedValueOnce({
-        message: 'No blocks found',
-        code: 404,
-      })
-      .mockResolvedValueOnce({
-        data: [
-          {
-            root: '0xfallback-root',
-            header: {
-              message: {
-                slot: '224',
-              },
-            },
-          },
-        ],
-      } as any);
-    jest.spyOn(consensusProvider, 'fetch').mockResolvedValue({
-      data: {
-        message: {
-          payload: {
-            block_number: '54321',
-          },
-        },
-      },
-    });
-
-    await moduleRef.init();
-
-    await expect(service.getBlockBySlot(225)).resolves.toBe(54321);
-    expect(getBlockHeadersSpy).toHaveBeenNthCalledWith(1, { slot: '225' });
-    expect(getBlockHeadersSpy).toHaveBeenNthCalledWith(2, { slot: '224' });
+    expect(getEnvelopeBlockNumberSpy).not.toHaveBeenCalled();
+    expect(getBlockV2Spy).toHaveBeenCalledWith({ blockId: '200' });
   });
 });
