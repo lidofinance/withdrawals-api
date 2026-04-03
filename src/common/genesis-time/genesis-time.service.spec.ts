@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { GenesisTimeService } from './genesis-time.service';
-import { ConsensusProviderService } from '../consensus-provider';
-import { ConsensusClientService } from '../consensus-provider/consensus-client.service';
+import { ConsensusExecutionPayloadService, ConsensusProviderService } from '../consensus-provider';
+import { SpecService } from '../spec';
 import { ContractConfigStorageService } from '../../storage';
 
 jest.mock('common/config', () => ({}));
@@ -11,7 +11,7 @@ describe('GenesisTimeService', () => {
   let moduleRef: TestingModule;
   let service: GenesisTimeService;
   let consensusProvider: ConsensusProviderService;
-  let consensusClientService: ConsensusClientService;
+  let consensusExecutionPayloadService: ConsensusExecutionPayloadService;
   let contractConfig: ContractConfigStorageService;
 
   beforeAll(() => {
@@ -37,9 +37,15 @@ describe('GenesisTimeService', () => {
           },
         },
         {
-          provide: ConsensusClientService,
+          provide: ConsensusExecutionPayloadService,
           useValue: {
-            getExecutionPayloadEnvelopeBlockNumber: jest.fn(),
+            getExecutionPayload: jest.fn(),
+          },
+        },
+        {
+          provide: SpecService,
+          useValue: {
+            refreshGlamsterdamForkEpoch: jest.fn(),
           },
         },
         {
@@ -54,7 +60,9 @@ describe('GenesisTimeService', () => {
 
     service = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     consensusProvider = moduleRef.get<ConsensusProviderService>(ConsensusProviderService);
-    consensusClientService = moduleRef.get<ConsensusClientService>(ConsensusClientService);
+    consensusExecutionPayloadService = moduleRef.get<ConsensusExecutionPayloadService>(
+      ConsensusExecutionPayloadService,
+    );
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
   });
 
@@ -71,9 +79,6 @@ describe('GenesisTimeService', () => {
         genesis_time: '10000',
       },
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
-    });
 
     await moduleRef.init();
 
@@ -86,9 +91,6 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {},
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
-    });
 
     await expect(moduleRef.init()).rejects.toEqual(new Error('Failed to get genesis time'));
   });
@@ -98,9 +100,6 @@ describe('GenesisTimeService', () => {
       data: {
         genesis_time: '1606824023',
       },
-    });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
     });
 
     await moduleRef.init();
@@ -115,9 +114,6 @@ describe('GenesisTimeService', () => {
       data: {
         genesis_time: '1606824023',
       },
-    });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
     });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
@@ -135,9 +131,6 @@ describe('GenesisTimeService', () => {
         genesis_time: '1606824023',
       },
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
-    });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
 
@@ -154,9 +147,6 @@ describe('GenesisTimeService', () => {
         genesis_time: '1606824023',
       },
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {},
-    });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
 
@@ -165,57 +155,19 @@ describe('GenesisTimeService', () => {
     expect(service.timeToWithdrawalFrame(2000, 1703239938663)).toBe(153798484000);
   });
 
-  it(`uses execution payload envelope after Glamsterdam`, async () => {
+  it(`gets block number from consensus execution payload service`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
       },
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {
-        GLOAS_FORK_EPOCH: '5',
-      },
-    });
-    const getEnvelopeBlockNumberSpy = jest
-      .spyOn(consensusClientService, 'getExecutionPayloadEnvelopeBlockNumber')
-      .mockResolvedValue(12345);
-    const getBlockV2Spy = jest.spyOn(consensusProvider, 'getBlockV2');
+    const getExecutionPayloadSpy = jest
+      .spyOn(consensusExecutionPayloadService, 'getExecutionPayload')
+      .mockResolvedValue({ block_number: '12345', block_hash: '0x1' });
 
     await moduleRef.init();
 
     await expect(service.getBlockBySlot(200)).resolves.toBe(12345);
-    expect(getEnvelopeBlockNumberSpy).toHaveBeenCalledWith('200');
-    expect(getBlockV2Spy).not.toHaveBeenCalled();
-  });
-
-  it(`uses legacy block payload before Glamsterdam`, async () => {
-    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
-      data: {
-        genesis_time: '1606824023',
-      },
-    });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
-      data: {
-        GLOAS_FORK_EPOCH: '10',
-      },
-    });
-    const getEnvelopeBlockNumberSpy = jest.spyOn(consensusClientService, 'getExecutionPayloadEnvelopeBlockNumber');
-    const getBlockV2Spy = jest.spyOn(consensusProvider, 'getBlockV2').mockResolvedValue({
-      data: {
-        message: {
-          body: {
-            execution_payload: {
-              block_number: '67890',
-            },
-          },
-        },
-      },
-    } as any);
-
-    await moduleRef.init();
-
-    await expect(service.getBlockBySlot(200)).resolves.toBe(67890);
-    expect(getEnvelopeBlockNumberSpy).not.toHaveBeenCalled();
-    expect(getBlockV2Spy).toHaveBeenCalledWith({ blockId: '200' });
+    expect(getExecutionPayloadSpy).toHaveBeenCalledWith('200');
   });
 });

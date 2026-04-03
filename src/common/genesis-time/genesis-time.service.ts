@@ -1,8 +1,6 @@
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { FAR_FUTURE_EPOCH } from 'common/constants';
-import { ConsensusProviderService } from 'common/consensus-provider';
-import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
+import { ConsensusExecutionPayloadService, ConsensusProviderService } from 'common/consensus-provider';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
 import { ContractConfigStorageService } from '../../storage';
 
@@ -11,7 +9,7 @@ export class GenesisTimeService implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusService: ConsensusProviderService,
-    protected readonly consensusClientService: ConsensusClientService,
+    protected readonly consensusExecutionPayloadService: ConsensusExecutionPayloadService,
     protected readonly contractConfig: ContractConfigStorageService,
   ) {}
 
@@ -22,8 +20,6 @@ export class GenesisTimeService implements OnModuleInit {
     if (isNaN(this.genesisTime)) {
       throw new Error('Failed to get genesis time');
     }
-
-    await this.loadGlamsterdamForkEpoch();
   }
 
   /**
@@ -97,50 +93,13 @@ export class GenesisTimeService implements OnModuleInit {
 
   async getBlockBySlot(slot: number) {
     const blockId = `${slot}`;
-
-    if (this.isGlamsterdamReleasedAtSlot(slot)) {
-      return this.consensusClientService.getExecutionPayloadEnvelopeBlockNumber(blockId);
-    }
-
-    const block = await this.consensusService.getBlockV2({ blockId });
-    return Number((block.data as any).message.body.execution_payload.block_number);
+    const executionPayload = await this.consensusExecutionPayloadService.getExecutionPayload(blockId);
+    return Number(executionPayload.block_number);
   }
 
   getTimestampByEpoch(epoch: number) {
     return this.genesisTime * 1000 + epoch * SLOTS_PER_EPOCH * SECONDS_PER_SLOT * 1000;
   }
 
-  public async refreshGlamsterdamForkEpoch(): Promise<void> {
-    await this.loadGlamsterdamForkEpoch();
-  }
-
   protected genesisTime = -1;
-  protected glamsterdamForkEpoch: number | null = null;
-
-  private async loadGlamsterdamForkEpoch(): Promise<void> {
-    try {
-      const spec = await this.consensusService.getSpec();
-      const glamsterdamForkEpoch = spec.data.GLOAS_FORK_EPOCH;
-
-      if (glamsterdamForkEpoch && glamsterdamForkEpoch !== FAR_FUTURE_EPOCH.toString()) {
-        const nextForkEpoch = Number(glamsterdamForkEpoch);
-
-        if (this.glamsterdamForkEpoch !== nextForkEpoch) {
-          this.glamsterdamForkEpoch = nextForkEpoch;
-          this.logger.log('Loaded GLOAS_FORK_EPOCH', { result: glamsterdamForkEpoch });
-        }
-        return;
-      }
-    } catch (error) {
-      this.logger.warn(`Failed to load Glamsterdam fork epoch from consensus spec: ${error.message}`);
-    }
-  }
-
-  private isGlamsterdamReleasedAtSlot(slot: number): boolean {
-    if (this.glamsterdamForkEpoch === null) {
-      return false;
-    }
-
-    return Math.floor(slot / SLOTS_PER_EPOCH) >= this.glamsterdamForkEpoch;
-  }
 }

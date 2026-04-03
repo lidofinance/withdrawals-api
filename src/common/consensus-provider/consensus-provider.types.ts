@@ -1,5 +1,6 @@
 import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
 
+export type ResponseBlockV2 = Awaited<ConsensusMethodResult<'getBlockV2'>>;
 export type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
 export type IndexedValidator = ResponseValidatorsData[number];
 export type Validator = ResponseValidatorsData[number]['validator'];
