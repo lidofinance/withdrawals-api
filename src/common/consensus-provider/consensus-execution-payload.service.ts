@@ -1,6 +1,6 @@
+import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { Injectable } from '@nestjs/common';
-import { SpecService } from 'common/spec';
-import { ConsensusProviderService } from './index';
+import { SpecService } from 'common/spec/spec.service';
 import { ConsensusClientService } from './consensus-client.service';
 import { ResponseBlockV2 } from './consensus-provider.types';
 import { ExecutionPayload } from './types/execution-payload';

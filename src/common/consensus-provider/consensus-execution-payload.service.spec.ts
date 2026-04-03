@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { ConsensusExecutionPayloadService } from './consensus-execution-payload.service';
 import { ConsensusClientService } from './consensus-client.service';
-import { ConsensusProviderService } from './index';
-import { SpecService } from '../spec';
+import { SpecService } from '../spec/spec.service';
 
 describe('ConsensusExecutionPayloadService', () => {
   let moduleRef: TestingModule;

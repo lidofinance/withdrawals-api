@@ -1,6 +1,6 @@
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { ConsensusProviderService } from 'common/consensus-provider';
+import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { SLOTS_PER_EPOCH } from 'common/genesis-time/genesis-time.constants';
 import { FAR_FUTURE_EPOCH } from './spec.constants';
 

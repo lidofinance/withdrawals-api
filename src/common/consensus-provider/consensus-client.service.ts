@@ -1,4 +1,4 @@
-import { ConsensusProviderService } from './index';
+import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { Injectable } from '@nestjs/common';
 import { processJsonStreamBeaconState } from './utils/process-json-stream-beacon-state';
 import { BeaconStateSweepData, PendingPartialWithdrawal } from './consensus-provider.types';
