@@ -6,7 +6,6 @@ import { ConfigService } from 'common/config';
 import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
-import { ExecutionProviderService } from 'common/execution-provider';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
@@ -35,7 +34,6 @@ export class ValidatorsService {
     protected readonly prometheusService: PrometheusService,
     protected readonly consensusProviderService: ConsensusProviderService,
     protected readonly consensusClientService: ConsensusClientService,
-    protected readonly executionProviderService: ExecutionProviderService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
@@ -166,7 +164,7 @@ export class ValidatorsService {
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
     const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
     const now = Date.now();
-    const withdrawalSweepState = await this.getWithdrawalSweepState(totalValidatorsCount);
+    const withdrawalSweepState = await this.getWithdrawalSweepState();
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
@@ -210,7 +208,7 @@ export class ValidatorsService {
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const now = Date.now();
         const frameBalances = {};
-        const withdrawalSweepState = await this.getWithdrawalSweepState(totalValidatorsCount);
+        const withdrawalSweepState = await this.getWithdrawalSweepState();
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
@@ -253,66 +251,39 @@ export class ValidatorsService {
     );
   }
 
-  protected async getLastWithdrawalValidatorIndex() {
-    const withdrawals = await this.executionProviderService.getLatestWithdrawals();
-    const lastWithdrawal = withdrawals[withdrawals.length - 1];
-
-    this.logger.log('Found last withdrawal', { lastWithdrawal });
-    return BigNumber.from(lastWithdrawal ? lastWithdrawal.validatorIndex : 0);
-  }
-
-  protected async getWithdrawalSweepState(
-    totalValidatorsCount: number,
-    stateId = 'head',
-  ): Promise<WithdrawalSweepState> {
+  protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
     const state = await this.consensusClientService.getStateSweepData(stateId);
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
-    if (nextWithdrawalValidatorIndex !== undefined) {
-      const blockedByDeferredSlots =
-        state.latest_full_slot !== undefined
-          ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
-          : 0;
-      const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
-
-      const sweepState: WithdrawalSweepState = {
-        sweepCursorValidatorIndex: BigNumber.from(nextWithdrawalValidatorIndex),
-        hasDeferredWithdrawals,
-        blockedByDeferredSlots,
-        stateSlot: state.slot,
-        latestFullSlot: state.latest_full_slot,
-        source: 'consensus',
-      };
-
-      this.logger.log('Using withdrawal sweep state from consensus', {
-        service: ValidatorsService.SERVICE_LOG_NAME,
-        sweepCursorValidatorIndex: sweepState.sweepCursorValidatorIndex.toString(),
-        hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
-        blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
-        stateSlot: sweepState.stateSlot,
-        latestFullSlot: sweepState.latestFullSlot,
-      });
-
-      return sweepState;
+    if (nextWithdrawalValidatorIndex === undefined) {
+      throw new Error(`Consensus state ${stateId} is missing next_withdrawal_validator_index`);
     }
 
-    const lastWithdrawalValidatorIndex = await this.getLastWithdrawalValidatorIndex();
-    const sweepCursorValidatorIndex =
-      totalValidatorsCount > 0
-        ? lastWithdrawalValidatorIndex.add(1).mod(totalValidatorsCount)
-        : lastWithdrawalValidatorIndex;
+    const blockedByDeferredSlots =
+      state.latest_full_slot !== undefined
+        ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
+        : 0;
+    const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
 
-    this.logger.warn('Consensus sweep state is unavailable, fallback to execution payload withdrawals', {
+    const sweepState: WithdrawalSweepState = {
+      sweepCursorValidatorIndex: BigNumber.from(nextWithdrawalValidatorIndex),
+      hasDeferredWithdrawals,
+      blockedByDeferredSlots,
+      stateSlot: state.slot,
+      latestFullSlot: state.latest_full_slot,
+      source: 'consensus',
+    };
+
+    this.logger.log('Using withdrawal sweep state from consensus', {
       service: ValidatorsService.SERVICE_LOG_NAME,
-      sweepCursorValidatorIndex: sweepCursorValidatorIndex.toString(),
+      sweepCursorValidatorIndex: sweepState.sweepCursorValidatorIndex.toString(),
+      hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
+      blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
+      stateSlot: sweepState.stateSlot,
+      latestFullSlot: sweepState.latestFullSlot,
     });
 
-    return {
-      sweepCursorValidatorIndex,
-      hasDeferredWithdrawals: false,
-      blockedByDeferredSlots: 0,
-      source: 'execution',
-    };
+    return sweepState;
   }
 
   protected logAnalyticsAboutFrameBalances() {
