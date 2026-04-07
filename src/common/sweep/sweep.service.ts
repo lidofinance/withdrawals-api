@@ -72,9 +72,6 @@ export class SweepService {
       epoch,
     );
 
-    console.log('pendingPartialWithdrawals.length', pendingPartialWithdrawals.length);
-    console.log('validatorsWithdrawalsNumber', validatorsWithdrawalsNumber);
-
     const pendingPartialWithdrawalsNumber = pendingPartialWithdrawals.length;
 
     const partialWithdrawalsMaxRatio =
