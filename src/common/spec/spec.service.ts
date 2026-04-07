@@ -2,7 +2,7 @@ import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common'
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { SLOTS_PER_EPOCH } from 'common/genesis-time/genesis-time.constants';
-import { FAR_FUTURE_EPOCH } from './spec.constants';
+import { FAR_FUTURE_EPOCH } from '../constants';
 
 @Injectable()
 export class SpecService implements OnModuleInit {
@@ -18,15 +18,15 @@ export class SpecService implements OnModuleInit {
   public async refreshGlamsterdamForkEpoch(): Promise<void> {
     try {
       const spec = await this.consensusProviderService.getSpec();
-      const glamsterdamForkEpoch = spec.data.GLOAS_FORK_EPOCH;
+      const glamsterdamForkEpoch = spec.data.GLOAS_FORK_EPOCH as string;
 
-      if (glamsterdamForkEpoch !== FAR_FUTURE_EPOCH) {
+      if (glamsterdamForkEpoch !== FAR_FUTURE_EPOCH.toString()) {
         this.logger.warn('GLOAS_FORK_EPOCH is already known, cron job can be removed', {
           result: glamsterdamForkEpoch,
         });
       }
 
-      if (!glamsterdamForkEpoch || glamsterdamForkEpoch === FAR_FUTURE_EPOCH) {
+      if (!glamsterdamForkEpoch || glamsterdamForkEpoch === FAR_FUTURE_EPOCH.toString()) {
         return;
       }
 
