@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
-import { Lido, LIDO_CONTRACT_TOKEN, LIDO_LOCATOR_CONTRACT_TOKEN, LidoLocator } from '@lido-nestjs/contracts';
+import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
 import {
   LIDO_EL_REWARDS_RECEIVED_EVENT,
@@ -24,7 +24,6 @@ export class RewardsService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
-    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
     protected readonly prometheusService: PrometheusService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
@@ -310,10 +309,12 @@ export class RewardsService {
 
   // it includes WithdrawalVault balance and diff between rewards and cached rewards from previous report
   async getVaultsBalance(blockNumber: number) {
-    const withdrawalVaultAddress = await this.lidoLocator.withdrawalVault({ blockTag: blockNumber });
-    const withdrawalVaultBalance = await this.provider.getBalance(withdrawalVaultAddress, blockNumber);
-    const rewardsVaultAddress = await this.lidoLocator.elRewardsVault({ blockTag: blockNumber });
-    const rewardsVaultBalance = await this.provider.getBalance(rewardsVaultAddress, blockNumber);
+    const withdrawalVaultAddress = this.contractConfig.getWithdrawalVaultAddress();
+    const rewardsVaultAddress = this.contractConfig.getElRewardsVaultAddress();
+    const [withdrawalVaultBalance, rewardsVaultBalance] = await Promise.all([
+      this.provider.getBalance(withdrawalVaultAddress, blockNumber),
+      this.provider.getBalance(rewardsVaultAddress, blockNumber),
+    ]);
     const elRewards = this.rewardsStorage.getElRewardsPerFrame();
     const clRewards = this.rewardsStorage.getClRewardsPerFrame();
 

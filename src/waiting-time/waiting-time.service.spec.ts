@@ -126,6 +126,7 @@ describe('WaitingTimeService', () => {
           provide: SimpleFallbackJsonRpcBatchProvider,
           useValue: {
             getBlock: jest.fn(),
+            getBlockNumber: jest.fn(),
           },
         },
         {
@@ -175,6 +176,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
     // needed for mock only block number
     jest.spyOn(rpcBatchProvider, 'getBlock').mockResolvedValue({ number: 21367114 } as any);
+    jest.spyOn(rpcBatchProvider, 'getBlockNumber').mockResolvedValue(21367114);
   });
 
   afterEach(async () => {

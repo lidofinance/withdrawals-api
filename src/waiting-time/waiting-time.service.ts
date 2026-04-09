@@ -5,8 +5,6 @@ import {
   Lido,
   WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
   WithdrawalQueue,
-  LIDO_LOCATOR_CONTRACT_TOKEN,
-  LidoLocator,
 } from '@lido-nestjs/contracts';
 import { parseEther } from 'ethers';
 
@@ -64,7 +62,6 @@ export class WaitingTimeService {
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
-    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -512,29 +509,28 @@ export class WaitingTimeService {
 
   // returns block of processing ref slot or latest block depending on if report submit or processing
   async getLatestOrBlockProcessingRefSlot() {
-    const address = await this.lidoLocator.accountingOracle();
+    const address = this.contractConfig.getAccountingOracleAddress();
     const accountingOracle = OracleV2__factory.connect(address, {
       provider: this.provider as any,
     });
-    const block = await this.provider.getBlock('latest');
-
-    const processingState = await accountingOracle.getProcessingState({ blockTag: block.number });
+    const blockNumber = await this.provider.getBlockNumber();
+    const processingState = await accountingOracle.getProcessingState({ blockTag: blockNumber });
 
     if (processingState.dataSubmitted) {
-      this.logger.debug(`using latest block ${block.number}`);
-      return block.number;
+      this.logger.debug(`using latest block ${blockNumber}`);
+      return blockNumber;
     } else {
       try {
         const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
-        const blockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-        this.logger.debug(`using processing ref slot of block ${blockNumber}`);
-        return blockNumber;
+        const processingRefBlockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+        this.logger.debug(`using processing ref slot of block ${processingRefBlockNumber}`);
+        return processingRefBlockNumber;
       } catch (e) {
         this.logger.error(e);
         this.logger.warn(
-          `using fallback latest block ${block.number} because failed ref slot ${processingState.currentFrameRefSlot} `,
+          `using fallback latest block ${blockNumber} because failed ref slot ${processingState.currentFrameRefSlot} `,
         );
-        return block.number;
+        return blockNumber;
       }
     }
   }
