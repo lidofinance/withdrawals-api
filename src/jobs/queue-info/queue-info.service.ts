@@ -7,10 +7,12 @@ import { OneAtTime } from '@lido-nestjs/decorators';
 import { QueueInfoStorageService } from 'storage';
 import { WithdrawalQueue, Lido, WITHDRAWAL_QUEUE_CONTRACT_TOKEN, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
+import { BigNumber } from '@ethersproject/bignumber';
 import { WithdrawalRequest } from 'storage/queue-info/queue-info.types';
 
 @Injectable()
 export class QueueInfoService {
+  protected static readonly WITHDRAWAL_STATUS_PAGE_SIZE = 50;
   private job: CronJob;
   static SERVICE_LOG_NAME = 'queue info';
 
@@ -73,12 +75,7 @@ export class QueueInfoService {
           this.contractWithdrawal.getLastRequestId(),
         ]);
 
-        const requestIds = new Array(unfinalizedRequests.toNumber())
-          .fill(true)
-          .map((_, i) => lastRequestId.sub(i))
-          .reverse();
-        const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIds);
-        const requests = withdrawalStatuses.map((w, i) => ({ ...w, id: requestIds[i] } as WithdrawalRequest));
+        const requests = await this.getUpdatedRequests(lastRequestId, unfinalizedRequests);
 
         this.queueInfoStorageService.setRequests(requests);
         this.queueInfoStorageService.setStETH(unfinalizedStETH);
@@ -101,6 +98,77 @@ export class QueueInfoService {
         });
       },
     );
+  }
+
+  protected async getUpdatedRequests(
+    lastRequestId: BigNumber,
+    unfinalizedRequests: BigNumber,
+  ): Promise<WithdrawalRequest[]> {
+    const requestIds = this.getRequestIds(lastRequestId, unfinalizedRequests);
+    if (requestIds.length === 0) {
+      return [];
+    }
+
+    const cachedRequests = this.queueInfoStorageService.getRequests();
+    const firstExpectedRequestId = requestIds[0];
+    const cachedActiveRequests = cachedRequests.filter(
+      (request) => request.id.gte(firstExpectedRequestId) && request.id.lte(lastRequestId),
+    );
+
+    if (!this.hasContiguousIds(cachedActiveRequests, firstExpectedRequestId)) {
+      this.logger.warn('Queue cache is inconsistent, refetching all unfinalized requests', {
+        service: QueueInfoService.SERVICE_LOG_NAME,
+        cachedRequests: cachedRequests.length,
+        cachedActiveRequests: cachedActiveRequests.length,
+        unfinalizedRequests: unfinalizedRequests.toString(),
+      });
+      return await this.fetchRequestsByIds(requestIds);
+    }
+
+    const lastCachedRequestId = cachedActiveRequests[cachedActiveRequests.length - 1]?.id;
+    const nextRequestId = lastCachedRequestId ? lastCachedRequestId.add(1) : firstExpectedRequestId;
+    const nextRequestIndex = nextRequestId.sub(firstExpectedRequestId).toNumber();
+    const newRequestIds = requestIds.slice(nextRequestIndex);
+
+    if (newRequestIds.length === 0) {
+      return cachedActiveRequests;
+    }
+
+    const newRequests = await this.fetchRequestsByIds(newRequestIds);
+    return cachedActiveRequests.concat(newRequests);
+  }
+
+  protected getRequestIds(lastRequestId: BigNumber, unfinalizedRequests: BigNumber): BigNumber[] {
+    if (unfinalizedRequests.eq(0)) {
+      return [];
+    }
+
+    const firstRequestId = lastRequestId.sub(unfinalizedRequests).add(1);
+    return new Array(unfinalizedRequests.toNumber()).fill(true).map((_, i) => firstRequestId.add(i));
+  }
+
+  protected hasContiguousIds(requests: WithdrawalRequest[], firstExpectedRequestId: BigNumber): boolean {
+    for (let i = 0; i < requests.length; i++) {
+      if (!requests[i].id.eq(firstExpectedRequestId.add(i))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  protected async fetchRequestsByIds(requestIds: BigNumber[]): Promise<WithdrawalRequest[]> {
+    const requests: WithdrawalRequest[] = [];
+
+    for (let i = 0; i < requestIds.length; i += QueueInfoService.WITHDRAWAL_STATUS_PAGE_SIZE) {
+      const requestIdsPage = requestIds.slice(i, i + QueueInfoService.WITHDRAWAL_STATUS_PAGE_SIZE);
+      const withdrawalStatuses = await this.contractWithdrawal.getWithdrawalStatus(requestIdsPage);
+      requests.push(
+        ...withdrawalStatuses.map((w, index) => ({ ...w, id: requestIdsPage[index] } as WithdrawalRequest)),
+      );
+    }
+
+    return requests;
   }
 
   protected getNextUpdateDate() {
