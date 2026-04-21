@@ -2,6 +2,8 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { QueueInfoService } from './queue-info.service';
 import { WithdrawalRequest } from '../../storage/queue-info/queue-info.types';
 
+jest.mock('common/config', () => ({}));
+
 function makeRequest(id: number): WithdrawalRequest {
   return {
     id: BigNumber.from(id),
