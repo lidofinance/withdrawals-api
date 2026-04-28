@@ -13,6 +13,7 @@ export class QueueInfoStorageService {
   protected lastRequestId: BigNumber;
   protected requests: WithdrawalRequest[] = [];
   protected nextUpdate: Date;
+  protected bunkerModeActive: boolean;
 
   /**
    * Get unfinalized ETH
@@ -132,5 +133,13 @@ export class QueueInfoStorageService {
 
   public getLastRequestId(): BigNumber | undefined {
     return this.lastRequestId;
+  }
+
+  public setBunkerModeActive(bunkerModeActive: boolean): void {
+    this.bunkerModeActive = bunkerModeActive;
+  }
+
+  public getBunkerModeActive(): boolean {
+    return this.bunkerModeActive;
   }
 }

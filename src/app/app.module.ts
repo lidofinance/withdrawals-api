@@ -9,6 +9,7 @@ import { JobsModule } from 'jobs';
 import { ConsensusProviderModule } from 'common/consensus-provider';
 import { ExecutionProviderModule } from 'common/execution-provider';
 import { ContractsModule } from 'common/contracts';
+import { SpecModule } from 'common/spec';
 import { AppService } from './app.service';
 import { HTTPModule } from '../http';
 import { EventsModule } from '../events';
@@ -24,6 +25,7 @@ import { EventsModule } from '../events';
     JobsModule,
     EventsModule,
     ContractsModule,
+    SpecModule,
   ],
   providers: [{ provide: APP_INTERCEPTOR, useClass: SentryInterceptor }, AppService],
 })

@@ -65,6 +65,7 @@ export class QueueInfoService {
           depositableEther,
           bufferedEther,
           lastRequestId,
+          bunkerModeActive,
         ] = await Promise.all([
           this.contractWithdrawal.unfinalizedStETH(),
           this.contractWithdrawal.unfinalizedRequestNumber(),
@@ -73,6 +74,7 @@ export class QueueInfoService {
           this.contractLido.getDepositableEther(),
           this.contractLido.getBufferedEther(),
           this.contractWithdrawal.getLastRequestId(),
+          this.contractWithdrawal.isBunkerModeActive(),
         ]);
 
         const requests = await this.getUpdatedRequests(lastRequestId, unfinalizedRequests);
@@ -84,6 +86,7 @@ export class QueueInfoService {
         this.queueInfoStorageService.setMinStethAmount(minStethAmount);
         this.queueInfoStorageService.setMaxStethAmount(maxStethAmount);
         this.queueInfoStorageService.setDepositableEther(depositableEther);
+        this.queueInfoStorageService.setBunkerModeActive(bunkerModeActive);
         this.queueInfoStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
         this.queueInfoStorageService.setNextUpdate(this.getNextUpdateDate());
 

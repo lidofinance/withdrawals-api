@@ -1,5 +1,6 @@
 import { ConsensusMethodResult } from '@lido-nestjs/consensus/dist/interfaces/consensus.interface';
 
+export type ResponseBlockV2 = Awaited<ConsensusMethodResult<'getBlockV2'>>;
 export type ResponseValidatorsData = Awaited<ConsensusMethodResult<'getStateValidators'>>['data'];
 export type IndexedValidator = ResponseValidatorsData[number];
 export type Validator = ResponseValidatorsData[number]['validator'];
@@ -14,13 +15,19 @@ export interface PendingPartialWithdrawal {
   withdrawable_epoch: string;
 }
 
+export interface BeaconStateSweepData {
+  slot: string;
+  next_withdrawal_validator_index?: string;
+  latest_full_slot?: string;
+  latest_withdrawals_root?: string;
+}
+
 /**
  * Spec reference:
  * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#beaconstate
  * included only used properties
  */
-export interface BeaconState {
-  slot: string;
+export interface BeaconState extends BeaconStateSweepData {
   pending_partial_withdrawals: PendingPartialWithdrawal[];
   validators: Validator[];
   balances: string[];
