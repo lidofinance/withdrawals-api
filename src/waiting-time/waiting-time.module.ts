@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { WaitingTimeService } from './waiting-time.service';
+import { BlockStateCacheService } from './block-state-cache.service';
 import {
   ContractConfigStorageModule,
   QueueInfoStorageModule,
@@ -22,6 +23,6 @@ import { SweepModule } from '../common/sweep';
     RewardsModule,
   ],
   exports: [WaitingTimeService],
-  providers: [WaitingTimeService],
+  providers: [WaitingTimeService, BlockStateCacheService],
 })
 export class WaitingTimeModule {}

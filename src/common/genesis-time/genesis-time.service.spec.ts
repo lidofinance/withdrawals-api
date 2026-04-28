@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { nullTransport, LoggerModule } from '@lido-nestjs/logger';
 import { GenesisTimeService } from './genesis-time.service';
-import { ConsensusProviderService } from '../consensus-provider';
+import { ConsensusExecutionPayloadService, ConsensusProviderService } from '../consensus-provider';
+import { SpecService } from '../spec';
 import { ContractConfigStorageService } from '../../storage';
 
 jest.mock('common/config', () => ({}));
@@ -10,6 +11,7 @@ describe('GenesisTimeService', () => {
   let moduleRef: TestingModule;
   let service: GenesisTimeService;
   let consensusProvider: ConsensusProviderService;
+  let consensusExecutionPayloadService: ConsensusExecutionPayloadService;
   let contractConfig: ContractConfigStorageService;
 
   beforeAll(() => {
@@ -30,6 +32,20 @@ describe('GenesisTimeService', () => {
           provide: ConsensusProviderService,
           useValue: {
             getGenesis: jest.fn(),
+            getSpec: jest.fn(),
+            getBlockV2: jest.fn(),
+          },
+        },
+        {
+          provide: ConsensusExecutionPayloadService,
+          useValue: {
+            getExecutionPayload: jest.fn(),
+          },
+        },
+        {
+          provide: SpecService,
+          useValue: {
+            refreshGlamsterdamForkEpoch: jest.fn(),
           },
         },
         {
@@ -44,11 +60,16 @@ describe('GenesisTimeService', () => {
 
     service = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     consensusProvider = moduleRef.get<ConsensusProviderService>(ConsensusProviderService);
+    consensusExecutionPayloadService = moduleRef.get<ConsensusExecutionPayloadService>(
+      ConsensusExecutionPayloadService,
+    );
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
   });
 
   afterEach(async () => {
-    await moduleRef.close();
+    if (moduleRef) {
+      await moduleRef.close();
+    }
     jest.resetAllMocks();
   });
 
@@ -132,5 +153,21 @@ describe('GenesisTimeService', () => {
     await moduleRef.init();
 
     expect(service.timeToWithdrawalFrame(2000, 1703239938663)).toBe(153798484000);
+  });
+
+  it(`gets block number from consensus execution payload service`, async () => {
+    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
+      data: {
+        genesis_time: '1606824023',
+      },
+    });
+    const getExecutionPayloadSpy = jest
+      .spyOn(consensusExecutionPayloadService, 'getExecutionPayload')
+      .mockResolvedValue({ block_number: '12345', block_hash: '0x1' });
+
+    await moduleRef.init();
+
+    await expect(service.getBlockBySlot(200)).resolves.toBe(12345);
+    expect(getExecutionPayloadSpy).toHaveBeenCalledWith('200');
   });
 });

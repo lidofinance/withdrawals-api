@@ -7,6 +7,9 @@ export class ContractConfigStorageService {
   protected epochsPerFrameVEBO: number;
   protected epochsPerFrame: number;
   protected maxValidatorExitRequestsPerReport: number;
+  protected accountingOracleAddress: string;
+  protected withdrawalVaultAddress: string;
+  protected elRewardsVaultAddress: string;
   protected lastUpdate: number;
 
   public getRequestTimestampMargin() {
@@ -47,6 +50,30 @@ export class ContractConfigStorageService {
 
   public setMaxValidatorExitRequestsPerReport(maxValidatorExitRequestsPerReport: number) {
     this.maxValidatorExitRequestsPerReport = maxValidatorExitRequestsPerReport;
+  }
+
+  public getAccountingOracleAddress() {
+    return this.accountingOracleAddress;
+  }
+
+  public setAccountingOracleAddress(accountingOracleAddress: string) {
+    this.accountingOracleAddress = accountingOracleAddress;
+  }
+
+  public getWithdrawalVaultAddress() {
+    return this.withdrawalVaultAddress;
+  }
+
+  public setWithdrawalVaultAddress(withdrawalVaultAddress: string) {
+    this.withdrawalVaultAddress = withdrawalVaultAddress;
+  }
+
+  public getElRewardsVaultAddress() {
+    return this.elRewardsVaultAddress;
+  }
+
+  public setElRewardsVaultAddress(elRewardsVaultAddress: string) {
+    this.elRewardsVaultAddress = elRewardsVaultAddress;
   }
 
   public setLastUpdate(lastUpdate: number) {

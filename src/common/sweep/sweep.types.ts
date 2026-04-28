@@ -4,3 +4,12 @@ export interface Withdrawal {
   validatorIndex: string;
   amount: BigNumber;
 }
+
+export interface WithdrawalSweepState {
+  sweepCursorValidatorIndex: BigNumber;
+  hasDeferredWithdrawals: boolean;
+  blockedByDeferredSlots: number;
+  stateSlot?: string;
+  latestFullSlot?: string;
+  source: 'consensus' | 'execution';
+}

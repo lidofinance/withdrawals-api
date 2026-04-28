@@ -10,6 +10,8 @@ import {
   HashConsensus,
   ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
   VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN,
+  LIDO_LOCATOR_CONTRACT_TOKEN,
+  LidoLocator,
 } from '@lido-nestjs/contracts';
 import { ContractConfigStorageService } from 'storage';
 
@@ -22,6 +24,7 @@ export class ContractConfigService {
     @Inject(ORACLE_REPORT_SANITY_CHECKER_TOKEN) protected readonly oracleReportSanityChecker: OracleReportSanityChecker,
     @Inject(ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly accountingOracleHashConsensus: HashConsensus,
     @Inject(VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly veboHashConsensus: HashConsensus,
+    @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
 
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -56,10 +59,20 @@ export class ContractConfigService {
       async () => {
         this.logger.log('Start update contract config', { service: ContractConfigService.SERVICE_LOG_NAME });
 
-        const [limits, frameConfig, veboFrameConfig] = await Promise.all([
+        const [
+          limits,
+          frameConfig,
+          veboFrameConfig,
+          accountingOracleAddress,
+          withdrawalVaultAddress,
+          elRewardsVaultAddress,
+        ] = await Promise.all([
           this.oracleReportSanityChecker.getOracleReportLimits(),
           this.accountingOracleHashConsensus.getFrameConfig(),
           this.veboHashConsensus.getFrameConfig(),
+          this.lidoLocator.accountingOracle(),
+          this.lidoLocator.withdrawalVault(),
+          this.lidoLocator.elRewardsVault(),
         ]);
 
         this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
@@ -67,6 +80,9 @@ export class ContractConfigService {
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
         this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
+        this.contractConfig.setAccountingOracleAddress(accountingOracleAddress);
+        this.contractConfig.setWithdrawalVaultAddress(withdrawalVaultAddress);
+        this.contractConfig.setElRewardsVaultAddress(elRewardsVaultAddress);
         this.contractConfig.setLastUpdate(Math.floor(Date.now() / 1000));
 
         this.logger.log('End update contract config', {
@@ -76,6 +92,9 @@ export class ContractConfigService {
           initialEpoch: frameConfig.initialEpoch.toNumber(),
           epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
+          accountingOracleAddress,
+          withdrawalVaultAddress,
+          elRewardsVaultAddress,
         });
       },
     );
