@@ -130,8 +130,8 @@ export class ValidatorsService {
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
-        await this.validatorsCacheService.saveDataToCache();
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
+        await this.validatorsCacheService.saveDataToCache();
 
         this.logAnalyticsAboutFrameBalances();
 
