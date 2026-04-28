@@ -8,18 +8,13 @@ import {
 } from 'storage';
 import { WaitingTimeService } from './waiting-time.service';
 import { BigNumber } from '@ethersproject/bignumber';
-import {
-  LIDO_CONTRACT_TOKEN,
-  LIDO_LOCATOR_CONTRACT_TOKEN,
-  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
-} from '@lido-nestjs/contracts';
 import { GenesisTimeService } from 'common/genesis-time/genesis-time.service';
-import { RewardsService } from 'events/rewards/rewards.service';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 
 import { WaitingTimeCalculationType } from './waiting-time.types';
-import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { PrometheusService } from '../common/prometheus';
+import { BlockStateCacheService } from './block-state-cache.service';
+import { QueueInfoService } from '../jobs/queue-info';
 
 jest.mock('common/config', () => ({}));
 
@@ -30,8 +25,7 @@ describe('WaitingTimeService', () => {
   let contractConfig: ContractConfigStorageService;
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
-  let prometheusService: PrometheusService;
-  let rpcBatchProvider: SimpleFallbackJsonRpcBatchProvider;
+  let queueInfoStorageService: QueueInfoStorageService;
 
   // constants
   const genesisTime = 1606824023;
@@ -83,25 +77,8 @@ describe('WaitingTimeService', () => {
             getMaxValidatorExitRequestsPerReport: jest.fn(),
             getEpochsPerFrameVEBO: jest.fn(),
             getRequestTimestampMargin: jest.fn(),
+            getLastUpdate: jest.fn(),
           },
-        },
-        {
-          provide: WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
-          useValue: {
-            unfinalizedStETH: jest.fn(),
-            isBunkerModeActive: jest.fn(),
-          },
-        },
-        {
-          provide: LIDO_CONTRACT_TOKEN,
-          useValue: {
-            getBufferedEther: jest.fn(),
-            getDepositableEther: jest.fn(),
-          },
-        },
-        {
-          provide: LIDO_LOCATOR_CONTRACT_TOKEN,
-          useValue: {},
         },
         {
           provide: RewardsStorageService,
@@ -111,7 +88,10 @@ describe('WaitingTimeService', () => {
         },
         {
           provide: QueueInfoStorageService,
-          useValue: {},
+          useValue: {
+            getRequests: jest.fn(),
+            getLastUpdate: jest.fn(),
+          },
         },
         {
           provide: ValidatorsStorageService,
@@ -120,13 +100,7 @@ describe('WaitingTimeService', () => {
             getChurnLimit: jest.fn(),
             getFrameBalances: jest.fn(),
             getSweepMeanEpochs: jest.fn(),
-          },
-        },
-        {
-          provide: SimpleFallbackJsonRpcBatchProvider,
-          useValue: {
-            getBlock: jest.fn(),
-            getBlockNumber: jest.fn(),
+            getLastUpdate: jest.fn(),
           },
         },
         {
@@ -140,8 +114,10 @@ describe('WaitingTimeService', () => {
           },
         },
         {
-          provide: RewardsService,
-          useValue: {},
+          provide: BlockStateCacheService,
+          useValue: {
+            getBlockState: jest.fn(),
+          },
         },
         {
           provide: PrometheusService,
@@ -155,8 +131,7 @@ describe('WaitingTimeService', () => {
     contractConfig = moduleRef.get<ContractConfigStorageService>(ContractConfigStorageService);
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
-    rpcBatchProvider = moduleRef.get<SimpleFallbackJsonRpcBatchProvider>(SimpleFallbackJsonRpcBatchProvider);
-    prometheusService = moduleRef.get<PrometheusService>(PrometheusService);
+    queueInfoStorageService = moduleRef.get<QueueInfoStorageService>(QueueInfoStorageService);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
@@ -164,6 +139,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(contractConfig, 'getMaxValidatorExitRequestsPerReport').mockReturnValue(600);
     jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(75);
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
+    jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
     jest.spyOn(genesisTimeService, 'getFrameOfEpoch').mockImplementation(getFrameOfEpochMock);
     jest.spyOn(genesisTimeService, 'getFrameByTimestamp').mockImplementation(getFrameByTimestampMock);
@@ -173,10 +149,10 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
     jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
     jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+    jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
+    jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
+    jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
-    // needed for mock only block number
-    jest.spyOn(rpcBatchProvider, 'getBlock').mockResolvedValue({ number: 21367114 } as any);
-    jest.spyOn(rpcBatchProvider, 'getBlockNumber').mockResolvedValue(21367114);
   });
 
   afterEach(async () => {
@@ -185,6 +161,16 @@ describe('WaitingTimeService', () => {
   });
 
   describe('check withdrawal calculation types', () => {
+    it('returns initializing until contract-config is ready', () => {
+      jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(null);
+
+      expect(service.checkIsInitializing()).toEqual({
+        requestInfo: null,
+        status: 'initializing',
+        nextCalculationAt: null,
+      });
+    });
+
     it(`type buffer`, async () => {
       const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('1007748958196602737132'),
@@ -284,7 +270,7 @@ describe('WaitingTimeService', () => {
     });
 
     it(`is bunker active, return type bunker`, async () => {
-      jest.spyOn(service, 'getFrameIsBunker').mockResolvedValue(15);
+      jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(15);
       const result = await service.calculateWithdrawalFrame({
         unfinalized: BigNumber.from('100000007748958196602737138'),
         buffer: BigNumber.from('0'),

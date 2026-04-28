@@ -1,11 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BigNumber } from '@ethersproject/bignumber';
-import {
-  LIDO_CONTRACT_TOKEN,
-  Lido,
-  WITHDRAWAL_QUEUE_CONTRACT_TOKEN,
-  WithdrawalQueue,
-} from '@lido-nestjs/contracts';
 import { parseEther } from 'ethers';
 
 import {
@@ -17,7 +11,6 @@ import {
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
-import { RewardsService } from 'events/rewards';
 
 import {
   CHURN_LIMIT_QUOTIENT,
@@ -43,25 +36,21 @@ import {
   GetWaitingTimeInfoV2Args,
   GetWaitingTimeInfoV2Result,
 } from './waiting-time.types';
-import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
-import { OracleV2__factory } from '../common/contracts/generated';
+import { BlockStateCacheService, BlockState } from './block-state-cache.service';
 
 @Injectable()
 export class WaitingTimeService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
-    @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contractWithdrawal: WithdrawalQueue,
-    @Inject(LIDO_CONTRACT_TOKEN) protected readonly contractLido: Lido,
     protected readonly validators: ValidatorsStorageService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly rewardsStorage: RewardsStorageService,
     protected readonly genesisTimeService: GenesisTimeService,
-    protected readonly rewardsService: RewardsService,
     protected readonly queueInfo: QueueInfoStorageService,
-    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly prometheusService: PrometheusService,
+    protected readonly blockStateCache: BlockStateCacheService,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -78,15 +67,8 @@ export class WaitingTimeService {
 
     // nextCalculationAt not needed anymore due to runtime queries to contract
     const nextCalculationAt = this.queueInfo.getNextUpdate().toISOString();
-    const blockNumber = await this.getLatestOrBlockProcessingRefSlot();
 
-    const [unfinalized, buffer, vaultsBalance] = !cached
-      ? await Promise.all([
-          this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
-          this.contractLido.getBufferedEther({ blockTag: blockNumber }),
-          this.rewardsService.getVaultsBalance(blockNumber),
-        ])
-      : [cached.unfinalized, cached.buffer, cached.vaultsBalance];
+    const { unfinalized, buffer, vaultsBalance } = cached ?? (await this.blockStateCache.getBlockState());
 
     this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
     this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
@@ -183,7 +165,7 @@ export class WaitingTimeService {
     const fullBuffer = buffer.add(vaultsBalance);
     let currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
 
-    const frameIsBunker = await this.getFrameIsBunker();
+    const frameIsBunker = this.getFrameIsBunker();
     if (frameIsBunker) {
       return { frame: frameIsBunker, type: WaitingTimeCalculationType.bunker };
     }
@@ -307,13 +289,7 @@ export class WaitingTimeService {
   }
 
   public async calculateRequestsTime(ids: string[]) {
-    const blockNumber = await this.getLatestOrBlockProcessingRefSlot();
-
-    const [unfinalized, buffer, vaultsBalance] = await Promise.all([
-      this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
-      this.contractLido.getBufferedEther({ blockTag: blockNumber }),
-      this.rewardsService.getVaultsBalance(blockNumber),
-    ]);
+    const { unfinalized, buffer, vaultsBalance } = await this.blockStateCache.getBlockState();
 
     this.prometheusService.balancesStateUnfinalized.set(toEth(unfinalized).toNumber());
     this.prometheusService.balancesStateBuffer.set(toEth(buffer).toNumber());
@@ -468,8 +444,8 @@ export class WaitingTimeService {
     );
   }
 
-  public async getFrameIsBunker(): Promise<null | number> {
-    const isBunker = await this.contractWithdrawal.isBunkerModeActive();
+  public getFrameIsBunker(): null | number {
+    const isBunker = this.queueInfo.getBunkerModeActive();
     if (isBunker) {
       return (
         this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch()) +
@@ -507,31 +483,4 @@ export class WaitingTimeService {
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
   }
 
-  // returns block of processing ref slot or latest block depending on if report submit or processing
-  async getLatestOrBlockProcessingRefSlot() {
-    const address = this.contractConfig.getAccountingOracleAddress();
-    const accountingOracle = OracleV2__factory.connect(address, {
-      provider: this.provider as any,
-    });
-    const blockNumber = await this.provider.getBlockNumber();
-    const processingState = await accountingOracle.getProcessingState({ blockTag: blockNumber });
-
-    if (processingState.dataSubmitted) {
-      this.logger.debug(`using latest block ${blockNumber}`);
-      return blockNumber;
-    } else {
-      try {
-        const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
-        const processingRefBlockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
-        this.logger.debug(`using processing ref slot of block ${processingRefBlockNumber}`);
-        return processingRefBlockNumber;
-      } catch (e) {
-        this.logger.error(e);
-        this.logger.warn(
-          `using fallback latest block ${blockNumber} because failed ref slot ${processingState.currentFrameRefSlot} `,
-        );
-        return blockNumber;
-      }
-    }
-  }
 }
