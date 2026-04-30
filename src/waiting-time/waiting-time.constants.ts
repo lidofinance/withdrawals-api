@@ -1,7 +1,6 @@
 import { parseEther } from '@ethersproject/units';
 
 export const MIN_PER_EPOCH_CHURN_LIMIT = 4;
-export const CHURN_LIMIT_QUOTIENT = 65536; // 2**16
 
 // note: currently all lido validators continues holding 32 eth,
 // but after electra upgrade maximum in network increased to 2048 eth

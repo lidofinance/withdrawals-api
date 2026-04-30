@@ -13,7 +13,6 @@ import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/ge
 import { PrometheusService } from 'common/prometheus';
 
 import {
-  CHURN_LIMIT_QUOTIENT,
   GAP_AFTER_REPORT,
   MIN_ACTIVATION_BALANCE,
   MIN_PER_EPOCH_CHURN_LIMIT,
@@ -458,9 +457,7 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const maxExitEpoch = this.getMaxExitEpoch();
-    const totalValidators = this.validators.getActiveValidatorsCount();
-
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, totalValidators / CHURN_LIMIT_QUOTIENT);
+    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, this.validators.getChurnLimit());
 
     const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();

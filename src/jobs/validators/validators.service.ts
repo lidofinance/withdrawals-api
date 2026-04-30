@@ -23,7 +23,7 @@ import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawa
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
-import { getChurnLimit } from './utils/get-churn-limit';
+import { getChurnLimit, getConsolidationChurnLimit } from './utils/get-churn-limit';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -127,6 +127,7 @@ export class ValidatorsService {
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
+        this.validatorsStorageService.setConsolidationChurnLimit(getConsolidationChurnLimit(totalActiveBalance).toNumber());
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
