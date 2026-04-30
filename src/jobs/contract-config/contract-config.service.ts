@@ -18,6 +18,7 @@ import { ContractConfigStorageService } from 'storage';
 @Injectable()
 export class ContractConfigService {
   static SERVICE_LOG_NAME = 'contract config';
+  protected isSubscribedToFrameConfigUpdates = false;
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -39,6 +40,8 @@ export class ContractConfigService {
       return;
     }
 
+    this.subscribeToFrameConfigUpdates();
+
     try {
       await this.updateContractConfig();
     } catch (error) {
@@ -50,6 +53,41 @@ export class ContractConfigService {
     job.start();
 
     this.logger.log('Service initialized', { service: ContractConfigService.SERVICE_LOG_NAME, cronTime });
+  }
+
+  protected subscribeToFrameConfigUpdates(): void {
+    if (this.isSubscribedToFrameConfigUpdates) {
+      return;
+    }
+
+    this.isSubscribedToFrameConfigUpdates = true;
+
+    const accountingFrameConfigSet = this.accountingOracleHashConsensus.filters.FrameConfigSet();
+    const veboFrameConfigSet = this.veboHashConsensus.filters.FrameConfigSet();
+
+    this.accountingOracleHashConsensus.on(accountingFrameConfigSet, () => {
+      this.handleFrameConfigUpdateEvent('accounting');
+    });
+
+    this.veboHashConsensus.on(veboFrameConfigSet, () => {
+      this.handleFrameConfigUpdateEvent('vebo');
+    });
+  }
+
+  protected async handleFrameConfigUpdateEvent(source: 'accounting' | 'vebo'): Promise<void> {
+    this.logger.log('FrameConfigSet event triggered', {
+      service: ContractConfigService.SERVICE_LOG_NAME,
+      source,
+    });
+
+    try {
+      await this.updateContractConfig();
+    } catch (error) {
+      this.logger.error(error, {
+        service: ContractConfigService.SERVICE_LOG_NAME,
+        source,
+      });
+    }
   }
 
   @OneAtTime()
@@ -90,7 +128,7 @@ export class ContractConfigService {
           requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
           maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
           initialEpoch: frameConfig.initialEpoch.toNumber(),
-          epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
+          epochsPerFrameVEBO: veboFrameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
           accountingOracleAddress,
           withdrawalVaultAddress,

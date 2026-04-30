@@ -56,15 +56,17 @@ export class ValidatorsService {
     const envCronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
     const chainId = this.configService.get('CHAIN_ID');
     const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
-    const cronTime = envCronTime ? envCronTime : cronByChainId;
+    const cronTimes = envCronTime ? [envCronTime] : Array.isArray(cronByChainId) ? cronByChainId : [cronByChainId];
 
     try {
       await this.updateValidators();
     } catch (error) {
       this.logger.error(error);
     }
-    const mainJob = new CronJob(cronTime, () => this.updateValidators());
-    mainJob.start();
+    cronTimes.forEach((cronTime) => {
+      const mainJob = new CronJob(cronTime, () => this.updateValidators());
+      mainJob.start();
+    });
 
     try {
       await this.updateLidoWithdrawableValidators();
@@ -77,7 +79,7 @@ export class ValidatorsService {
     );
     lidoWithdrawableJob.start();
 
-    this.logger.log('Service initialized', { service: ValidatorsService.SERVICE_LOG_NAME, cronTime });
+    this.logger.log('Service initialized', { service: ValidatorsService.SERVICE_LOG_NAME, cronTime: cronTimes });
   }
 
   @OneAtTime()
