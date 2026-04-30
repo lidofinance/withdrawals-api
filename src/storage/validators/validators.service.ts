@@ -10,6 +10,7 @@ export class ValidatorsStorageService {
   protected frameBalances: Record<string, BigNumber>;
   protected sweepMeanEpochs: number;
   protected churnLimit: number;
+  protected consolidationChurnLimit: number;
   protected withdrawableLidoValidatorIds: string[] = [];
   protected withdrawableLidoValidatorsLastUpdate: number;
 
@@ -99,6 +100,14 @@ export class ValidatorsStorageService {
 
   public getChurnLimit() {
     return this.churnLimit;
+  }
+
+  public setConsolidationChurnLimit(consolidationChurnLimit: number) {
+    this.consolidationChurnLimit = consolidationChurnLimit;
+  }
+
+  public getConsolidationChurnLimit() {
+    return this.consolidationChurnLimit;
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {
