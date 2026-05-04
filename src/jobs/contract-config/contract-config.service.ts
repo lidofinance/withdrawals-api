@@ -14,6 +14,7 @@ import {
   LidoLocator,
 } from '@lido-nestjs/contracts';
 import { ContractConfigStorageService } from 'storage';
+import { ValidatorsService } from '../validators';
 
 @Injectable()
 export class ContractConfigService {
@@ -27,6 +28,7 @@ export class ContractConfigService {
     @Inject(VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly veboHashConsensus: HashConsensus,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
 
+    protected readonly validatorsService: ValidatorsService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
@@ -122,6 +124,11 @@ export class ContractConfigService {
         this.contractConfig.setWithdrawalVaultAddress(withdrawalVaultAddress);
         this.contractConfig.setElRewardsVaultAddress(elRewardsVaultAddress);
         this.contractConfig.setLastUpdate(Math.floor(Date.now() / 1000));
+
+        this.validatorsService.rescheduleCronJobs(
+          veboFrameConfig.initialEpoch.toNumber(),
+          veboFrameConfig.epochsPerFrame.toNumber(),
+        );
 
         this.logger.log('End update contract config', {
           service: ContractConfigService.SERVICE_LOG_NAME,
