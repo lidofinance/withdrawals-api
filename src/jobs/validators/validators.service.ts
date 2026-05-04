@@ -6,7 +6,7 @@ import { ConfigService } from 'common/config';
 import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
-import { GenesisTimeService } from 'common/genesis-time';
+import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
@@ -27,6 +27,9 @@ import { getChurnLimit } from './utils/get-churn-limit';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
+  private cronJobs: CronJob[] = [];
+  private validatorUpdateCronTimes: string[] = [];
+  protected static readonly UPDATE_DELAY_MS = 30 * 60 * 1000;
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -57,15 +60,19 @@ export class ValidatorsService {
     const chainId = this.configService.get('CHAIN_ID');
     const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
     const cronTimes = envCronTime ? [envCronTime] : Array.isArray(cronByChainId) ? cronByChainId : [cronByChainId];
+    this.validatorUpdateCronTimes = cronTimes;
 
     try {
       await this.updateValidators();
     } catch (error) {
       this.logger.error(error);
     }
-    cronTimes.forEach((cronTime) => {
-      const mainJob = new CronJob(cronTime, () => this.updateValidators());
-      mainJob.start();
+
+    this.cronJobs = cronTimes.map((cronTime) => {
+      const cronJob = new CronJob(cronTime, () => this.updateValidators());
+      cronJob.start();
+
+      return cronJob;
     });
 
     try {
@@ -80,6 +87,41 @@ export class ValidatorsService {
     lidoWithdrawableJob.start();
 
     this.logger.log('Service initialized', { service: ValidatorsService.SERVICE_LOG_NAME, cronTime: cronTimes });
+  }
+
+  public rescheduleCronJobs(newInitialEpoch: number, newEpochsPerFrame: number) {
+    const cronTimes = this.buildCron(newInitialEpoch, newEpochsPerFrame);
+
+    if (this.validatorUpdateCronTimes.length === 0) {
+      this.logger.log('Skip validators cron reschedule because  nothing to schedule', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        cronTimes,
+      });
+      return;
+    }
+
+    if (
+      this.validatorUpdateCronTimes.length === cronTimes.length &&
+      this.validatorUpdateCronTimes.every((cronTime, index) => cronTime === cronTimes[index])
+    ) {
+      this.logger.log('Skip validators cron reschedule because cron times did not change', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        cronTimes,
+      });
+      return;
+    }
+
+    this.cronJobs.forEach((cronJob) => {
+      cronJob.stop();
+    });
+
+    this.validatorUpdateCronTimes = cronTimes;
+    this.cronJobs = cronTimes.map((cronTime) => {
+      const cronJob = new CronJob(cronTime, () => this.updateValidators());
+      cronJob.start();
+
+      return cronJob;
+    });
   }
 
   @OneAtTime()
@@ -308,5 +350,41 @@ export class ValidatorsService {
     }, BigNumber.from(0));
 
     this.prometheusService.sumValidatorsBalances.set(toEth(sum).toNumber());
+  }
+
+  // example: newInitialEpoch=91799, newEpochsPerFrame=45
+  // 45 * 32 * 12 / 3600 = 4.8 hours each frame (5 times per day)
+  public buildCron(newInitialEpoch: number, newEpochsPerFrame: number) {
+    const firstDate = this.genesisTimeService.getTimestampByEpoch(newInitialEpoch);
+    const eachSec = newEpochsPerFrame * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
+    const secondsPerDay = 24 * 60 * 60;
+
+    if (secondsPerDay % eachSec !== 0) {
+      this.logger.warn('VEBO frame duration does not fit a simple daily cron schedule', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        newInitialEpoch,
+        newEpochsPerFrame,
+        eachSec,
+      });
+      return [];
+    }
+
+    const firstRunAt = new Date(firstDate + ValidatorsService.UPDATE_DELAY_MS);
+    const firstRunAtSecondOfDay =
+      firstRunAt.getUTCHours() * 3600 + firstRunAt.getUTCMinutes() * 60 + firstRunAt.getUTCSeconds();
+    const runsPerDay = secondsPerDay / eachSec;
+
+    const cronEntries = Array.from({ length: runsPerDay }, (_, index) => {
+      const runAtSecondOfDay = (firstRunAtSecondOfDay + index * eachSec) % secondsPerDay;
+      const hours = Math.floor(runAtSecondOfDay / 3600);
+      const minutes = Math.floor((runAtSecondOfDay % 3600) / 60);
+
+      return {
+        sortKey: runAtSecondOfDay,
+        cron: `${minutes} ${hours} * * *`,
+      };
+    });
+
+    return cronEntries.sort((left, right) => left.sortKey - right.sortKey).map((entry) => entry.cron);
   }
 }
