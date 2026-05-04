@@ -20,6 +20,7 @@ import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
+import { hasCompoundingWithdrawalCredential, hasEth1WithdrawalCredential } from './utils/validator-state-utils';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
@@ -92,7 +93,7 @@ export class ValidatorsService {
   public rescheduleCronJobs(newInitialEpoch: number, newEpochsPerFrame: number) {
     const cronTimes = this.buildCron(newInitialEpoch, newEpochsPerFrame);
 
-    if (this.validatorUpdateCronTimes.length === 0) {
+    if (cronTimes.length === 0) {
       this.logger.log('Skip validators cron reschedule because  nothing to schedule', {
         service: ValidatorsService.SERVICE_LOG_NAME,
         cronTimes,
@@ -202,6 +203,26 @@ export class ValidatorsService {
     this.logger.debug('lidoValidators', {
       lidoValidatorsLength: lidoValidators.length,
       service: ValidatorsService.SERVICE_LOG_NAME,
+    });
+    const lidoValidatorsWithdrawalCredentialsStats = lidoValidators.reduce(
+      (stats, validator) => {
+        if (hasEth1WithdrawalCredential(validator.validator)) {
+          stats.eth1Address++;
+        }
+
+        if (hasCompoundingWithdrawalCredential(validator.validator)) {
+          stats.compounding++;
+        }
+
+        return stats;
+      },
+      { eth1Address: 0, compounding: 0 },
+    );
+    this.logger.log('Lido validators withdrawal credentials stats', {
+      service: ValidatorsService.SERVICE_LOG_NAME,
+      lidoValidatorsLength: lidoValidators.length,
+      eth1AddressWithdrawalCredentialsCount: lidoValidatorsWithdrawalCredentialsStats.eth1Address,
+      compoundingWithdrawalCredentialsCount: lidoValidatorsWithdrawalCredentialsStats.compounding,
     });
     const frameBalances = {};
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
