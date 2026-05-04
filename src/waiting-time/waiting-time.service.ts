@@ -12,11 +12,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
 
-import {
-  GAP_AFTER_REPORT,
-  MIN_ACTIVATION_BALANCE,
-  WITHDRAWAL_BUNKER_DELAY_FRAMES,
-} from './waiting-time.constants';
+import { GAP_AFTER_REPORT, MIN_ACTIVATION_BALANCE, WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
 import {
   validateTimeResponseWithFallback,
   calculateUnfinalizedEthToRequestId,
@@ -36,7 +32,7 @@ import {
 } from './waiting-time.types';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
-import { BlockStateCacheService, BlockState } from './block-state-cache.service';
+import { BlockStateCacheService } from './block-state-cache.service';
 
 @Injectable()
 export class WaitingTimeService {
@@ -492,5 +488,4 @@ export class WaitingTimeService {
 
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
   }
-
 }

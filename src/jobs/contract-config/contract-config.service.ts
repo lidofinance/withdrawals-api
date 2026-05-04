@@ -119,7 +119,9 @@ export class ContractConfigService {
         ]);
 
         this.contractConfig.setRequestTimestampMargin(unifiedLimits.requestTimestampMargin.toNumber() * 1000);
-        this.contractConfig.setMaxBalanceExitRequestedPerReportInEth(unifiedLimits.maxBalanceExitRequestedPerReportInEth);
+        this.contractConfig.setMaxBalanceExitRequestedPerReportInEth(
+          unifiedLimits.maxBalanceExitRequestedPerReportInEth,
+        );
         this.contractConfig.setLidoSupportsDepositsReserve(lidoSupportsDepositsReserve);
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());

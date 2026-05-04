@@ -8,8 +8,7 @@ const ADDR_B = '0x53417ba942bc86492baf46faba8769f246422388';
 const encodeUint256 = (v: number | bigint): string =>
   (typeof v === 'bigint' ? v : BigInt(v)).toString(16).padStart(64, '0');
 
-const encodeTuple = (values: (number | bigint)[]): string =>
-  '0x' + values.map(encodeUint256).join('');
+const encodeTuple = (values: (number | bigint)[]): string => '0x' + values.map(encodeUint256).join('');
 
 // SRV3 16-field tuple matching Hoodi-deployed values (deployed-hoodi.json:759-774).
 // Position 4 = maxBalanceExitRequestedPerReportInEth, position 9 = requestTimestampMargin.

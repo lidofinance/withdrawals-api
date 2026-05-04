@@ -82,10 +82,7 @@ describe('LidoExtensionReader', () => {
       const result = await reader.getDepositsReserveAt(12_345_678);
 
       expect(result.toString()).toBe(reserveWei.toString());
-      expect(provider.call).toHaveBeenCalledWith(
-        { to: LIDO_ADDR, data: expect.any(String) },
-        12_345_678,
-      );
+      expect(provider.call).toHaveBeenCalledWith({ to: LIDO_ADDR, data: expect.any(String) }, 12_345_678);
     });
 
     it('returns 0 and logs warn on revert', async () => {

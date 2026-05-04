@@ -127,18 +127,16 @@ export class OracleLimitsReader {
       const [decoded] = SRV3_INTERFACE.decodeFunctionResult('getOracleReportLimits', data);
       return {
         requestTimestampMargin: BigNumber.from(decoded.requestTimestampMargin.toString()),
-        maxBalanceExitRequestedPerReportInEth: BigNumber.from(
-          decoded.maxBalanceExitRequestedPerReportInEth.toString(),
-        ),
+        maxBalanceExitRequestedPerReportInEth: BigNumber.from(decoded.maxBalanceExitRequestedPerReportInEth.toString()),
       };
     }
     const [decoded] = LEGACY_INTERFACE.decodeFunctionResult('getOracleReportLimits', data);
     return {
       requestTimestampMargin: BigNumber.from(decoded.requestTimestampMargin.toString()),
       // legacy lossless identity: count × 32 ETH/validator = ETH
-      maxBalanceExitRequestedPerReportInEth: BigNumber.from(
-        decoded.maxValidatorExitRequestsPerReport.toString(),
-      ).mul(LEGACY_ETH_PER_VALIDATOR_EXIT),
+      maxBalanceExitRequestedPerReportInEth: BigNumber.from(decoded.maxValidatorExitRequestsPerReport.toString()).mul(
+        LEGACY_ETH_PER_VALIDATOR_EXIT,
+      ),
     };
   }
 

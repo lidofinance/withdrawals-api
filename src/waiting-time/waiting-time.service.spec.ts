@@ -14,7 +14,6 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { WaitingTimeCalculationType } from './waiting-time.types';
 import { PrometheusService } from '../common/prometheus';
 import { BlockStateCacheService } from './block-state-cache.service';
-import { QueueInfoService } from '../jobs/queue-info';
 
 jest.mock('common/config', () => ({}));
 
