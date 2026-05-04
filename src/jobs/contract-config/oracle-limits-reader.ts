@@ -58,9 +58,6 @@ type SanityCheckerVersion = 'legacy' | 'srv3';
  *
  * Caches `address → version` after the first observation. Logs at `warn` when a previously
  * unseen address shows up while the cache is non-empty (= protocol just rotated the contract).
- *
- * @see plans/2026-05-04-sr-3-readiness.md PR 3 commit 4
- * @see research/2026-05-04-validator-balance-above-32-eth.md (Finding 7)
  */
 @Injectable()
 export class OracleLimitsReader {

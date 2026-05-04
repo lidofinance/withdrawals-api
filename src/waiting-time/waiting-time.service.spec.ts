@@ -74,7 +74,7 @@ describe('WaitingTimeService', () => {
           useValue: {
             getEpochsPerFrame: jest.fn(),
             getInitialEpoch: jest.fn(),
-            getMaxValidatorExitRequestsPerReport: jest.fn(),
+            getMaxBalanceExitRequestedPerReportInEth: jest.fn(),
             getEpochsPerFrameVEBO: jest.fn(),
             getRequestTimestampMargin: jest.fn(),
             getLastUpdate: jest.fn(),
@@ -137,7 +137,8 @@ describe('WaitingTimeService', () => {
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
-    jest.spyOn(contractConfig, 'getMaxValidatorExitRequestsPerReport').mockReturnValue(600);
+    // 19,200 ETH = legacy 600 validator-cap × 32 ETH (lossless identity); both eras now stored in ETH.
+    jest.spyOn(contractConfig, 'getMaxBalanceExitRequestedPerReportInEth').mockReturnValue(BigNumber.from(19_200));
     jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(45);
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
     jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);

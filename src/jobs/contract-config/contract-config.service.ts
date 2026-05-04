@@ -1,4 +1,5 @@
 import { CronJob } from 'cron';
+import { BigNumber } from '@ethersproject/bignumber';
 import { Inject, Injectable } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -116,7 +117,10 @@ export class ContractConfigService {
         ]);
 
         this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
-        this.contractConfig.setMaxValidatorExitRequestsPerReport(limits.maxValidatorExitRequestsPerReport.toNumber());
+        // Lossless conversion: legacy validator-count cap × 32 ETH = post-SR-3 ETH cap.
+        this.contractConfig.setMaxBalanceExitRequestedPerReportInEth(
+          BigNumber.from(limits.maxValidatorExitRequestsPerReport.toNumber()).mul(32),
+        );
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
         this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
@@ -133,7 +137,7 @@ export class ContractConfigService {
         this.logger.log('End update contract config', {
           service: ContractConfigService.SERVICE_LOG_NAME,
           requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
-          maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
+          maxBalanceExitRequestedPerReportInEth: limits.maxValidatorExitRequestsPerReport.toNumber() * 32,
           initialEpoch: frameConfig.initialEpoch.toNumber(),
           epochsPerFrameVEBO: veboFrameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),

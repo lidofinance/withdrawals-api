@@ -22,9 +22,6 @@ const LIDO_EXTENSION_INTERFACE = new Interface(LIDO_EXTENSION_ABI);
  * - `probe()` — called by contract-config job once per tick to update the storage boolean.
  * - `getDepositsReserveAt(blockTag)` — called by BlockStateCacheService for the actual value
  *   at the same block where buffer was read.
- *
- * @see plans/2026-05-04-sr-3-readiness.md PR 3 commit 5
- * @see research/2026-05-04-validator-balance-above-32-eth.md (Finding 9)
  */
 @Injectable()
 export class LidoExtensionReader {

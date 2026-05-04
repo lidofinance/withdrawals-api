@@ -259,7 +259,7 @@ export class WaitingTimeService {
     const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
 
-    const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
+    const maxBalanceExitRequestedPerReportInEth = this.contractConfig.getMaxBalanceExitRequestedPerReportInEth();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
 
     // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
@@ -267,13 +267,12 @@ export class WaitingTimeService {
       MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
     );
 
-    // number of validators to exit
+    // number of validators to exit (in 32-ETH-equivalent count units)
     const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
 
-    // Validator Exit Bus Oracle (VEBO) has max validator to exit per VEBO frame
-    // according to this limitation, this is VEBO frames needed to exit
-    // adding 1 because of round down BigNumber dividing
-    const VEBOFrames = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO).add(1);
+    // VEBO cap is in ETH; exitValidators is in 32-ETH-equivalent count units, so
+    // multiplying by 32 converts numerator into ETH for unit-consistent division.
+    const VEBOFrames = exitValidators.mul(32).div(maxBalanceExitRequestedPerReportInEth).add(1);
     const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
 
     // time to find validators for exiting
