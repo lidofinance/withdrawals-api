@@ -1,13 +1,10 @@
 import { CronJob } from 'cron';
-import { BigNumber } from '@ethersproject/bignumber';
 import { Inject, Injectable } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
 import { ConfigService } from 'common/config';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import {
-  OracleReportSanityChecker,
-  ORACLE_REPORT_SANITY_CHECKER_TOKEN,
   HashConsensus,
   ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN,
   VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN,
@@ -16,6 +13,8 @@ import {
 } from '@lido-nestjs/contracts';
 import { ContractConfigStorageService } from 'storage';
 import { ValidatorsService } from '../validators';
+import { LidoExtensionReader } from './lido-extension-reader';
+import { OracleLimitsReader } from './oracle-limits-reader';
 
 @Injectable()
 export class ContractConfigService {
@@ -24,11 +23,12 @@ export class ContractConfigService {
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
-    @Inject(ORACLE_REPORT_SANITY_CHECKER_TOKEN) protected readonly oracleReportSanityChecker: OracleReportSanityChecker,
     @Inject(ACCOUNTING_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly accountingOracleHashConsensus: HashConsensus,
     @Inject(VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly veboHashConsensus: HashConsensus,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
 
+    protected readonly oracleLimitsReader: OracleLimitsReader,
+    protected readonly lidoExtensionReader: LidoExtensionReader,
     protected readonly validatorsService: ValidatorsService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -101,14 +101,16 @@ export class ContractConfigService {
         this.logger.log('Start update contract config', { service: ContractConfigService.SERVICE_LOG_NAME });
 
         const [
-          limits,
+          unifiedLimits,
+          lidoSupportsDepositsReserve,
           frameConfig,
           veboFrameConfig,
           accountingOracleAddress,
           withdrawalVaultAddress,
           elRewardsVaultAddress,
         ] = await Promise.all([
-          this.oracleReportSanityChecker.getOracleReportLimits(),
+          this.oracleLimitsReader.read(),
+          this.lidoExtensionReader.probe(),
           this.accountingOracleHashConsensus.getFrameConfig(),
           this.veboHashConsensus.getFrameConfig(),
           this.lidoLocator.accountingOracle(),
@@ -116,11 +118,9 @@ export class ContractConfigService {
           this.lidoLocator.elRewardsVault(),
         ]);
 
-        this.contractConfig.setRequestTimestampMargin(limits.requestTimestampMargin.toNumber() * 1000);
-        // Lossless conversion: legacy validator-count cap × 32 ETH = post-SR-3 ETH cap.
-        this.contractConfig.setMaxBalanceExitRequestedPerReportInEth(
-          BigNumber.from(limits.maxValidatorExitRequestsPerReport.toNumber()).mul(32),
-        );
+        this.contractConfig.setRequestTimestampMargin(unifiedLimits.requestTimestampMargin.toNumber() * 1000);
+        this.contractConfig.setMaxBalanceExitRequestedPerReportInEth(unifiedLimits.maxBalanceExitRequestedPerReportInEth);
+        this.contractConfig.setLidoSupportsDepositsReserve(lidoSupportsDepositsReserve);
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
         this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
@@ -136,8 +136,9 @@ export class ContractConfigService {
 
         this.logger.log('End update contract config', {
           service: ContractConfigService.SERVICE_LOG_NAME,
-          requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
-          maxBalanceExitRequestedPerReportInEth: limits.maxValidatorExitRequestsPerReport.toNumber() * 32,
+          requestTimestampMargin: unifiedLimits.requestTimestampMargin.toNumber(),
+          maxBalanceExitRequestedPerReportInEth: unifiedLimits.maxBalanceExitRequestedPerReportInEth.toNumber(),
+          lidoSupportsDepositsReserve,
           initialEpoch: frameConfig.initialEpoch.toNumber(),
           epochsPerFrameVEBO: veboFrameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
