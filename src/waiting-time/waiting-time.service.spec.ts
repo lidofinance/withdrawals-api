@@ -100,6 +100,7 @@ describe('WaitingTimeService', () => {
             getChurnLimit: jest.fn(),
             getFrameBalances: jest.fn(),
             getSweepMeanEpochs: jest.fn(),
+            getMaxExitEpoch: jest.fn(),
             getLastUpdate: jest.fn(),
           },
         },
@@ -318,6 +319,36 @@ describe('WaitingTimeService', () => {
       });
 
       expect(result.frame).toBeGreaterThan(getFrameOfEpochMock(currentEpoch));
+    });
+  });
+
+  // Site C in the research note: `calculateRequestTimeSimple` previously recomputed a Phase-0
+  // count-based churn limit locally (`max(4, totalValidators / 65536)`), ignoring the
+  // post-Electra 256 ETH/epoch cap. At mainnet validator scale that yielded ~768 ETH/epoch and
+  // estimates ~3× too short. Fix delegates to `validators.getChurnLimit()` which is balance-
+  // based and capped per spec.
+  describe('calculateRequestTimeSimple (Site C — post-Electra churn delegation)', () => {
+    it(`uses balance-based churn from storage; estimate is longer than the pre-fix Phase-0 formula at mainnet scale`, () => {
+      // mainnet-scale inputs: ~1.6M active validators (the pre-fix formula would have
+      // computed churnLimit = 24 from this); storage's getChurnLimit returns 8 because
+      // 256 ETH/epoch / 32 ETH = 8 (post-Electra cap)
+      jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(1_600_000);
+      jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+      // anchor maxExitEpoch at currentEpoch + MAX_SEED_LOOKAHEAD + 1 floor (= 252030)
+      jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('252030');
+
+      // 1_000_000 ETH unfinalized
+      const oneMillionEth = BigNumber.from('1000000000000000000000000');
+      const days = service.calculateRequestTimeSimple(oneMillionEth);
+
+      // post-fix math:
+      //   lidoQueueInEpoch = 1_000_000e18 / (32e18 * 8) = 3906
+      //   potentialExitEpoch = 252030 + 3906 + 1041 = 256977
+      //   waitingTime = (256977 - 252025) * 12 * 32 / 86400 = 22
+      expect(days).toBe(22);
+      // pre-fix at the same inputs would have computed churnLimit = 24 from
+      // getActiveValidatorsCount = 1.6M, denominator = 32 * 24 = 768 ETH/epoch (above the
+      // real 256 ETH/epoch cap), and returned 10 days — over-promising.
     });
   });
 });
