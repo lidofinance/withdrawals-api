@@ -204,26 +204,7 @@ export class ValidatorsService {
       lidoValidatorsLength: lidoValidators.length,
       service: ValidatorsService.SERVICE_LOG_NAME,
     });
-    const lidoValidatorsWithdrawalCredentialsStats = lidoValidators.reduce(
-      (stats, validator) => {
-        if (hasEth1WithdrawalCredential(validator.validator)) {
-          stats.eth1Address++;
-        }
 
-        if (hasCompoundingWithdrawalCredential(validator.validator)) {
-          stats.compounding++;
-        }
-
-        return stats;
-      },
-      { eth1Address: 0, compounding: 0 },
-    );
-    this.logger.log('Lido validators withdrawal credentials stats', {
-      service: ValidatorsService.SERVICE_LOG_NAME,
-      lidoValidatorsLength: lidoValidators.length,
-      eth1AddressWithdrawalCredentialsCount: lidoValidatorsWithdrawalCredentialsStats.eth1Address,
-      compoundingWithdrawalCredentialsCount: lidoValidatorsWithdrawalCredentialsStats.compounding,
-    });
     const frameBalances = {};
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
