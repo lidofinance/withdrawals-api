@@ -59,11 +59,11 @@ More about the `BUNKER` mode is [here](https://docs.lido.fi/guides/oracle-spec/a
 
 If there is enough ether from the following sources to finalize all unfinalized requests placed before and included the provided one:
 
-- buffer ether balance retrieved from the [Lido.getBufferedEther()](https://docs.lido.fi/contracts/lido#getbufferedether) method
+- buffer ether available for withdrawals: `Lido.getBufferedEther() - Lido.getDepositsReserve()` (the deposits reserve is a portion of the buffer protected for CL deposits; pre-SR-3 contracts have no such concept and the term is 0)
 - ether balance of [WithdrawalVault](https://docs.lido.fi/contracts/withdrawal-vault)
 - ether balance of [ExecutionLayerRewardsVault](https://docs.lido.fi/contracts/lido-execution-layer-rewards-vault)
 
-i.e, `totalBuffer = Lido.getBufferedEther() + balanceOf(WithdrawalVault) + balanceOf(ELRewardsVault)`
+i.e, `totalBuffer = (Lido.getBufferedEther() - depositsReserve) + balanceOf(WithdrawalVault) + balanceOf(ELRewardsVault)`
 
 Then the finalization is possible relying on the already existing `totalBuffer` ether amount in the nearest oracle report (including the safe board and submission delay into consideration).
 
@@ -105,13 +105,21 @@ It's needed to select the Lido-participating validators which are already in pro
 
 ### 3.iii. Case when new validator exits are needed to finalize the withdrawal requests
 
-- The idea is to find the nearest epoch pretending that all needed validators were exited
-- Find epoch by this formula: `unfinalizedStETH / (32ETH * churnLimit + rewardsPerEpoch)`
-- `rewardsPerEpoch` is calculated as described in the provided [prediction model](https://hackmd.io/@lido/r1fau3aJ3?type=view#Predict-available-ETH-before-next-withdrawn)
-- Worth noting that the exited validators become withdrawable only after the withdrawal  [sweep](#sweeping mean) approached them.
+- Drain rate per VEBO frame: `min(exitChurnPerEpoch * epochsPerFrameVEBO, maxBalanceExitRequestedPerReportInEth) + rewardsPerEpoch * epochsPerFrameVEBO`. The `min` term selects whichever is the binding constraint — network exit churn × frame duration, or the VEBO governance cap.
+- VEBO frames needed: `unfinalizedStETH / drainRatePerVEBOFrame + 1`.
+- `exitChurnPerEpoch` is the post-Electra balance-based churn from the consensus layer, see [Churn limit](#churn-limit).
+- `maxBalanceExitRequestedPerReportInEth` is the per-VEBO-frame ETH cap from `OracleReportSanityChecker`. Setting it to 0 (governance pause) skips this case entirely.
+- `rewardsPerEpoch` is calculated as described in the provided [prediction model](https://hackmd.io/@lido/r1fau3aJ3?type=view#Predict-available-ETH-before-next-withdrawn).
+- Exited validators become withdrawable only after the withdrawal [sweep](#sweeping-mean) approaches them.
+
+### Churn limit
+
+Post-Electra exit churn is balance-based: protocol caps it at `[128, 256]` ETH/epoch with the dynamic value being `totalActiveBalance / 2^16` (gwei). wq-api computes this in the validators job from `totalActiveBalance` and exposes it as a 32-ETH-equivalent count for downstream formulas; multiplying back by `MIN_ACTIVATION_BALANCE` is a unit identity that yields ETH/epoch.
 
 ### Sweeping Mean
 For simplicity, it's suggested to use the average time of the withdrawal sweep (`sweepingMean`) as a constant timeframe extension when estimating the withdrawal waiting time.
+
+Post-Electra, EL-triggered partial withdrawals consume up to 8 of 16 withdrawal slots per block (`MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP = 8`), which can slow the sweep cursor by up to 50%. wq-api accounts for this via `blockedByDeferredSlots` in the per-validator timestamp projection.
 
 More information can be found [here](https://consensys.net/shanghai-capella-upgrade/) in *Full Withdrawal Process* chapter*.*
 
