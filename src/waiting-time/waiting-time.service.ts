@@ -236,10 +236,12 @@ export class WaitingTimeService {
       latestEpoch,
     );
 
-    frameByExitValidatorsWithVEBO = {
-      frame: valueFrameExitValidators,
-      type: WaitingTimeCalculationType.exitValidators,
-    };
+    if (valueFrameExitValidators !== null) {
+      frameByExitValidatorsWithVEBO = {
+        frame: valueFrameExitValidators,
+        type: WaitingTimeCalculationType.exitValidators,
+      };
+    }
 
     const minFrameObject = [frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
       .filter((f) => Boolean(f))
@@ -251,35 +253,44 @@ export class WaitingTimeService {
   private async calculateFrameExitValidatorsCaseWithVEBO(
     unfinalizedETH: BigNumber,
     latestEpoch: string,
-  ): Promise<number> {
+  ): Promise<number | null> {
     const churnLimit = this.validators.getChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
-
-    // calculate additional source of eth, rewards accumulated each epoch
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
-
-    const maxBalanceExitRequestedPerReportInEth = this.contractConfig.getMaxBalanceExitRequestedPerReportInEth();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
+    const rewardsPerEpoch = this.rewardsStorage.getRewardsPerFrame().div(epochPerFrame);
 
-    // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
-    const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
-      MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
-    );
+    // ETH released by validator exits per epoch. Post-Electra churn limit is balance-based and
+    // capped at 256 ETH/epoch by the protocol; multiplying by 32 ETH is a unit identity that
+    // converts the storage's "32-ETH-equivalent count" representation back to wei.
+    const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit));
+    const exitChurnEthPerVEBOFrame = exitChurnEthPerEpoch.mul(epochsPerFrameVEBO);
 
-    // number of validators to exit (in 32-ETH-equivalent count units)
-    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
+    // VEBO cap is governance-set in whole ETH per VEBO frame. Whichever is smaller — the
+    // network's natural exit churn × frame duration, or the VEBO cap — bounds exit throughput.
+    const maxBalanceExitRequestedPerReportInEth = this.contractConfig.getMaxBalanceExitRequestedPerReportInEth();
+    // ethers v6 parseEther returns bigint; wrap in BigNumber for consistent typing with the
+    // surrounding @ethersproject/bignumber arithmetic chain.
+    const maxExitEthPerVEBOFrame = BigNumber.from(parseEther(maxBalanceExitRequestedPerReportInEth.toString()));
+    const effectiveExitEthPerVEBOFrame = exitChurnEthPerVEBOFrame.lt(maxExitEthPerVEBOFrame)
+      ? exitChurnEthPerVEBOFrame
+      : maxExitEthPerVEBOFrame;
 
-    // VEBO cap is in ETH; exitValidators is in 32-ETH-equivalent count units, so
-    // multiplying by 32 converts numerator into ETH for unit-consistent division.
-    const VEBOFrames = exitValidators.mul(32).div(maxBalanceExitRequestedPerReportInEth).add(1);
+    // Rewards accrue continuously and don't go through the VEBO bottleneck.
+    const rewardsEthPerVEBOFrame = rewardsPerEpoch.mul(epochsPerFrameVEBO);
+    const totalEthPerVEBOFrame = effectiveExitEthPerVEBOFrame.add(rewardsEthPerVEBOFrame);
+
+    // Cap is 0 (governance-pause via setMaxBalanceExitRequestedPerReportInEth) AND no rewards
+    // means the queue cannot drain via this case at all. Skip; the caller treats null as
+    // "case not applicable" and minimum is taken over the remaining cases.
+    if (totalEthPerVEBOFrame.isZero()) {
+      return null;
+    }
+
+    // adding 1 because of round-down BigNumber dividing
+    const VEBOFrames = unfinalizedETH.div(totalEthPerVEBOFrame).add(1);
     const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
 
-    // time to find validators for exiting
     const sweepingMean = this.validators.getSweepMeanEpochs();
-
-    // latestEpoch - epoch of last exiting validator in whole network
-    // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(VEBOEpochs).add(sweepingMean);
 
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;

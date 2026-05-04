@@ -223,6 +223,11 @@ describe('WaitingTimeService', () => {
 
     it(`uses current VEBO frame config in exit validator ETA`, async () => {
       jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+      // Force VEBO-bottleneck regime: VEBO cap (5,000 ETH/frame) is well below network exit
+      // churn × frame (256 × 45 = 11,520 ETH/frame). In this regime VEBO is the binding
+      // constraint on throughput, so smaller VEBO frame duration ⇒ shorter elapsed epochs
+      // for the same number of VEBO frames worth of issuance ⇒ earlier finalization frame.
+      jest.spyOn(contractConfig, 'getMaxBalanceExitRequestedPerReportInEth').mockReturnValue(BigNumber.from(5_000));
       jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(75);
 
       const resultWith75EpochFrames = await service.calculateWithdrawalFrame({
@@ -320,6 +325,46 @@ describe('WaitingTimeService', () => {
       });
 
       expect(result.frame).toBeGreaterThan(getFrameOfEpochMock(currentEpoch));
+    });
+  });
+
+  describe('exitValidators case behavior at maxBalanceExitRequestedPerReportInEth = 0', () => {
+    // Per on-chain `_checkLimitValue(_, 0, type(uint16).max)`, governance can set the VEBO ETH
+    // cap to 0 to halt new exit-request submissions (an emergency lever). The engine should
+    // gracefully degrade rather than divide-by-zero on this legitimate state.
+    it(`with cap=0 and positive rewards: case still yields a valid frame via rewards-only drain`, async () => {
+      jest.spyOn(contractConfig, 'getMaxBalanceExitRequestedPerReportInEth').mockReturnValue(BigNumber.from(0));
+      jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+
+      const result = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('10000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      // when VEBO is frozen but rewards still flow, the queue drains via rewards alone — both
+      // exitValidators and rewardsOnly cases compute the same answer, so either type is valid
+      expect([WaitingTimeCalculationType.exitValidators, WaitingTimeCalculationType.rewardsOnly]).toContain(
+        result.type,
+      );
+      expect(result.frame).toBeGreaterThan(getFrameOfEpochMock(currentEpoch));
+    });
+
+    it(`private path: with cap=0 AND rewards=0, calculateFrameExitValidatorsCaseWithVEBO returns null`, async () => {
+      jest.spyOn(contractConfig, 'getMaxBalanceExitRequestedPerReportInEth').mockReturnValue(BigNumber.from(0));
+      jest.spyOn(rewardsStorage, 'getRewardsPerFrame').mockReturnValue(BigNumber.from(0));
+
+      // Direct invocation: when both exit-cap and rewards are zero, totalEthPerVEBOFrame is
+      // zero and the case returns null so the engine takes the minimum over the remaining cases
+      // (or surfaces an empty-cases failure for the degenerate state).
+      const result = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
+        BigNumber.from('10000007748958196602737138'),
+        '312321',
+      );
+
+      expect(result).toBeNull();
     });
   });
 
