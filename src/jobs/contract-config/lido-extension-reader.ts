@@ -96,10 +96,7 @@ export class LidoExtensionReader {
   public async getDepositsReserveTargetAt(blockTag: number): Promise<BigNumber> {
     const lidoAddress = this.contractLido.address;
     try {
-      const data = await this.provider.call(
-        { to: lidoAddress, data: GET_DEPOSITS_RESERVE_TARGET_SELECTOR },
-        blockTag,
-      );
+      const data = await this.provider.call({ to: lidoAddress, data: GET_DEPOSITS_RESERVE_TARGET_SELECTOR }, blockTag);
       const [target] = LIDO_EXTENSION_INTERFACE.decodeFunctionResult('getDepositsReserveTarget', data);
       return BigNumber.from(target.toString());
     } catch (error: unknown) {

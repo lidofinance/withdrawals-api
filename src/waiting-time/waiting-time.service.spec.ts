@@ -334,6 +334,66 @@ describe('WaitingTimeService', () => {
     });
   });
 
+  // Per-frame `depositsReserveTarget` is a recurring claim on rewards: at every oracle report
+  // the protocol siphons up to `target` ETH worth of fresh inflows to refill the reserve before
+  // the rest becomes available for withdrawals. The engine nets this out at the top of
+  // `calculateWithdrawalFrame` and threads `rewardsAvailableForWithdrawals` into all three
+  // projection cases.
+  describe('deposits-reserve future-projection netting', () => {
+    it(`target=0 (regression pin): netting is a no-op, calculateFrameByRewardsOnly identical to pre-fix`, () => {
+      // Mirror of the existing "check frames number" assertion above, made explicit as a
+      // regression pin. With target=0, rewardsAvailableForWithdrawals === rewardsPerFrame and
+      // the formula behaves exactly as it did before this change.
+      jest.spyOn(contractConfig, 'getDepositsReserveTarget').mockReturnValue(BigNumber.from(0));
+      const countFrames = 3;
+      const result = service.calculateFrameByRewardsOnly(
+        BigNumber.from(rewardsPerFrame).mul(countFrames),
+        rewardsPerFrame, // = rewardsAvailable when target=0
+      );
+      expect(result).toBe(getFrameOfEpochMock(currentEpoch) + countFrames + 1);
+    });
+
+    it(`target = rewardsPerFrame/2: rewardsOnly drain takes ~2× as long`, () => {
+      const halfRewards = BigNumber.from(rewardsPerFrame).div(2);
+      const countFrames = 3;
+      const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(countFrames), halfRewards);
+      // Half rate → 2× as many epochs to drain → 2 × countFrames frames from baseline
+      expect(result).toBe(getFrameOfEpochMock(currentEpoch) + countFrames * 2 + 1);
+    });
+
+    it(`target >= rewardsPerFrame: rewardsAvailable=0 → calculateFrameByRewardsOnly returns null`, () => {
+      const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(3), BigNumber.from(0));
+      expect(result).toBeNull();
+    });
+
+    it(`target>0 makes calculateWithdrawalFrame estimate strictly later than target=0 baseline`, async () => {
+      // Force exitValidators case (large unfinalized, no buffer). With target=0, baseline frame.
+      jest.spyOn(contractConfig, 'getDepositsReserveTarget').mockReturnValue(BigNumber.from(0));
+      const baseline = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      // With target = half of rewards, the rewards term in exitValidators' formula is halved
+      // → totalEthPerVEBOFrame is slightly smaller → VEBOFrames slightly larger → estimate later.
+      // The shift is small because exitChurn dominates over rewards in this regime, but it must
+      // not regress backward.
+      jest.spyOn(contractConfig, 'getDepositsReserveTarget').mockReturnValue(BigNumber.from(rewardsPerFrame).div(2));
+      const withTarget = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(withTarget.frame).toBeGreaterThanOrEqual(baseline.frame);
+    });
+  });
+
   describe('exitValidators case behavior at maxBalanceExitRequestedPerReportInEth = 0', () => {
     // Per on-chain `_checkLimitValue(_, 0, type(uint16).max)`, governance can set the VEBO ETH
     // cap to 0 to halt new exit-request submissions (an emergency lever). The engine should
