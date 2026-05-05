@@ -1,4 +1,5 @@
 import { CronJob } from 'cron';
+import { BigNumber } from '@ethersproject/bignumber';
 import { Inject, Injectable } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { JobService } from 'common/job';
@@ -11,6 +12,7 @@ import {
   LIDO_LOCATOR_CONTRACT_TOKEN,
   LidoLocator,
 } from '@lido-nestjs/contracts';
+import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { ContractConfigStorageService } from 'storage';
 import { ValidatorsService } from '../validators';
 import { LidoExtensionReader } from './lido-extension-reader';
@@ -29,6 +31,7 @@ export class ContractConfigService {
 
     protected readonly oracleLimitsReader: OracleLimitsReader,
     protected readonly lidoExtensionReader: LidoExtensionReader,
+    protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly validatorsService: ValidatorsService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
@@ -100,9 +103,18 @@ export class ContractConfigService {
       async () => {
         this.logger.log('Start update contract config', { service: ContractConfigService.SERVICE_LOG_NAME });
 
+        // Gate the target read on the previous-tick storage flag: don't call on pre-SR-3
+        // contracts (would emit warn-spam from the defensive try/catch in the reader). One-tick
+        // lag after SR-3 detection is acceptable — target stays at default 0 for that tick,
+        // projection netting becomes a no-op (same behavior as pre-SR-3). Next tick fetches
+        // the real value.
+        const wasSrv3KnownLastTick = this.contractConfig.getLidoSupportsDepositsReserve();
+        const blockNumber = await this.provider.getBlockNumber();
+
         const [
           unifiedLimits,
           lidoSupportsDepositsReserve,
+          depositsReserveTarget,
           frameConfig,
           veboFrameConfig,
           accountingOracleAddress,
@@ -111,6 +123,9 @@ export class ContractConfigService {
         ] = await Promise.all([
           this.oracleLimitsReader.read(),
           this.lidoExtensionReader.probe(),
+          wasSrv3KnownLastTick
+            ? this.lidoExtensionReader.getDepositsReserveTargetAt(blockNumber)
+            : Promise.resolve(BigNumber.from(0)),
           this.accountingOracleHashConsensus.getFrameConfig(),
           this.veboHashConsensus.getFrameConfig(),
           this.lidoLocator.accountingOracle(),
@@ -123,6 +138,7 @@ export class ContractConfigService {
           unifiedLimits.maxBalanceExitRequestedPerReportInEth,
         );
         this.contractConfig.setLidoSupportsDepositsReserve(lidoSupportsDepositsReserve);
+        this.contractConfig.setDepositsReserveTarget(depositsReserveTarget);
         this.contractConfig.setInitialEpoch(frameConfig.initialEpoch.toNumber());
         this.contractConfig.setEpochsPerFrameVEBO(veboFrameConfig.epochsPerFrame.toNumber());
         this.contractConfig.setEpochsPerFrame(frameConfig.epochsPerFrame.toNumber());
@@ -141,6 +157,7 @@ export class ContractConfigService {
           requestTimestampMargin: unifiedLimits.requestTimestampMargin.toNumber(),
           maxBalanceExitRequestedPerReportInEth: unifiedLimits.maxBalanceExitRequestedPerReportInEth.toNumber(),
           lidoSupportsDepositsReserve,
+          depositsReserveTarget: depositsReserveTarget.toString(),
           initialEpoch: frameConfig.initialEpoch.toNumber(),
           epochsPerFrameVEBO: veboFrameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
