@@ -137,7 +137,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
     jest.spyOn(contractConfig, 'getMaxValidatorExitRequestsPerReport').mockReturnValue(600);
-    jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(75);
+    jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(45);
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
     jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
@@ -217,6 +217,32 @@ describe('WaitingTimeService', () => {
       });
 
       expect(result.type).toBe(WaitingTimeCalculationType.exitValidators);
+    });
+
+    it(`uses current VEBO frame config in exit validator ETA`, async () => {
+      jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+      jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(75);
+
+      const resultWith75EpochFrames = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(45);
+
+      const resultWith45EpochFrames = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(resultWith45EpochFrames.type).toBe(WaitingTimeCalculationType.exitValidators);
+      expect(resultWith45EpochFrames.frame).toBeLessThan(resultWith75EpochFrames.frame);
     });
   });
 

@@ -354,10 +354,12 @@ export class WaitingTimeService {
   public checkIsInitializing() {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
+    const validatorsChurnLimit = this.validators.getChurnLimit();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
     const contractConfigLastUpdate = this.contractConfig.getLastUpdate();
 
-    const isInitialized = validatorsLastUpdate && queueInfoLastUpdate && requests && contractConfigLastUpdate;
+    const isInitialized =
+      validatorsLastUpdate && validatorsChurnLimit && queueInfoLastUpdate && requests && contractConfigLastUpdate;
 
     if (!isInitialized) {
       return {

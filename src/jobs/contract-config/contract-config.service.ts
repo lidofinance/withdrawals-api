@@ -14,10 +14,12 @@ import {
   LidoLocator,
 } from '@lido-nestjs/contracts';
 import { ContractConfigStorageService } from 'storage';
+import { ValidatorsService } from '../validators';
 
 @Injectable()
 export class ContractConfigService {
   static SERVICE_LOG_NAME = 'contract config';
+  protected isSubscribedToFrameConfigUpdates = false;
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -26,6 +28,7 @@ export class ContractConfigService {
     @Inject(VALIDATORS_EXIT_BUS_ORACLE_HASH_CONSENSUS_TOKEN) protected readonly veboHashConsensus: HashConsensus,
     @Inject(LIDO_LOCATOR_CONTRACT_TOKEN) protected readonly lidoLocator: LidoLocator,
 
+    protected readonly validatorsService: ValidatorsService,
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
@@ -39,6 +42,8 @@ export class ContractConfigService {
       return;
     }
 
+    this.subscribeToFrameConfigUpdates();
+
     try {
       await this.updateContractConfig();
     } catch (error) {
@@ -50,6 +55,41 @@ export class ContractConfigService {
     job.start();
 
     this.logger.log('Service initialized', { service: ContractConfigService.SERVICE_LOG_NAME, cronTime });
+  }
+
+  protected subscribeToFrameConfigUpdates(): void {
+    if (this.isSubscribedToFrameConfigUpdates) {
+      return;
+    }
+
+    this.isSubscribedToFrameConfigUpdates = true;
+
+    const accountingFrameConfigSet = this.accountingOracleHashConsensus.filters.FrameConfigSet();
+    const veboFrameConfigSet = this.veboHashConsensus.filters.FrameConfigSet();
+
+    this.accountingOracleHashConsensus.on(accountingFrameConfigSet, () => {
+      this.handleFrameConfigUpdateEvent('accounting');
+    });
+
+    this.veboHashConsensus.on(veboFrameConfigSet, () => {
+      this.handleFrameConfigUpdateEvent('vebo');
+    });
+  }
+
+  protected async handleFrameConfigUpdateEvent(source: 'accounting' | 'vebo'): Promise<void> {
+    this.logger.log('FrameConfigSet event triggered', {
+      service: ContractConfigService.SERVICE_LOG_NAME,
+      source,
+    });
+
+    try {
+      await this.updateContractConfig();
+    } catch (error) {
+      this.logger.error(error, {
+        service: ContractConfigService.SERVICE_LOG_NAME,
+        source,
+      });
+    }
   }
 
   @OneAtTime()
@@ -85,12 +125,17 @@ export class ContractConfigService {
         this.contractConfig.setElRewardsVaultAddress(elRewardsVaultAddress);
         this.contractConfig.setLastUpdate(Math.floor(Date.now() / 1000));
 
+        this.validatorsService.rescheduleCronJobs(
+          veboFrameConfig.initialEpoch.toNumber(),
+          veboFrameConfig.epochsPerFrame.toNumber(),
+        );
+
         this.logger.log('End update contract config', {
           service: ContractConfigService.SERVICE_LOG_NAME,
           requestTimestampMargin: limits.requestTimestampMargin.toNumber(),
           maxValidatorExitRequestsPerReport: limits.maxValidatorExitRequestsPerReport.toNumber(),
           initialEpoch: frameConfig.initialEpoch.toNumber(),
-          epochsPerFrameVEBO: frameConfig.epochsPerFrame.toNumber(),
+          epochsPerFrameVEBO: veboFrameConfig.epochsPerFrame.toNumber(),
           epochsPerFrame: frameConfig.epochsPerFrame.toNumber(),
           accountingOracleAddress,
           withdrawalVaultAddress,
