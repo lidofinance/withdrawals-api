@@ -200,8 +200,22 @@ export class WaitingTimeService {
     // exit validators + rewards (todo: add here case validators with withdrawable_epoch)
     let frameByExitValidatorsWithVEBO: CalculateWaitingTimeV2Result | null = null;
 
+    // Per-frame rewards rate net of the deposits-reserve refill claim. Governance sets a target
+    // value the protocol resets `depositsReserve` to at every oracle report; up to `target` ETH
+    // worth of fresh rewards is locked into the reserve before any of it becomes available for
+    // withdrawals. Conservative netting: assume worst-case where reserve fully drains between
+    // reports, so the per-frame claim is min(target, rewardsPerFrame). When target=0 (pre-SR-3
+    // or governance hasn't set one), this is a no-op.
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
+    const depositsReserveTarget = this.contractConfig.getDepositsReserveTarget();
+    const reservedRefillPerFrame = depositsReserveTarget.gt(rewardsPerFrame) ? rewardsPerFrame : depositsReserveTarget;
+    const rewardsAvailableForWithdrawals = rewardsPerFrame.sub(reservedRefillPerFrame);
+
     // checked only rewards filling unfinalized
-    const frameByOnlyRewardsValue = this.calculateFrameByRewardsOnly(unfinalized.sub(fullBuffer));
+    const frameByOnlyRewardsValue = this.calculateFrameByRewardsOnly(
+      unfinalized.sub(fullBuffer),
+      rewardsAvailableForWithdrawals,
+    );
     if (frameByOnlyRewardsValue) {
       frameByOnlyRewards = {
         frame: frameByOnlyRewardsValue,
@@ -211,12 +225,11 @@ export class WaitingTimeService {
 
     // loop over all known frames with balances of withdrawing validators
     const frameBalances = this.validators.getFrameBalances();
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const valueFrameValidatorsBalance = calculateFrameByValidatorBalances({
       unfinilized: unfinalized.sub(fullBuffer),
       frameBalances,
       currentFrame,
-      rewardsPerFrame,
+      rewardsAvailableForWithdrawals,
     });
 
     if (valueFrameValidatorsBalance) {
@@ -230,6 +243,7 @@ export class WaitingTimeService {
     const valueFrameExitValidators = await this.calculateFrameExitValidatorsCaseWithVEBO(
       unfinalized.sub(fullBuffer),
       latestEpoch,
+      rewardsAvailableForWithdrawals,
     );
 
     if (valueFrameExitValidators !== null) {
@@ -249,11 +263,12 @@ export class WaitingTimeService {
   private async calculateFrameExitValidatorsCaseWithVEBO(
     unfinalizedETH: BigNumber,
     latestEpoch: string,
+    rewardsAvailableForWithdrawals: BigNumber,
   ): Promise<number | null> {
     const churnLimit = this.validators.getChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
-    const rewardsPerEpoch = this.rewardsStorage.getRewardsPerFrame().div(epochPerFrame);
+    const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
 
     // ETH released by validator exits per epoch. Post-Electra churn limit is balance-based and
     // capped at 256 ETH/epoch by the protocol; multiplying by 32 ETH is a unit identity that
@@ -435,12 +450,11 @@ export class WaitingTimeService {
     } else return null;
   }
 
-  public calculateFrameByRewardsOnly(unfinalized: BigNumber) {
+  public calculateFrameByRewardsOnly(unfinalized: BigNumber, rewardsAvailableForWithdrawals: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
-    if (rewardsPerFrame.eq(0)) return null;
+    if (rewardsAvailableForWithdrawals.eq(0)) return null;
 
-    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
+    const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
     const onlyRewardPotentialEpoch = unfinalized.div(rewardsPerEpoch);
 
     return (

@@ -76,6 +76,7 @@ describe('WaitingTimeService', () => {
             getMaxBalanceExitRequestedPerReportInEth: jest.fn(),
             getEpochsPerFrameVEBO: jest.fn(),
             getRequestTimestampMargin: jest.fn(),
+            getDepositsReserveTarget: jest.fn(),
             getLastUpdate: jest.fn(),
           },
         },
@@ -138,6 +139,8 @@ describe('WaitingTimeService', () => {
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(epochPerFrame);
     // 19,200 ETH = legacy 600 validator-cap × 32 ETH (lossless identity); both eras now stored in ETH.
     jest.spyOn(contractConfig, 'getMaxBalanceExitRequestedPerReportInEth').mockReturnValue(BigNumber.from(19_200));
+    // Default 0 target → deposits-reserve netting is a no-op, regression-safe for existing assertions.
+    jest.spyOn(contractConfig, 'getDepositsReserveTarget').mockReturnValue(BigNumber.from(0));
     jest.spyOn(contractConfig, 'getEpochsPerFrameVEBO').mockReturnValue(45);
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
     jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);
@@ -268,7 +271,11 @@ describe('WaitingTimeService', () => {
     it(`check frames number`, () => {
       const countFrames = 3;
       const expectedResult = getFrameOfEpochMock(currentEpoch) + countFrames + 1;
-      const result = service.calculateFrameByRewardsOnly(BigNumber.from(rewardsPerFrame).mul(countFrames));
+      // unit test: pass rewardsPerFrame directly as the netted rate (target=0 case → no netting)
+      const result = service.calculateFrameByRewardsOnly(
+        BigNumber.from(rewardsPerFrame).mul(countFrames),
+        rewardsPerFrame,
+      );
 
       expect(result).toBe(expectedResult);
     });
@@ -361,6 +368,7 @@ describe('WaitingTimeService', () => {
       const result = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
         BigNumber.from('10000007748958196602737138'),
         '312321',
+        BigNumber.from(0), // rewardsAvailableForWithdrawals
       );
 
       expect(result).toBeNull();
