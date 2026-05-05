@@ -112,6 +112,14 @@ It's needed to select the Lido-participating validators which are already in pro
 - `rewardsPerEpoch` is calculated as described in the provided [prediction model](https://hackmd.io/@lido/r1fau3aJ3?type=view#Predict-available-ETH-before-next-withdrawn).
 - Exited validators become withdrawable only after the withdrawal [sweep](#sweeping-mean) approaches them.
 
+### Rewards available for withdrawals
+
+Post-SR-3, governance sets a `depositsReserveTarget` that the Lido contract refills the deposits reserve to at every oracle report. The per-frame rewards rate used in projection formulas (cases 3.i, 3.ii, 3.iii) is therefore net of this claim:
+
+`rewardsAvailableForWithdrawals = rewardsPerFrame - min(target, rewardsPerFrame)`
+
+Conservative — assumes worst case where the reserve fully drains between reports. When `target = 0` (governance hasn't set one), this is a no-op. Source: `Lido.getDepositsReserveTarget()`.
+
 ### Churn limit
 
 Post-Electra exit churn is balance-based: protocol caps it at `[128, 256]` ETH/epoch with the dynamic value being `totalActiveBalance / 2^16` (gwei). wq-api computes this in the validators job from `totalActiveBalance` and exposes it as a 32-ETH-equivalent count for downstream formulas; multiplying back by `MIN_ACTIVATION_BALANCE` is a unit identity that yields ETH/epoch.

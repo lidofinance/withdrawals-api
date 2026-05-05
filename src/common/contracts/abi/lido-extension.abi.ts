@@ -17,4 +17,11 @@ export const LIDO_EXTENSION_ABI = [
     inputs: [],
     outputs: [{ name: 'depositsReserve', type: 'uint256' }],
   },
+  {
+    name: 'getDepositsReserveTarget',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [{ name: 'depositsReserveTarget', type: 'uint256' }],
+  },
 ] as const;

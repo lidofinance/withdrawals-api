@@ -125,4 +125,43 @@ describe('LidoExtensionReader', () => {
       expect(secondCallArgs[1]).toBe(200);
     });
   });
+
+  describe('getDepositsReserveTargetAt', () => {
+    it('returns decoded uint256 at the given block', async () => {
+      // 5,000 ETH governance-set target = 5,000 × 10^18 wei
+      const targetWei = BigInt('5000000000000000000000');
+      provider.call.mockResolvedValue(encodeUint256(targetWei));
+
+      const result = await reader.getDepositsReserveTargetAt(12_345_678);
+
+      expect(result.toString()).toBe(targetWei.toString());
+      expect(provider.call).toHaveBeenCalledWith({ to: LIDO_ADDR, data: expect.any(String) }, 12_345_678);
+    });
+
+    it('returns 0 and logs warn on revert (e.g. pre-SR-3 contract)', async () => {
+      provider.call.mockRejectedValue(new Error('execution reverted'));
+
+      const result = await reader.getDepositsReserveTargetAt(12_345_678);
+
+      expect(result.toNumber()).toBe(0);
+      expect(logger.warn).toHaveBeenCalledWith(
+        'getDepositsReserveTargetAt failed; falling back to 0 target',
+        expect.objectContaining({
+          lidoAddress: LIDO_ADDR,
+          blockTag: 12_345_678,
+          error: 'execution reverted',
+        }),
+      );
+    });
+
+    it('uses a different selector than getDepositsReserveAt (sibling method, not alias)', async () => {
+      provider.call.mockResolvedValue(encodeUint256(0));
+      await reader.getDepositsReserveAt(100);
+      await reader.getDepositsReserveTargetAt(100);
+
+      const reserveSelector = provider.call.mock.calls[0][0].data;
+      const targetSelector = provider.call.mock.calls[1][0].data;
+      expect(reserveSelector).not.toBe(targetSelector);
+    });
+  });
 });
