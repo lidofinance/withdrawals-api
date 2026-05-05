@@ -110,11 +110,11 @@ export class RewardsService {
 
     // find minimum for last week
     rewards.forEach((r) => {
-      if (minCL.lt(r.clRewards)) {
+      if (minCL.gt(r.clRewards)) {
         minCL = r.clRewards;
       }
 
-      if (minEL.lt(r.elRewards)) {
+      if (minEL.gt(r.elRewards)) {
         minEL = r.elRewards;
       }
     });
