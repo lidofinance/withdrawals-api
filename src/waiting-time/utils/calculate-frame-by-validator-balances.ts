@@ -2,13 +2,15 @@ import { BigNumber } from '@ethersproject/bignumber';
 
 type calculateFrameByValidatorBalancesArgs = {
   unfinilized: BigNumber;
-  rewardsPerFrame: BigNumber;
+  // Per-frame rewards rate net of the deposits-reserve refill claim — what's actually drainable
+  // to withdrawals each frame after governance siphons off the per-cycle reserve target.
+  rewardsAvailableForWithdrawals: BigNumber;
   currentFrame: number;
   frameBalances: Record<string, BigNumber>;
 };
 
 export const calculateFrameByValidatorBalances = (args: calculateFrameByValidatorBalancesArgs): number | null => {
-  const { frameBalances, unfinilized, rewardsPerFrame, currentFrame } = args;
+  const { frameBalances, unfinilized, rewardsAvailableForWithdrawals, currentFrame } = args;
   let unfinalizedAmount = unfinilized;
   let lastFrame = BigNumber.from(currentFrame);
 
@@ -23,7 +25,7 @@ export const calculateFrameByValidatorBalances = (args: calculateFrameByValidato
 
     // consider rewards only for future frames
     if (framesBetween.gte(0)) {
-      reduced = reduced.sub(framesBetween.mul(rewardsPerFrame));
+      reduced = reduced.sub(framesBetween.mul(rewardsAvailableForWithdrawals));
       lastFrame = BigNumber.from(frame);
     }
     unfinalizedAmount = reduced;

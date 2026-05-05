@@ -7,6 +7,7 @@ import { ContractConfigStorageService } from 'storage';
 import { RewardsService } from 'events/rewards';
 import { GenesisTimeService, SECONDS_PER_SLOT } from 'common/genesis-time';
 import { OracleV2__factory } from '../common/contracts/generated';
+import { LidoExtensionReader } from '../jobs/contract-config/lido-extension-reader';
 
 export interface BlockState {
   blockNumber: number;
@@ -31,6 +32,7 @@ export class BlockStateCacheService {
     protected readonly contractConfig: ContractConfigStorageService,
     protected readonly rewardsService: RewardsService,
     protected readonly genesisTimeService: GenesisTimeService,
+    protected readonly lidoExtensionReader: LidoExtensionReader,
   ) {}
 
   async getBlockState(): Promise<BlockState> {
@@ -40,11 +42,25 @@ export class BlockStateCacheService {
       return this.stateCache;
     }
 
-    const [unfinalized, buffer, vaultsBalance] = await Promise.all([
+    // On post-SR-3 Lido `getBufferedEther()` returns the total buffer, but only
+    // `total - depositsReserve` is actually drainable to withdrawals — the deposits-reserve
+    // bucket is protected. Pre-SR-3 Lido has no such concept; we read 0 in that branch and
+    // the subtraction is a no-op.
+    const depositsReservePromise = this.contractConfig.getLidoSupportsDepositsReserve()
+      ? this.lidoExtensionReader.getDepositsReserveAt(blockNumber)
+      : Promise.resolve(BigNumber.from(0));
+
+    const [unfinalized, totalBuffer, vaultsBalance, depositsReserve] = await Promise.all([
       this.contractWithdrawal.unfinalizedStETH({ blockTag: blockNumber }),
       this.contractLido.getBufferedEther({ blockTag: blockNumber }),
       this.rewardsService.getVaultsBalance(blockNumber),
+      depositsReservePromise,
     ]);
+
+    // Defensive clamp: if depositsReserve somehow exceeds totalBuffer (shouldn't happen per
+    // contract invariants — Lido's _getBufferedEtherAllocation caps reserve at total — but
+    // an edge case at upgrade boundaries could surface), saturate at 0 instead of underflow.
+    const buffer = totalBuffer.gt(depositsReserve) ? totalBuffer.sub(depositsReserve) : BigNumber.from(0);
 
     this.stateCache = { blockNumber, unfinalized, buffer, vaultsBalance };
     return this.stateCache;

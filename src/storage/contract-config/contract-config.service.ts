@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { BigNumber } from '@ethersproject/bignumber';
 
 @Injectable()
 export class ContractConfigStorageService {
@@ -6,7 +7,18 @@ export class ContractConfigStorageService {
   protected initialEpoch: number;
   protected epochsPerFrameVEBO: number;
   protected epochsPerFrame: number;
-  protected maxValidatorExitRequestsPerReport: number;
+  // Post-SR-3 unit: ETH (whole, not wei). For pre-SR-3 contracts the value is computed via
+  // the lossless identity legacy `maxValidatorExitRequestsPerReport × 32 ETH = ETH`.
+  protected maxBalanceExitRequestedPerReportInEth: BigNumber;
+  // Reflects whether the connected Lido contract has the SR-3 buffer-reserve extension methods.
+  // Updated each contract-config tick from LidoExtensionReader.probe(); defaults to false.
+  // Once observed true at the reader level, the latch keeps it true (a protocol cannot un-deploy SR-3).
+  protected lidoSupportsDepositsReserve = false;
+  // Governance-set target the protocol refills depositsReserve to at every oracle report.
+  // Stored in wei (consistent with rewardsPerFrame and other ETH-amount fields). Defaults to 0
+  // so the rewards-projection netting is a no-op pre-SR-3 and on networks where governance
+  // hasn't set a target yet.
+  protected depositsReserveTarget: BigNumber = BigNumber.from(0);
   protected accountingOracleAddress: string;
   protected withdrawalVaultAddress: string;
   protected elRewardsVaultAddress: string;
@@ -44,12 +56,28 @@ export class ContractConfigStorageService {
     this.epochsPerFrame = epochsPerFrame;
   }
 
-  public getMaxValidatorExitRequestsPerReport() {
-    return this.maxValidatorExitRequestsPerReport;
+  public getMaxBalanceExitRequestedPerReportInEth(): BigNumber {
+    return this.maxBalanceExitRequestedPerReportInEth;
   }
 
-  public setMaxValidatorExitRequestsPerReport(maxValidatorExitRequestsPerReport: number) {
-    this.maxValidatorExitRequestsPerReport = maxValidatorExitRequestsPerReport;
+  public setMaxBalanceExitRequestedPerReportInEth(maxBalanceExitRequestedPerReportInEth: BigNumber): void {
+    this.maxBalanceExitRequestedPerReportInEth = maxBalanceExitRequestedPerReportInEth;
+  }
+
+  public getLidoSupportsDepositsReserve(): boolean {
+    return this.lidoSupportsDepositsReserve;
+  }
+
+  public setLidoSupportsDepositsReserve(lidoSupportsDepositsReserve: boolean): void {
+    this.lidoSupportsDepositsReserve = lidoSupportsDepositsReserve;
+  }
+
+  public getDepositsReserveTarget(): BigNumber {
+    return this.depositsReserveTarget;
+  }
+
+  public setDepositsReserveTarget(depositsReserveTarget: BigNumber): void {
+    this.depositsReserveTarget = depositsReserveTarget;
   }
 
   public getAccountingOracleAddress() {
