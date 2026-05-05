@@ -14,6 +14,11 @@ export class ContractConfigStorageService {
   // Updated each contract-config tick from LidoExtensionReader.probe(); defaults to false.
   // Once observed true at the reader level, the latch keeps it true (a protocol cannot un-deploy SR-3).
   protected lidoSupportsDepositsReserve = false;
+  // Governance-set target the protocol refills depositsReserve to at every oracle report.
+  // Stored in wei (consistent with rewardsPerFrame and other ETH-amount fields). Defaults to 0
+  // so the rewards-projection netting is a no-op pre-SR-3 and on networks where governance
+  // hasn't set a target yet.
+  protected depositsReserveTarget: BigNumber = BigNumber.from(0);
   protected accountingOracleAddress: string;
   protected withdrawalVaultAddress: string;
   protected elRewardsVaultAddress: string;
@@ -65,6 +70,14 @@ export class ContractConfigStorageService {
 
   public setLidoSupportsDepositsReserve(lidoSupportsDepositsReserve: boolean): void {
     this.lidoSupportsDepositsReserve = lidoSupportsDepositsReserve;
+  }
+
+  public getDepositsReserveTarget(): BigNumber {
+    return this.depositsReserveTarget;
+  }
+
+  public setDepositsReserveTarget(depositsReserveTarget: BigNumber): void {
+    this.depositsReserveTarget = depositsReserveTarget;
   }
 
   public getAccountingOracleAddress() {
