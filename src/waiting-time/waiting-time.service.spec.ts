@@ -97,7 +97,7 @@ describe('WaitingTimeService', () => {
           provide: ValidatorsStorageService,
           useValue: {
             getActiveValidatorsCount: jest.fn(),
-            getChurnLimit: jest.fn(),
+            getExitChurnLimit: jest.fn(),
             getFrameBalances: jest.fn(),
             getSweepMeanEpochs: jest.fn(),
             getLastUpdate: jest.fn(),
@@ -148,7 +148,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
     jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
-    jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+    jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
     jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
     jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);

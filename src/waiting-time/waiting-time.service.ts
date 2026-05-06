@@ -253,7 +253,7 @@ export class WaitingTimeService {
     unfinalizedETH: BigNumber,
     latestEpoch: string,
   ): Promise<number> {
-    const churnLimit = this.validators.getChurnLimit();
+    const exitChurnLimit = this.validators.getExitChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
 
     // calculate additional source of eth, rewards accumulated each epoch
@@ -265,11 +265,11 @@ export class WaitingTimeService {
 
     // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
     const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
-      MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)).add(rewardsPerEpoch),
+      MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit)).add(rewardsPerEpoch),
     );
 
     // number of validators to exit
-    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(churnLimit));
+    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(exitChurnLimit));
 
     // Validator Exit Bus Oracle (VEBO) has max validator to exit per VEBO frame
     // according to this limitation, this is VEBO frames needed to exit
@@ -353,12 +353,16 @@ export class WaitingTimeService {
   public checkIsInitializing() {
     const requests = this.queueInfo.getRequests();
     const validatorsLastUpdate = this.validators.getLastUpdate();
-    const validatorsChurnLimit = this.validators.getChurnLimit();
+    const validatorsExitChurnLimit = this.validators.getExitChurnLimit();
     const queueInfoLastUpdate = this.queueInfo.getLastUpdate();
     const contractConfigLastUpdate = this.contractConfig.getLastUpdate();
 
     const isInitialized =
-      validatorsLastUpdate && validatorsChurnLimit && queueInfoLastUpdate && requests && contractConfigLastUpdate;
+      validatorsLastUpdate &&
+      validatorsExitChurnLimit &&
+      queueInfoLastUpdate &&
+      requests &&
+      contractConfigLastUpdate;
 
     if (!isInitialized) {
       return {
@@ -459,9 +463,9 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const maxExitEpoch = this.getMaxExitEpoch();
-    const churnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, this.validators.getChurnLimit());
+    const exitChurnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, this.validators.getExitChurnLimit());
 
-    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
+    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();
     const potentialExitEpoch = BigNumber.from(maxExitEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 

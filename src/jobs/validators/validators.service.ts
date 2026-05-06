@@ -171,8 +171,10 @@ export class ValidatorsService {
         );
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
-        this.validatorsStorageService.setChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
-        this.validatorsStorageService.setConsolidationChurnLimit(getConsolidationChurnLimit(totalActiveBalance).toNumber());
+        this.validatorsStorageService.setExitChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
+        this.validatorsStorageService.setConsolidationChurnLimit(
+          getConsolidationChurnLimit(totalActiveBalance).toNumber(),
+        );
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);

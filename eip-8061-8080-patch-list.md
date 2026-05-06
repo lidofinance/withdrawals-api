@@ -12,26 +12,26 @@ This document captures the required and likely changes for this repo to support 
 
 ## EIP-8061
 
+This app only estimates withdrawal time heuristically. For that reason, `activationChurnLimit` is not required unless the app later starts modeling activation-side behavior directly. Exit ETA only needs exit churn, and `consolidationChurnLimit` is kept as future groundwork for `EIP-8080`.
+
 ### Required code changes
 
-- Replace the current single capped churn model with separate activation, exit, and consolidation churn helpers.
+- Replace the current single capped churn model with exit and consolidation churn helpers.
   - Update [src/jobs/validators/utils/get-churn-limit.ts](src/jobs/validators/utils/get-churn-limit.ts)
   - Add:
-    - `getActivationChurnLimitGwei`
     - `getExitChurnLimitGwei`
     - `getConsolidationChurnLimitGwei`
   - Use `CHURN_LIMIT_QUOTIENT_GLOAS = 2**15`
   - Use `CONSOLIDATION_CHURN_LIMIT_QUOTIENT = 2**16`
-  - Keep activation capped at `256 ETH`
   - Remove the `256 ETH` cap from exit churn
 
-- Store the correct churn values in validator storage instead of one generic `churnLimit`.
+- Store the churn values this app actually needs instead of one generic stored churn value.
   - Update [src/jobs/validators/validators.service.ts](src/jobs/validators/validators.service.ts)
   - Update [src/storage/validators/validators.service.ts](src/storage/validators/validators.service.ts)
   - Add fields/getters/setters for:
-    - `activationChurnLimit`
     - `exitChurnLimit`
     - `consolidationChurnLimit`
+  - `activationChurnLimit` is not needed for current withdrawal ETA logic
 
 - Update cache persistence for the new churn fields if restart consistency is required.
   - Update [src/storage/validators/validators-cache.service.ts](src/storage/validators/validators-cache.service.ts)
@@ -52,7 +52,6 @@ This document captures the required and likely changes for this repo to support 
 
 - Add tests for post-8061 churn behavior:
   - uncapped exits above `256 ETH`
-  - activation still capped
   - consolidation derived separately
 
 ## EIP-8080
