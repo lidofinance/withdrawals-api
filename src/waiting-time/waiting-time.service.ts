@@ -12,10 +12,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
 
-import {
-  GAP_AFTER_REPORT,
-  MIN_ACTIVATION_BALANCE,
-   WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
+import { GAP_AFTER_REPORT, MIN_ACTIVATION_BALANCE, WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
 import {
   validateTimeResponseWithFallback,
   calculateUnfinalizedEthToRequestId,
@@ -273,9 +270,8 @@ export class WaitingTimeService {
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
     const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
 
-    // ETH released by validator exits per epoch. Post-Electra churn limit is balance-based and
-    // capped at 256 ETH/epoch by the protocol; multiplying by 32 ETH is a unit identity that
-    // converts the storage's "32-ETH-equivalent count" representation back to wei.
+    // ETH released by validator exits per epoch. Exit churn is stored in 32-ETH-equivalent
+    // units, so multiplying by 32 ETH converts it back to wei throughput for the current fork.
     const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit));
     const exitChurnEthPerVEBOFrame = exitChurnEthPerEpoch.mul(epochsPerFrameVEBO);
 
@@ -381,11 +377,7 @@ export class WaitingTimeService {
     const contractConfigLastUpdate = this.contractConfig.getLastUpdate();
 
     const isInitialized =
-      validatorsLastUpdate &&
-      validatorsExitChurnLimit &&
-      queueInfoLastUpdate &&
-      requests &&
-      contractConfigLastUpdate;
+      validatorsLastUpdate && validatorsExitChurnLimit && queueInfoLastUpdate && requests && contractConfigLastUpdate;
 
     if (!isInitialized) {
       return {
@@ -485,9 +477,9 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const maxExitEpoch = this.getMaxExitEpoch();
-    // post-Electra balance-based churn (capped at 256 ETH/epoch); MIN_ACTIVATION_BALANCE × churnLimit
-    // is a unit identity that yields ETH-per-epoch exit capacity in wei
-    const churnLimit = this.validators.getChurnLimit();
+    // Exit churn is stored in 32-ETH-equivalent units. MIN_ACTIVATION_BALANCE × exitChurnLimit
+    // converts that representation into ETH-per-epoch exit capacity in wei for the current fork.
+    const churnLimit = this.validators.getExitChurnLimit();
 
     const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();

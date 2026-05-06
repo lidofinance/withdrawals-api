@@ -49,12 +49,16 @@ export class SpecService implements OnModuleInit {
     return this.glamsterdamForkEpoch;
   }
 
-  public isGlamsterdamReleasedAtSlot(slot: number): boolean {
+  public isGlamsterdamReleasedAtEpoch(epoch: number): boolean {
     if (this.glamsterdamForkEpoch === null) {
       return false;
     }
 
-    return Math.floor(slot / SLOTS_PER_EPOCH) >= this.glamsterdamForkEpoch;
+    return epoch >= this.glamsterdamForkEpoch;
+  }
+
+  public isGlamsterdamReleasedAtSlot(slot: number): boolean {
+    return this.isGlamsterdamReleasedAtEpoch(Math.floor(slot / SLOTS_PER_EPOCH));
   }
 
   protected glamsterdamForkEpoch: number | null = null;
