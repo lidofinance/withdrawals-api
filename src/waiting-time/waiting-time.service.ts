@@ -15,9 +15,7 @@ import { PrometheusService } from 'common/prometheus';
 import {
   GAP_AFTER_REPORT,
   MIN_ACTIVATION_BALANCE,
-  MIN_PER_EPOCH_CHURN_LIMIT,
-  WITHDRAWAL_BUNKER_DELAY_FRAMES,
-} from './waiting-time.constants';
+   WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
 import {
   validateTimeResponseWithFallback,
   calculateUnfinalizedEthToRequestId,
@@ -37,7 +35,7 @@ import {
 } from './waiting-time.types';
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
-import { BlockStateCacheService, BlockState } from './block-state-cache.service';
+import { BlockStateCacheService } from './block-state-cache.service';
 
 @Injectable()
 export class WaitingTimeService {
@@ -205,8 +203,22 @@ export class WaitingTimeService {
     // exit validators + rewards (todo: add here case validators with withdrawable_epoch)
     let frameByExitValidatorsWithVEBO: CalculateWaitingTimeV2Result | null = null;
 
+    // Per-frame rewards rate net of the deposits-reserve refill claim. Governance sets a target
+    // value the protocol resets `depositsReserve` to at every oracle report; up to `target` ETH
+    // worth of fresh rewards is locked into the reserve before any of it becomes available for
+    // withdrawals. Conservative netting: assume worst-case where reserve fully drains between
+    // reports, so the per-frame claim is min(target, rewardsPerFrame). When target=0 (pre-SR-3
+    // or governance hasn't set one), this is a no-op.
+    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
+    const depositsReserveTarget = this.contractConfig.getDepositsReserveTarget();
+    const reservedRefillPerFrame = depositsReserveTarget.gt(rewardsPerFrame) ? rewardsPerFrame : depositsReserveTarget;
+    const rewardsAvailableForWithdrawals = rewardsPerFrame.sub(reservedRefillPerFrame);
+
     // checked only rewards filling unfinalized
-    const frameByOnlyRewardsValue = this.calculateFrameByRewardsOnly(unfinalized.sub(fullBuffer));
+    const frameByOnlyRewardsValue = this.calculateFrameByRewardsOnly(
+      unfinalized.sub(fullBuffer),
+      rewardsAvailableForWithdrawals,
+    );
     if (frameByOnlyRewardsValue) {
       frameByOnlyRewards = {
         frame: frameByOnlyRewardsValue,
@@ -216,12 +228,11 @@ export class WaitingTimeService {
 
     // loop over all known frames with balances of withdrawing validators
     const frameBalances = this.validators.getFrameBalances();
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
     const valueFrameValidatorsBalance = calculateFrameByValidatorBalances({
       unfinilized: unfinalized.sub(fullBuffer),
       frameBalances,
       currentFrame,
-      rewardsPerFrame,
+      rewardsAvailableForWithdrawals,
     });
 
     if (valueFrameValidatorsBalance) {
@@ -235,12 +246,15 @@ export class WaitingTimeService {
     const valueFrameExitValidators = await this.calculateFrameExitValidatorsCaseWithVEBO(
       unfinalized.sub(fullBuffer),
       latestEpoch,
+      rewardsAvailableForWithdrawals,
     );
 
-    frameByExitValidatorsWithVEBO = {
-      frame: valueFrameExitValidators,
-      type: WaitingTimeCalculationType.exitValidators,
-    };
+    if (valueFrameExitValidators !== null) {
+      frameByExitValidatorsWithVEBO = {
+        frame: valueFrameExitValidators,
+        type: WaitingTimeCalculationType.exitValidators,
+      };
+    }
 
     const minFrameObject = [frameValidatorsBalances, frameByOnlyRewards, frameByExitValidatorsWithVEBO]
       .filter((f) => Boolean(f))
@@ -252,36 +266,45 @@ export class WaitingTimeService {
   private async calculateFrameExitValidatorsCaseWithVEBO(
     unfinalizedETH: BigNumber,
     latestEpoch: string,
-  ): Promise<number> {
+    rewardsAvailableForWithdrawals: BigNumber,
+  ): Promise<number | null> {
     const exitChurnLimit = this.validators.getExitChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
-
-    // calculate additional source of eth, rewards accumulated each epoch
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
-    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
-
-    const maxValidatorExitRequestsPerFrameVEBO = this.contractConfig.getMaxValidatorExitRequestsPerReport();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
+    const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
 
-    // number epochs needed for closing unfinalizedETH dividing on validator balances and rewards
-    const lidoQueueInEpochBeforeVEBOExitLimit = unfinalizedETH.div(
-      MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit)).add(rewardsPerEpoch),
-    );
+    // ETH released by validator exits per epoch. Post-Electra churn limit is balance-based and
+    // capped at 256 ETH/epoch by the protocol; multiplying by 32 ETH is a unit identity that
+    // converts the storage's "32-ETH-equivalent count" representation back to wei.
+    const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit));
+    const exitChurnEthPerVEBOFrame = exitChurnEthPerEpoch.mul(epochsPerFrameVEBO);
 
-    // number of validators to exit
-    const exitValidators = lidoQueueInEpochBeforeVEBOExitLimit.mul(Math.floor(exitChurnLimit));
+    // VEBO cap is governance-set in whole ETH per VEBO frame. Whichever is smaller — the
+    // network's natural exit churn × frame duration, or the VEBO cap — bounds exit throughput.
+    const maxBalanceExitRequestedPerReportInEth = this.contractConfig.getMaxBalanceExitRequestedPerReportInEth();
+    // ethers v6 parseEther returns bigint; wrap in BigNumber for consistent typing with the
+    // surrounding @ethersproject/bignumber arithmetic chain.
+    const maxExitEthPerVEBOFrame = BigNumber.from(parseEther(maxBalanceExitRequestedPerReportInEth.toString()));
+    const effectiveExitEthPerVEBOFrame = exitChurnEthPerVEBOFrame.lt(maxExitEthPerVEBOFrame)
+      ? exitChurnEthPerVEBOFrame
+      : maxExitEthPerVEBOFrame;
 
-    // Validator Exit Bus Oracle (VEBO) has max validator to exit per VEBO frame
-    // according to this limitation, this is VEBO frames needed to exit
-    // adding 1 because of round down BigNumber dividing
-    const VEBOFrames = exitValidators.div(maxValidatorExitRequestsPerFrameVEBO).add(1);
+    // Rewards accrue continuously and don't go through the VEBO bottleneck.
+    const rewardsEthPerVEBOFrame = rewardsPerEpoch.mul(epochsPerFrameVEBO);
+    const totalEthPerVEBOFrame = effectiveExitEthPerVEBOFrame.add(rewardsEthPerVEBOFrame);
+
+    // Cap is 0 (governance-pause via setMaxBalanceExitRequestedPerReportInEth) AND no rewards
+    // means the queue cannot drain via this case at all. Skip; the caller treats null as
+    // "case not applicable" and minimum is taken over the remaining cases.
+    if (totalEthPerVEBOFrame.isZero()) {
+      return null;
+    }
+
+    // adding 1 because of round-down BigNumber dividing
+    const VEBOFrames = unfinalizedETH.div(totalEthPerVEBOFrame).add(1);
     const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
 
-    // time to find validators for exiting
     const sweepingMean = this.validators.getSweepMeanEpochs();
-
-    // latestEpoch - epoch of last exiting validator in whole network
-    // potential exit epoch - will be from latestEpoch, add VEBO epochs, add sweeping mean
     const potentialExitEpoch = BigNumber.from(latestEpoch).add(VEBOEpochs).add(sweepingMean);
 
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
@@ -434,12 +457,11 @@ export class WaitingTimeService {
     } else return null;
   }
 
-  public calculateFrameByRewardsOnly(unfinalized: BigNumber) {
+  public calculateFrameByRewardsOnly(unfinalized: BigNumber, rewardsAvailableForWithdrawals: BigNumber) {
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
-    const rewardsPerFrame = this.rewardsStorage.getRewardsPerFrame();
-    if (rewardsPerFrame.eq(0)) return null;
+    if (rewardsAvailableForWithdrawals.eq(0)) return null;
 
-    const rewardsPerEpoch = rewardsPerFrame.div(epochPerFrame);
+    const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
     const onlyRewardPotentialEpoch = unfinalized.div(rewardsPerEpoch);
 
     return (
@@ -463,9 +485,11 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const maxExitEpoch = this.getMaxExitEpoch();
-    const exitChurnLimit = Math.max(MIN_PER_EPOCH_CHURN_LIMIT, this.validators.getExitChurnLimit());
+    // post-Electra balance-based churn (capped at 256 ETH/epoch); MIN_ACTIVATION_BALANCE × churnLimit
+    // is a unit identity that yields ETH-per-epoch exit capacity in wei
+    const churnLimit = this.validators.getChurnLimit();
 
-    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit)));
+    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();
     const potentialExitEpoch = BigNumber.from(maxExitEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
@@ -485,5 +509,4 @@ export class WaitingTimeService {
 
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
   }
-
 }
