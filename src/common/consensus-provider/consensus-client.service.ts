@@ -1,7 +1,11 @@
 import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { Injectable } from '@nestjs/common';
 import { processJsonStreamBeaconState } from './utils/process-json-stream-beacon-state';
-import { BeaconStateSweepData, PendingPartialWithdrawal } from './consensus-provider.types';
+import {
+  BeaconStateExitConsolidationQueueData,
+  BeaconStateSweepData,
+  PendingPartialWithdrawal,
+} from './consensus-provider.types';
 import {
   API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL,
   API_GET_PENDING_PARTIAL_WITHDRAWALS_URL,
@@ -32,6 +36,15 @@ export class ConsensusClientService {
     ]);
 
     return result as BeaconStateSweepData;
+  }
+
+  // Reads the EIP-8080-relevant queue fields off beacon state via the same streaming-pick
+  // mechanism used for sweep state. Single endpoint, single AbortController surface.
+  public async getStateExitConsolidationQueueData(stateId: string): Promise<BeaconStateExitConsolidationQueueData> {
+    const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
+    const result = await processJsonStreamBeaconState(stream, ['earliest_exit_epoch', 'earliest_consolidation_epoch']);
+
+    return result as BeaconStateExitConsolidationQueueData;
   }
 
   public async getPendingPartialWithdrawals(stateId: string): Promise<PendingPartialWithdrawal[]> {

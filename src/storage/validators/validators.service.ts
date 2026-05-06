@@ -12,6 +12,14 @@ export class ValidatorsStorageService {
   protected churnLimit: number;
   protected withdrawableLidoValidatorIds: string[] = [];
 
+  // EIP-8080 inputs. Populated by the validators job from beacon-state and from the
+  // total-active-balance derivation (see get-churn-limit utils). Default to null so the
+  // waiting-time engine can fall back to the legacy formula until the job has run once.
+  protected exitChurnPerEpochGwei: BigNumber | null = null;
+  protected consolidationChurnPerEpochGwei: BigNumber | null = null;
+  protected earliestExitEpoch: string | null = null;
+  protected earliestConsolidationEpoch: string | null = null;
+
   /**
    * Get max exit epoch for all validators
    * @returns max exit epoch string
@@ -106,5 +114,37 @@ export class ValidatorsStorageService {
 
   public getWithdrawableLidoValidatorIds() {
     return this.withdrawableLidoValidatorIds;
+  }
+
+  public setExitChurnPerEpochGwei(value: BigNumber | null) {
+    this.exitChurnPerEpochGwei = value;
+  }
+
+  public getExitChurnPerEpochGwei(): BigNumber | null {
+    return this.exitChurnPerEpochGwei;
+  }
+
+  public setConsolidationChurnPerEpochGwei(value: BigNumber | null) {
+    this.consolidationChurnPerEpochGwei = value;
+  }
+
+  public getConsolidationChurnPerEpochGwei(): BigNumber | null {
+    return this.consolidationChurnPerEpochGwei;
+  }
+
+  public setEarliestExitEpoch(value: string | null) {
+    this.earliestExitEpoch = value;
+  }
+
+  public getEarliestExitEpoch(): string | null {
+    return this.earliestExitEpoch;
+  }
+
+  public setEarliestConsolidationEpoch(value: string | null) {
+    this.earliestConsolidationEpoch = value;
+  }
+
+  public getEarliestConsolidationEpoch(): string | null {
+    return this.earliestConsolidationEpoch;
   }
 }

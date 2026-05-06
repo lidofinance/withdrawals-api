@@ -22,12 +22,20 @@ export interface BeaconStateSweepData {
   latest_withdrawals_root?: string;
 }
 
+// Subset of BeaconState fields used to model EIP-8080 ("Let exits use the consolidation
+// queue"). Both fields are present on Electra+ chains; see consensus-specs Electra
+// beacon-chain.md. Strings to match the over-the-wire representation.
+export interface BeaconStateExitConsolidationQueueData {
+  earliest_exit_epoch?: string;
+  earliest_consolidation_epoch?: string;
+}
+
 /**
  * Spec reference:
  * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#beaconstate
  * included only used properties
  */
-export interface BeaconState extends BeaconStateSweepData {
+export interface BeaconState extends BeaconStateSweepData, BeaconStateExitConsolidationQueueData {
   pending_partial_withdrawals: PendingPartialWithdrawal[];
   validators: Validator[];
   balances: string[];

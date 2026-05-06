@@ -24,7 +24,7 @@ import { hasCompoundingWithdrawalCredential, hasEth1WithdrawalCredential } from 
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
-import { getChurnLimit } from './utils/get-churn-limit';
+import { getChurnLimit, getChurnLimitGwei, getConsolidationChurnLimitGwei } from './utils/get-churn-limit';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -172,6 +172,15 @@ export class ValidatorsService {
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
         this.validatorsStorageService.setChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
+        // EIP-8080 inputs: store the Gwei-form churn budgets too, keyed off the same
+        // total-active-balance that drove the legacy count form. Two separate values so
+        // the waiting-time engine can model exit-vs-consolidation queue dynamics without
+        // re-deriving them on every request.
+        this.validatorsStorageService.setExitChurnPerEpochGwei(getChurnLimitGwei(totalActiveBalance));
+        this.validatorsStorageService.setConsolidationChurnPerEpochGwei(
+          getConsolidationChurnLimitGwei(totalActiveBalance),
+        );
+        await this.fetchAndSetExitConsolidationQueueState();
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
@@ -295,6 +304,26 @@ export class ValidatorsService {
         this.logAnalyticsAboutFrameBalances();
       },
     );
+  }
+
+  // EIP-8080: fetch beacon-state queue heads needed to decide whether exits can draw on
+  // idle consolidation churn. Pre-Electra/old-spec chains may omit the fields entirely;
+  // missing values are treated as null and downstream falls back to legacy formula.
+  // Errors are caught and logged so a single failing read doesn't poison the whole job
+  // tick — same posture as wrapJob's own error handling.
+  protected async fetchAndSetExitConsolidationQueueState(stateId = 'head'): Promise<void> {
+    try {
+      const state = await this.consensusClientService.getStateExitConsolidationQueueData(stateId);
+      this.validatorsStorageService.setEarliestExitEpoch(state.earliest_exit_epoch ?? null);
+      this.validatorsStorageService.setEarliestConsolidationEpoch(state.earliest_consolidation_epoch ?? null);
+    } catch (error) {
+      this.logger.warn('failed to read EIP-8080 queue state from beacon, falling back to null', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        error,
+      });
+      this.validatorsStorageService.setEarliestExitEpoch(null);
+      this.validatorsStorageService.setEarliestConsolidationEpoch(null);
+    }
   }
 
   protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
