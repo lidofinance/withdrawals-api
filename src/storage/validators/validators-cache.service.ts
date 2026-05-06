@@ -56,7 +56,7 @@ export class ValidatorsCacheService {
       this.validatorsStorage.setLastUpdate(Number(data[2]));
       this.validatorsStorage.setFrameBalances(this.parseFrameBalances(data[3]));
       this.validatorsStorage.setSweepMeanEpochs(Number(data[4]));
-      this.validatorsStorage.setChurnLimit(Number(data[5]));
+      this.validatorsStorage.setExitChurnLimit(Number(data[5]));
 
       this.logger.log(`success initialize from cache file ${cacheFileName}`, {
         service: ValidatorsCacheService.SERVICE_LOG_NAME,
@@ -81,7 +81,7 @@ export class ValidatorsCacheService {
       this.validatorsStorage.getLastUpdate(),
       stringifyFrameBalances(this.validatorsStorage.getFrameBalances()),
       this.validatorsStorage.getSweepMeanEpochs(),
-      this.validatorsStorage.getChurnLimit(),
+      this.validatorsStorage.getExitChurnLimit(),
     ].join(ValidatorsCacheService.CACHE_DATA_DIVIDER);
     await writeFile(cacheFileName, data);
     this.logger.log(`success save to file ${cacheFileName}`, { service: ValidatorsCacheService.SERVICE_LOG_NAME });
