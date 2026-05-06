@@ -28,7 +28,7 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 3000 }))
-  PORT: number = 3000;
+  PORT = 3000;
 
   @IsOptional()
   @IsString()
@@ -38,19 +38,19 @@ export class EnvironmentVariables {
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 5 }))
-  GLOBAL_THROTTLE_TTL: number = 5;
+  GLOBAL_THROTTLE_TTL = 5;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 100 }))
-  GLOBAL_THROTTLE_LIMIT: number = 100;
+  GLOBAL_THROTTLE_LIMIT = 100;
 
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Transform(toNumber({ defaultValue: 1 }))
-  GLOBAL_CACHE_TTL: number = 1;
+  GLOBAL_CACHE_TTL = 1;
 
   @IsOptional()
   @IsString()
@@ -114,6 +114,16 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   CUSTOM_NETWORK_FILE_NAME: string;
+
+  // EIP-8080 ("Let exits use the consolidation queue") activation epoch. When set, exit-churn
+  // throughput in the `exitValidators` waiting-time case can draw from idle consolidation
+  // churn — see ADR-0002. Empty/unset means the legacy single-queue formula applies; this is
+  // the safe default because applying EIP-8080 logic before the fork over-promises users.
+  @IsOptional()
+  @Transform(({ value }) => (value === '' || value == null ? null : Number(value)))
+  @IsNumber()
+  @Min(0)
+  EIP_8080_FORK_EPOCH: number | null = null;
 }
 export const ENV_KEYS = Object.keys(new EnvironmentVariables());
 

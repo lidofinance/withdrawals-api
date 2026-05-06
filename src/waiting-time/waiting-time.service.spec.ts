@@ -14,8 +14,11 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { WaitingTimeCalculationType } from './waiting-time.types';
 import { PrometheusService } from '../common/prometheus';
 import { BlockStateCacheService } from './block-state-cache.service';
+import { ConfigService } from '../common/config';
 
-jest.mock('common/config', () => ({}));
+jest.mock('common/config', () => ({
+  ConfigService: class {},
+}));
 
 describe('WaitingTimeService', () => {
   let moduleRef: TestingModule;
@@ -25,6 +28,7 @@ describe('WaitingTimeService', () => {
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
   let queueInfoStorageService: QueueInfoStorageService;
+  let configService: ConfigService;
 
   // constants
   const genesisTime = 1606824023;
@@ -102,6 +106,10 @@ describe('WaitingTimeService', () => {
             getSweepMeanEpochs: jest.fn(),
             getMaxExitEpoch: jest.fn(),
             getLastUpdate: jest.fn(),
+            getExitChurnPerEpochGwei: jest.fn(),
+            getConsolidationChurnPerEpochGwei: jest.fn(),
+            getEarliestExitEpoch: jest.fn(),
+            getEarliestConsolidationEpoch: jest.fn(),
           },
         },
         {
@@ -124,6 +132,12 @@ describe('WaitingTimeService', () => {
           provide: PrometheusService,
           useValue: {},
         },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -133,6 +147,7 @@ describe('WaitingTimeService', () => {
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
     queueInfoStorageService = moduleRef.get<QueueInfoStorageService>(QueueInfoStorageService);
+    configService = moduleRef.get<ConfigService>(ConfigService);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
@@ -154,6 +169,15 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
     jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
     jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
+    // EIP-8080 inputs default to null = "validators job hasn't populated them yet" =
+    // legacy formula path. Direction-of-error: matches pre-EIP-8080 behaviour exactly.
+    jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(null);
+    jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(null);
+    jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue(null);
+    jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue(null);
+    // EIP_8080_FORK_EPOCH unset = legacy path. Tests that exercise the post-fork branch
+    // override this in their own scope.
+    jest.spyOn(configService, 'get').mockImplementation(() => null as never);
     jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
     jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
@@ -462,6 +486,133 @@ describe('WaitingTimeService', () => {
       // pre-fix at the same inputs would have computed churnLimit = 24 from
       // getActiveValidatorsCount = 1.6M, denominator = 32 * 24 = 768 ETH/epoch (above the
       // real 256 ETH/epoch cap), and returned 10 days — over-promising.
+    });
+  });
+
+  // EIP-8080 ("Let exits use the consolidation queue"). The activation gate is a single
+  // env-var; with it unset the legacy 256 ETH/epoch ceiling applies. With it set + fork
+  // epoch reached + beacon-state queue heads populated and the exit queue ahead of the
+  // consolidation queue, exits draw from idle consolidation churn for an effective uplift
+  // of up to ~688 ETH/epoch. See ADR-0002.
+  describe('EIP-8080 exit-via-consolidation-queue gating', () => {
+    // mainnet-scale inputs lifted from the post-Electra delegation test above
+    const mainnetUnfinalized = BigNumber.from('1000000000000000000000000'); // 1,000,000 ETH
+    const exitChurnGwei = BigNumber.from('256000000000'); // 256 ETH in Gwei (legacy cap)
+    const consolidationChurnGwei = BigNumber.from('432000000000'); // typical mainnet leftover
+
+    beforeEach(() => {
+      jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(1_600_000);
+      jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+      jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('252030');
+    });
+
+    it('env unset + queue state populated → still legacy formula (env is the master switch)', () => {
+      // Even with full beacon data and exit queue ahead, missing env keeps legacy.
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(exitChurnGwei);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(consolidationChurnGwei);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('600000');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('500000');
+      jest.spyOn(configService, 'get').mockImplementation(() => null as never);
+
+      const days = service.calculateRequestTimeSimple(mainnetUnfinalized);
+      expect(days).toBe(22);
+    });
+
+    it('env set + currentEpoch < forkEpoch → legacy (chain has not activated yet)', () => {
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(exitChurnGwei);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(consolidationChurnGwei);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('600000');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('500000');
+      // currentEpoch is 252025; fork epoch in the far future → legacy.
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key) => (key === 'EIP_8080_FORK_EPOCH' ? (9_999_999 as never) : (null as never)));
+
+      const days = service.calculateRequestTimeSimple(mainnetUnfinalized);
+      expect(days).toBe(22);
+    });
+
+    it('env set + post-fork + queue state missing → legacy (defensive null check)', () => {
+      // Validators job hasn't run an EIP-8080-aware tick yet. Storage returns null for the
+      // queue-state pair; the helper must fall back to legacy rather than NPE.
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(null);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(null);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue(null);
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue(null);
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key) => (key === 'EIP_8080_FORK_EPOCH' ? (1 as never) : (null as never)));
+
+      const days = service.calculateRequestTimeSimple(mainnetUnfinalized);
+      expect(days).toBe(22);
+    });
+
+    it('env set + post-fork + consolidation queue ahead → legacy (EIP-8080 branch does not fire)', () => {
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(exitChurnGwei);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(consolidationChurnGwei);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('500000');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('600000');
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key) => (key === 'EIP_8080_FORK_EPOCH' ? (1 as never) : (null as never)));
+
+      const days = service.calculateRequestTimeSimple(mainnetUnfinalized);
+      expect(days).toBe(22);
+    });
+
+    it('env set + post-fork + exit queue ahead → uplift, estimate strictly shorter than legacy', () => {
+      // Effective exit churn = 256 + 432 × 3/2 = 904 ETH/epoch. At 1M ETH unfinalized:
+      //   lidoQueueInEpoch = 1_000_000e18 / 904e18 = 1106 (BigNumber integer div)
+      //   potentialExitEpoch = 252030 + 1106 + 1041 = 254177
+      //   waitingTime = (254177 - 252025) * 12 * 32 / 86400 = 826368 / 86400 = 9
+      //   (BigNumber.div is integer division — drops the fractional 0.56 BEFORE Math.round)
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(exitChurnGwei);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(consolidationChurnGwei);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('600000');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('500000');
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key) => (key === 'EIP_8080_FORK_EPOCH' ? (1 as never) : (null as never)));
+
+      const days = service.calculateRequestTimeSimple(mainnetUnfinalized);
+      // Crucially: less than the legacy 22, demonstrating uplift fires.
+      expect(days).toBeLessThan(22);
+      // Pin the exact value so a future regression in the uplift math is caught.
+      expect(days).toBe(9);
+    });
+
+    it('env set + post-fork + exit queue ahead → exitValidators-case frame is also earlier than legacy', async () => {
+      jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
+      jest.spyOn(validatorsStorage, 'getExitChurnPerEpochGwei').mockReturnValue(exitChurnGwei);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnPerEpochGwei').mockReturnValue(consolidationChurnGwei);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('600000');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('500000');
+
+      // Legacy first (env unset)
+      jest.spyOn(configService, 'get').mockImplementation(() => null as never);
+      const legacyResult = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      // EIP-8080 path
+      jest
+        .spyOn(configService, 'get')
+        .mockImplementation((key) => (key === 'EIP_8080_FORK_EPOCH' ? (1 as never) : (null as never)));
+      const upliftedResult = await service.calculateWithdrawalFrame({
+        unfinalized: BigNumber.from('100000007748958196602737138'),
+        buffer: BigNumber.from('0'),
+        vaultsBalance: BigNumber.from('0'),
+        requestTimestamp: lockedSystemTimestamp,
+        latestEpoch: '312321',
+      });
+
+      expect(legacyResult.type).toBe(WaitingTimeCalculationType.exitValidators);
+      expect(upliftedResult.type).toBe(WaitingTimeCalculationType.exitValidators);
+      expect(upliftedResult.frame).toBeLessThan(legacyResult.frame);
     });
   });
 });

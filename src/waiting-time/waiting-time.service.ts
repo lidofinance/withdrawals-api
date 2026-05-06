@@ -11,12 +11,14 @@ import {
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
+import { ConfigService } from 'common/config';
 
 import { GAP_AFTER_REPORT, MIN_ACTIVATION_BALANCE, WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
 import {
   validateTimeResponseWithFallback,
   calculateUnfinalizedEthToRequestId,
   calculateFrameByValidatorBalances,
+  computeEffectiveExitChurnPerEpochGwei,
 } from './utils';
 import { transformToRequestDto } from './dto';
 import {
@@ -45,7 +47,50 @@ export class WaitingTimeService {
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly prometheusService: PrometheusService,
     protected readonly blockStateCache: BlockStateCacheService,
+    protected readonly configService: ConfigService,
   ) {}
+
+  // Returns exit-side churn capacity in WEI per epoch. Single source of truth for both
+  // exit-validator-case formulas. Decision tree:
+  //   1. If EIP_8080_FORK_EPOCH env is unset → legacy single-queue formula.
+  //   2. If currentEpoch < forkEpoch → legacy (chain hasn't activated EIP-8080 yet —
+  //      applying the new model would over-promise users, the unsafe direction).
+  //   3. If beacon-state queue heads or consolidation churn aren't populated yet
+  //      (validators job hasn't completed an EIP-8080-aware tick) → legacy.
+  //   4. Else → effective exit churn per `computeEffectiveExitChurnPerEpochGwei`,
+  //      converted from Gwei to wei.
+  protected getExitChurnPerEpochWei(): BigNumber {
+    const churnLimit = this.validators.getChurnLimit();
+    const legacyExitChurnWei = MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit));
+
+    const forkEpoch = this.configService.get('EIP_8080_FORK_EPOCH');
+    if (forkEpoch == null) return legacyExitChurnWei;
+    if (this.genesisTimeService.getCurrentEpoch() < forkEpoch) return legacyExitChurnWei;
+
+    const exitChurnGwei = this.validators.getExitChurnPerEpochGwei();
+    const consolidationChurnGwei = this.validators.getConsolidationChurnPerEpochGwei();
+    const earliestExitEpoch = this.validators.getEarliestExitEpoch();
+    const earliestConsolidationEpoch = this.validators.getEarliestConsolidationEpoch();
+    if (
+      exitChurnGwei == null ||
+      consolidationChurnGwei == null ||
+      earliestExitEpoch == null ||
+      earliestConsolidationEpoch == null
+    ) {
+      return legacyExitChurnWei;
+    }
+
+    const effectiveGwei = computeEffectiveExitChurnPerEpochGwei({
+      isExitViaConsolidationActive: true,
+      earliestExitEpoch: BigNumber.from(earliestExitEpoch),
+      earliestConsolidationEpoch: BigNumber.from(earliestConsolidationEpoch),
+      exitChurnPerEpochGwei: exitChurnGwei,
+      consolidationChurnPerEpochGwei: consolidationChurnGwei,
+    });
+
+    // 1 ETH = 1e9 Gwei = 1e18 wei → wei = gwei × 1e9.
+    return effectiveGwei.mul(BigNumber.from('1000000000'));
+  }
 
   // preparing all needed number for calculation withdrawal time
   public async getWaitingTimeInfo(args: GetWaitingTimeInfoV2Args): Promise<GetWaitingTimeInfoV2Result> {
@@ -265,15 +310,15 @@ export class WaitingTimeService {
     latestEpoch: string,
     rewardsAvailableForWithdrawals: BigNumber,
   ): Promise<number | null> {
-    const churnLimit = this.validators.getChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
     const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
 
-    // ETH released by validator exits per epoch. Post-Electra churn limit is balance-based and
-    // capped at 256 ETH/epoch by the protocol; multiplying by 32 ETH is a unit identity that
-    // converts the storage's "32-ETH-equivalent count" representation back to wei.
-    const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit));
+    // ETH released by validator exits per epoch. Pre-EIP-8080: post-Electra balance-based
+    // churn capped at 256 ETH/epoch. Post-EIP-8080 (when env-flag is on, fork epoch
+    // reached, and queue state is populated): exits also draw from idle consolidation
+    // churn, lifting the effective ceiling up to ~688 ETH/epoch. See ADR-0002.
+    const exitChurnEthPerEpoch = this.getExitChurnPerEpochWei();
     const exitChurnEthPerVEBOFrame = exitChurnEthPerEpoch.mul(epochsPerFrameVEBO);
 
     // VEBO cap is governance-set in whole ETH per VEBO frame. Whichever is smaller — the
@@ -478,11 +523,12 @@ export class WaitingTimeService {
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
     const maxExitEpoch = this.getMaxExitEpoch();
-    // post-Electra balance-based churn (capped at 256 ETH/epoch); MIN_ACTIVATION_BALANCE × churnLimit
-    // is a unit identity that yields ETH-per-epoch exit capacity in wei
-    const churnLimit = this.validators.getChurnLimit();
+    // Effective exit-churn per epoch in wei. Routes through getExitChurnPerEpochWei so the
+    // EIP-8080 uplift (consolidation-queue routing) applies symmetrically with the
+    // VEBO-aware path; behaviour is unchanged when the feature flag is off.
+    const exitChurnPerEpochWei = this.getExitChurnPerEpochWei();
 
-    const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
+    const lidoQueueInEpoch = unfinalizedETH.div(exitChurnPerEpochWei);
     const sweepingMean = this.validators.getSweepMeanEpochs();
     const potentialExitEpoch = BigNumber.from(maxExitEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
