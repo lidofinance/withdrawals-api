@@ -154,6 +154,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
     jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
     jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
+    jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('312321');
     jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
     jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
@@ -437,16 +438,16 @@ describe('WaitingTimeService', () => {
 
   // Site C in the research note: `calculateRequestTimeSimple` previously recomputed a Phase-0
   // count-based churn limit locally (`max(4, totalValidators / 65536)`), ignoring the
-  // post-Electra 256 ETH/epoch cap. At mainnet validator scale that yielded ~768 ETH/epoch and
-  // estimates ~3× too short. Fix delegates to `validators.getChurnLimit()` which is balance-
-  // based and capped per spec.
+  // balance-based exit churn used by the protocol. At mainnet validator scale that yielded
+  // ~768 ETH/epoch and estimates ~3× too short. Fix delegates to `validators.getExitChurnLimit()`,
+  // which is fork-gated and uses the correct balance-based rule for the current chain state.
   describe('calculateRequestTimeSimple (Site C — post-Electra churn delegation)', () => {
     it(`uses balance-based churn from storage; estimate is longer than the pre-fix Phase-0 formula at mainnet scale`, () => {
       // mainnet-scale inputs: ~1.6M active validators (the pre-fix formula would have
-      // computed churnLimit = 24 from this); storage's getChurnLimit returns 8 because
+      // computed churnLimit = 24 from this); storage's getExitChurnLimit returns 8 because
       // 256 ETH/epoch / 32 ETH = 8 (post-Electra cap)
       jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(1_600_000);
-      jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
       // anchor maxExitEpoch at currentEpoch + MAX_SEED_LOOKAHEAD + 1 floor (= 252030)
       jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('252030');
 
@@ -462,6 +463,20 @@ describe('WaitingTimeService', () => {
       // pre-fix at the same inputs would have computed churnLimit = 24 from
       // getActiveValidatorsCount = 1.6M, denominator = 32 * 24 = 768 ETH/epoch (above the
       // real 256 ETH/epoch cap), and returned 10 days — over-promising.
+    });
+  });
+
+  describe('calculateRequestTimeSimple', () => {
+    it('uses higher post-8061 exit churn for large queues instead of the old capped assumption', () => {
+      const largeUnfinalizedETH = BigNumber.from('3200000000000000000000000'); // 3.2M ETH
+
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
+      const daysWithOldCappedStyleChurn = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(34);
+      const daysWithPost8061ExitChurn = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      expect(daysWithPost8061ExitChurn).toBeLessThan(daysWithOldCappedStyleChurn);
     });
   });
 });

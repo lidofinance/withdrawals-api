@@ -28,7 +28,8 @@ import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawa
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
-import { getChurnLimit, getConsolidationChurnLimit } from './utils/get-churn-limit';
+import { getConsolidationChurnLimit, getExitChurnLimit } from './utils/get-churn-limit';
+import { SpecService } from '../../common/spec';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -52,6 +53,7 @@ export class ValidatorsService {
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
     protected readonly sweepService: SweepService,
+    protected readonly specService: SpecService,
   ) {}
 
   /**
@@ -164,6 +166,7 @@ export class ValidatorsService {
 
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
+        const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
 
         let activeValidatorCount = 0;
         let maxExitEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
@@ -195,7 +198,9 @@ export class ValidatorsService {
         );
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
-        this.validatorsStorageService.setExitChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
+        this.validatorsStorageService.setExitChurnLimit(
+          getExitChurnLimit(totalActiveBalance, isGlamsterdam).toNumber(),
+        );
         this.validatorsStorageService.setConsolidationChurnLimit(
           getConsolidationChurnLimit(totalActiveBalance).toNumber(),
         );

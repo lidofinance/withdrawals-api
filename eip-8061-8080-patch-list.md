@@ -14,13 +14,15 @@ This document captures the required and likely changes for this repo to support 
 
 This app only estimates withdrawal time heuristically. For that reason, `activationChurnLimit` is not required unless the app later starts modeling activation-side behavior directly. Exit ETA only needs exit churn, and `consolidationChurnLimit` is kept as future groundwork for `EIP-8080`.
 
+Backward compatibility matters here: the app should keep the pre-`8061` capped exit churn rule before the fork activates, and switch to the new uncapped `8061` exit churn rule only after fork activation.
+
 ### Required code changes
 
 - Replace the current single capped churn model with exit and consolidation churn helpers.
   - Update [src/jobs/validators/utils/get-churn-limit.ts](src/jobs/validators/utils/get-churn-limit.ts)
   - Add:
     - `getExitChurnLimitGwei`
-    - `getConsolidationChurnLimitGwei`
+    - `getConsolidationChurnLimit`
   - Use `CHURN_LIMIT_QUOTIENT_GLOAS = 2**15`
   - Use `CONSOLIDATION_CHURN_LIMIT_QUOTIENT = 2**16`
   - Remove the `256 ETH` cap from exit churn
@@ -51,6 +53,7 @@ This app only estimates withdrawal time heuristically. For that reason, `activat
 ### Tests
 
 - Add tests for post-8061 churn behavior:
+  - pre-fork exit churn still uses the old cap
   - uncapped exits above `256 ETH`
   - consolidation derived separately
 
