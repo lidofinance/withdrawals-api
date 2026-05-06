@@ -25,7 +25,11 @@ import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
-import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
+import {
+  BeaconStateSweepData,
+  IndexedValidator,
+  ResponseValidatorsData,
+} from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
 import { getConsolidationChurnLimit, getExitChurnLimit } from './utils/get-churn-limit';
@@ -204,9 +208,12 @@ export class ValidatorsService {
         this.validatorsStorageService.setConsolidationChurnLimit(
           getConsolidationChurnLimit(totalActiveBalance).toNumber(),
         );
+        const state = await this.consensusClientService.getStateSweepData('head');
+        this.validatorsStorageService.setEarliestExitEpoch(state.earliest_exit_epoch ?? null);
+        this.validatorsStorageService.setEarliestConsolidationEpoch(state.earliest_consolidation_epoch ?? null);
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
-        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
+        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators, state);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
         await this.validatorsCacheService.saveDataToCache();
 
@@ -226,7 +233,10 @@ export class ValidatorsService {
     );
   }
 
-  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
+  protected async findAndSetLidoValidatorsWithdrawableBalances(
+    validators: IndexedValidator[],
+    state: BeaconStateSweepData,
+  ) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     this.logger.debug('fetchLidoKeysData', {
       keysDataLength: keysData.data.length,
@@ -247,7 +257,7 @@ export class ValidatorsService {
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
     const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
     const now = Date.now();
-    const withdrawalSweepState = await this.getWithdrawalSweepState();
+    const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
@@ -319,7 +329,9 @@ export class ValidatorsService {
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const now = Date.now();
         const frameBalances = {};
-        const withdrawalSweepState = await this.getWithdrawalSweepState();
+        const state = await this.consensusClientService.getStateSweepData('head');
+
+        const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
@@ -366,14 +378,11 @@ export class ValidatorsService {
     );
   }
 
-  protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
-    this.logMemoryUsage('beacon state read started');
-    const state = await this.consensusClientService.getStateSweepData(stateId);
-    this.logMemoryUsage('beacon state read completed');
+  protected async getWithdrawalSweepState(state: BeaconStateSweepData): Promise<WithdrawalSweepState> {
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
     if (nextWithdrawalValidatorIndex === undefined) {
-      throw new Error(`Consensus state ${stateId} is missing next_withdrawal_validator_index`);
+      throw new Error(`Consensus state is missing next_withdrawal_validator_index`);
     }
 
     const blockedByDeferredSlots =

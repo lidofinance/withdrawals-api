@@ -12,7 +12,8 @@ export class ValidatorsCacheService {
   static CACHE_DIR = 'cache';
   static CACHE_DATA_DIVIDER = '|';
   static LEGACY_CACHE_DATA_LENGTH = 6;
-  static CACHE_DATA_LENGTH = 7;
+  static CONSOLIDATION_CACHE_DATA_LENGTH = 7;
+  static CACHE_DATA_LENGTH = 9;
   static SERVICE_LOG_NAME = 'validators cache';
   static CACHE_INVALIDATE_TIME = 3 * 3600; // 3 hours
 
@@ -83,6 +84,7 @@ export class ValidatorsCacheService {
   protected isSupportedCacheDataLength(dataLength: number) {
     return (
       dataLength === ValidatorsCacheService.LEGACY_CACHE_DATA_LENGTH ||
+      dataLength === ValidatorsCacheService.CONSOLIDATION_CACHE_DATA_LENGTH ||
       dataLength === ValidatorsCacheService.CACHE_DATA_LENGTH
     );
   }
@@ -98,6 +100,14 @@ export class ValidatorsCacheService {
     if (data[6] !== undefined) {
       this.validatorsStorage.setConsolidationChurnLimit(Number(data[6]));
     }
+
+    if (data[7] !== undefined) {
+      this.validatorsStorage.setEarliestExitEpoch(data[7]);
+    }
+
+    if (data[8] !== undefined) {
+      this.validatorsStorage.setEarliestConsolidationEpoch(data[8]);
+    }
   }
 
   protected getCacheData() {
@@ -109,6 +119,8 @@ export class ValidatorsCacheService {
       this.validatorsStorage.getSweepMeanEpochs(),
       this.validatorsStorage.getExitChurnLimit(),
       this.validatorsStorage.getConsolidationChurnLimit(),
+      this.validatorsStorage.getEarliestExitEpoch(),
+      this.validatorsStorage.getEarliestConsolidationEpoch(),
     ];
   }
 
