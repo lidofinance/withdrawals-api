@@ -7,6 +7,11 @@ import { ContractConfigStorageService } from '../../storage';
 
 jest.mock('common/config', () => ({}));
 
+// @lido-nestjs/consensus@1.7.0 added genesis_validators_root and genesis_fork_version to the
+// genesis response shape; tests only exercise genesis_time, so the others are placeholders.
+const STUB_GENESIS_VALIDATORS_ROOT = '0x' + '0'.repeat(64);
+const STUB_GENESIS_FORK_VERSION = '0x00000000';
+
 describe('GenesisTimeService', () => {
   let moduleRef: TestingModule;
   let service: GenesisTimeService;
@@ -77,6 +82,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '10000',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
 
@@ -89,7 +96,7 @@ describe('GenesisTimeService', () => {
 
   it(`expected to fail when genesis time empty`, async () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
-      data: {},
+      data: {} as any,
     });
 
     await expect(moduleRef.init()).rejects.toEqual(new Error('Failed to get genesis time'));
@@ -99,6 +106,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
 
@@ -113,6 +122,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
@@ -129,6 +140,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
@@ -145,6 +158,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
@@ -159,6 +174,8 @@ describe('GenesisTimeService', () => {
     jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
       data: {
         genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
     const getExecutionPayloadSpy = jest

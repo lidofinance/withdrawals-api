@@ -11,6 +11,7 @@ import {
 import { GenesisTimeModule } from 'common/genesis-time';
 import { RewardsModule } from 'events/rewards';
 import { SweepModule } from '../common/sweep';
+import { ContractConfigModule } from '../jobs/contract-config';
 
 @Module({
   imports: [
@@ -21,6 +22,8 @@ import { SweepModule } from '../common/sweep';
     SweepModule,
     RewardsStorageModule,
     RewardsModule,
+    // brings LidoExtensionReader (single instance, shared with the contract-config job)
+    ContractConfigModule,
   ],
   exports: [WaitingTimeService],
   providers: [WaitingTimeService, BlockStateCacheService],
