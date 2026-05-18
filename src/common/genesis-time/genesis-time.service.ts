@@ -14,12 +14,7 @@ export class GenesisTimeService implements OnModuleInit {
   ) {}
 
   public async onModuleInit(): Promise<void> {
-    const genesis = await this.consensusService.getGenesis();
-    this.genesisTime = Number(genesis.data.genesis_time);
-
-    if (isNaN(this.genesisTime)) {
-      throw new Error('Failed to get genesis time');
-    }
+    await Promise.all([this.initGenesisTime(), this.initSecondsPerSlot()]);
   }
 
   /**
@@ -28,11 +23,15 @@ export class GenesisTimeService implements OnModuleInit {
    * @returns - slot timestamp
    */
   public getSlotTime(slotNumber: number): number {
-    return this.genesisTime + slotNumber * SECONDS_PER_SLOT;
+    return this.genesisTime + slotNumber * this.getSecondsPerSlot();
   }
 
   public getGenesisTime() {
     return this.genesisTime;
+  }
+
+  public getSecondsPerSlot() {
+    return this.secondsPerSlot;
   }
 
   /**
@@ -44,20 +43,20 @@ export class GenesisTimeService implements OnModuleInit {
     const currentSlotTime = Math.floor(Date.now() / 1000);
     const fromSlotTime = this.getSlotTime(fromSlot);
     const deltaTime = currentSlotTime - fromSlotTime;
-    return Math.floor(deltaTime / SECONDS_PER_SLOT);
+    return Math.floor(deltaTime / this.getSecondsPerSlot());
   }
 
   public getCurrentSlot() {
     const currentSlotTime = Math.floor(Date.now() / 1000);
     const time = currentSlotTime - this.genesisTime;
-    return Math.floor(time / SECONDS_PER_SLOT);
+    return Math.floor(time / this.getSecondsPerSlot());
   }
 
   public getCurrentEpoch() {
     const currentTime = Math.floor(Date.now() / 1000);
     const genesisTime = this.getGenesisTime();
 
-    return Math.floor((currentTime - genesisTime) / SECONDS_PER_SLOT / SLOTS_PER_EPOCH);
+    return Math.floor((currentTime - genesisTime) / this.getSecondsPerSlot() / SLOTS_PER_EPOCH);
   }
 
   public getFrameOfEpoch(epoch: number) {
@@ -68,7 +67,7 @@ export class GenesisTimeService implements OnModuleInit {
     const genesisTime = this.getGenesisTime();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const epochOfNextReport = this.contractConfig.getInitialEpoch() + frame * epochPerFrame;
-    const timeToNextReport = epochOfNextReport * SECONDS_PER_SLOT * SLOTS_PER_EPOCH;
+    const timeToNextReport = epochOfNextReport * this.getSecondsPerSlot() * SLOTS_PER_EPOCH;
 
     return Math.round(genesisTime + timeToNextReport - from / 1000) * 1000; // in ms
   }
@@ -77,14 +76,17 @@ export class GenesisTimeService implements OnModuleInit {
     const genesisTime = this.getGenesisTime();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const secondsFromInitialEpochToTimestamp =
-      timestamp / 1000 - (genesisTime + this.contractConfig.getInitialEpoch() * SECONDS_PER_SLOT * SLOTS_PER_EPOCH);
-    return Math.floor(secondsFromInitialEpochToTimestamp / (epochPerFrame * SECONDS_PER_SLOT * SLOTS_PER_EPOCH));
+      timestamp / 1000 -
+      (genesisTime + this.contractConfig.getInitialEpoch() * this.getSecondsPerSlot() * SLOTS_PER_EPOCH);
+    return Math.floor(
+      secondsFromInitialEpochToTimestamp / (epochPerFrame * this.getSecondsPerSlot() * SLOTS_PER_EPOCH),
+    );
   }
 
   getSlotByTimestamp(timestamp: number): number {
     const currentSlotTime = Math.floor(timestamp / 1000);
     const time = currentSlotTime - this.genesisTime;
-    return Math.floor(time / SECONDS_PER_SLOT);
+    return Math.floor(time / this.getSecondsPerSlot());
   }
 
   getEpochByTimestamp(timestamp: number): number {
@@ -98,8 +100,38 @@ export class GenesisTimeService implements OnModuleInit {
   }
 
   getTimestampByEpoch(epoch: number) {
-    return this.genesisTime * 1000 + epoch * SLOTS_PER_EPOCH * SECONDS_PER_SLOT * 1000;
+    return this.genesisTime * 1000 + epoch * SLOTS_PER_EPOCH * this.getSecondsPerSlot() * 1000;
   }
 
   protected genesisTime = -1;
+  protected secondsPerSlot = SECONDS_PER_SLOT;
+
+  protected async initSecondsPerSlot() {
+    try {
+      const spec = await this.consensusService.getSpec();
+      const secondsPerSlot = Number(spec.data.SECONDS_PER_SLOT);
+
+      if (Number.isFinite(secondsPerSlot) && secondsPerSlot > 0) {
+        this.secondsPerSlot = secondsPerSlot;
+        return;
+      }
+
+      this.logger.warn(`Failed to parse SECONDS_PER_SLOT from consensus spec, fallback to ${SECONDS_PER_SLOT}`);
+    } catch (error) {
+      this.logger.warn(`Failed to load SECONDS_PER_SLOT from consensus spec: ${error.message}`);
+    }
+
+    this.secondsPerSlot = SECONDS_PER_SLOT;
+  }
+
+  protected async initGenesisTime() {
+    const genesis = await this.consensusService.getGenesis();
+    const genesisTime = Number(genesis.data.genesis_time);
+
+    if (isNaN(genesisTime)) {
+      throw new Error('Failed to get genesis time');
+    }
+
+    this.genesisTime = genesisTime;
+  }
 }

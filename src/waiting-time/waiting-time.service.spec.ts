@@ -119,6 +119,7 @@ describe('WaitingTimeService', () => {
           provide: GenesisTimeService,
           useValue: {
             getCurrentEpoch: jest.fn(),
+            getSecondsPerSlot: jest.fn(),
             getFrameOfEpoch: jest.fn(),
             getFrameByTimestamp: jest.fn(),
             timeToWithdrawalFrame: jest.fn(),
@@ -157,6 +158,7 @@ describe('WaitingTimeService', () => {
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
     jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
+    jest.spyOn(genesisTimeService, 'getSecondsPerSlot').mockReturnValue(12);
     jest.spyOn(genesisTimeService, 'getFrameOfEpoch').mockImplementation(getFrameOfEpochMock);
     jest.spyOn(genesisTimeService, 'getFrameByTimestamp').mockImplementation(getFrameByTimestampMock);
     jest.spyOn(genesisTimeService, 'timeToWithdrawalFrame').mockImplementation(timeToWithdrawalFrameMock);

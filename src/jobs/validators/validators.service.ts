@@ -6,7 +6,7 @@ import { ConfigService } from 'common/config';
 import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
-import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import { ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
@@ -242,6 +242,7 @@ export class ValidatorsService {
           withdrawableEpoch,
           blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
           nowMs: now,
+          secondsPerSlot: this.genesisTimeService.getSecondsPerSlot(),
         });
         const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
         const prevBalance = frameBalances[frame];
@@ -297,6 +298,7 @@ export class ValidatorsService {
               withdrawableEpoch,
               blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
               nowMs: now,
+              secondsPerSlot: this.genesisTimeService.getSecondsPerSlot(),
             });
 
             const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
@@ -376,7 +378,7 @@ export class ValidatorsService {
   // 45 * 32 * 12 / 3600 = 4.8 hours each frame (5 times per day)
   public buildCron(newInitialEpoch: number, newEpochsPerFrame: number) {
     const firstDate = this.genesisTimeService.getTimestampByEpoch(newInitialEpoch);
-    const eachSec = newEpochsPerFrame * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
+    const eachSec = newEpochsPerFrame * SLOTS_PER_EPOCH * this.genesisTimeService.getSecondsPerSlot();
     const secondsPerDay = 24 * 60 * 60;
 
     if (secondsPerDay % eachSec !== 0) {

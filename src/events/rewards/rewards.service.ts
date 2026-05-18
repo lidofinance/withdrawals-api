@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from '../../common/genesis-time';
+import { GenesisTimeService, SLOTS_PER_EPOCH } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
@@ -30,6 +30,7 @@ export class RewardsService {
     protected readonly configService: ConfigService,
     protected readonly provider: SimpleFallbackJsonRpcBatchProvider,
     protected readonly executionProvider: ExecutionProviderService,
+    protected readonly genesisTimeService: GenesisTimeService,
   ) {}
 
   /**
@@ -145,7 +146,7 @@ export class RewardsService {
 
   protected async getHoursAgoBlock(hours: number) {
     const currentBlock = await this.provider.getBlockNumber();
-    const blockInPast = currentBlock - Math.ceil((hours * 60 * 60) / SECONDS_PER_SLOT);
+    const blockInPast = currentBlock - Math.ceil((hours * 60 * 60) / this.genesisTimeService.getSecondsPerSlot());
     return Math.max(blockInPast, 0);
   }
 
@@ -294,7 +295,7 @@ export class RewardsService {
       return {
         blockNumber: log.blockNumber,
         frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(
-          SECONDS_PER_SLOT * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
+          this.genesisTimeService.getSecondsPerSlot() * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
         ),
       };
     });
