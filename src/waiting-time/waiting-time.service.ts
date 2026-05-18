@@ -9,7 +9,7 @@ import {
   ValidatorsStorageService,
 } from 'storage';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
-import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { PrometheusService } from 'common/prometheus';
 
 import { GAP_AFTER_REPORT, MIN_ACTIVATION_BALANCE, WITHDRAWAL_BUNKER_DELAY_FRAMES } from './waiting-time.constants';
@@ -489,7 +489,7 @@ export class WaitingTimeService {
 
     const waitingTime = potentialExitEpoch
       .sub(currentEpoch)
-      .mul(SECONDS_PER_SLOT)
+      .mul(this.genesisTimeService.getSecondsPerSlot())
       .mul(SLOTS_PER_EPOCH)
       .div(60 * 60 * 24);
 
