@@ -86,12 +86,17 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
 
     await moduleRef.init();
 
     const result = service.getGenesisTime();
 
     expect(result).toBe(10000);
+    expect(service.getSecondsPerSlot()).toBe(12);
+    expect(service.getSlotsPerEpoch()).toBe(32);
   });
 
   it(`expected to fail when genesis time empty`, async () => {
@@ -110,6 +115,9 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
 
     await moduleRef.init();
 
@@ -126,6 +134,9 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
 
@@ -144,6 +155,9 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
 
@@ -162,6 +176,9 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(201600);
     jest.spyOn(contractConfig, 'getEpochsPerFrame').mockReturnValue(225);
 
@@ -178,6 +195,9 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '12', SLOTS_PER_EPOCH: '32' } } as any);
     const getExecutionPayloadSpy = jest
       .spyOn(consensusExecutionPayloadService, 'getExecutionPayload')
       .mockResolvedValue({ block_number: '12345', block_hash: '0x1' });
@@ -186,5 +206,37 @@ describe('GenesisTimeService', () => {
 
     await expect(service.getBlockBySlot(200)).resolves.toBe(12345);
     expect(getExecutionPayloadSpy).toHaveBeenCalledWith('200');
+  });
+
+  it('loads SECONDS_PER_SLOT from consensus spec when available', async () => {
+    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
+      data: {
+        genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
+      },
+    });
+    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({ data: { SECONDS_PER_SLOT: '6', SLOTS_PER_EPOCH: '16' } } as any);
+
+    await moduleRef.init();
+
+    expect(service.getSecondsPerSlot()).toBe(6);
+    expect(service.getSlotsPerEpoch()).toBe(16);
+  });
+
+  it('falls back to default timing values when consensus spec fetch fails', async () => {
+    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
+      data: {
+        genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
+      },
+    });
+    jest.spyOn(consensusProvider, 'getSpec').mockRejectedValue(new Error('spec unavailable'));
+
+    await moduleRef.init();
+
+    expect(service.getSecondsPerSlot()).toBe(12);
+    expect(service.getSlotsPerEpoch()).toBe(32);
   });
 });
