@@ -6,6 +6,9 @@ import { FAR_FUTURE_EPOCH } from '../constants';
 
 @Injectable()
 export class SpecService implements OnModuleInit {
+  protected glamsterdamForkEpoch: number | null = null;
+  protected slotsPerEpoch = SLOTS_PER_EPOCH;
+
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusProviderService: ConsensusProviderService,
@@ -19,6 +22,13 @@ export class SpecService implements OnModuleInit {
     try {
       const spec = await this.consensusProviderService.getSpec();
       const glamsterdamForkEpoch = spec.data.GLOAS_FORK_EPOCH as string;
+      const slotsPerEpoch = Number(spec.data.SLOTS_PER_EPOCH);
+
+      if (Number.isFinite(slotsPerEpoch) && slotsPerEpoch > 0) {
+        this.slotsPerEpoch = slotsPerEpoch;
+      } else {
+        this.logger.warn(`Failed to parse SLOTS_PER_EPOCH from consensus spec, fallback to ${SLOTS_PER_EPOCH}`);
+      }
 
       if (glamsterdamForkEpoch !== FAR_FUTURE_EPOCH.toString()) {
         this.logger.warn('GLOAS_FORK_EPOCH is already known, cron job can be removed', {
@@ -58,8 +68,6 @@ export class SpecService implements OnModuleInit {
   }
 
   public isGlamsterdamReleasedAtSlot(slot: number): boolean {
-    return this.isGlamsterdamReleasedAtEpoch(Math.floor(slot / SLOTS_PER_EPOCH));
+    return this.isGlamsterdamReleasedAtEpoch(Math.floor(slot / this.slotsPerEpoch));
   }
-
-  protected glamsterdamForkEpoch: number | null = null;
 }
