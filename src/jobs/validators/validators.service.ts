@@ -380,7 +380,8 @@ export class ValidatorsService {
   // 45 * 32 * 12 / 3600 = 4.8 hours each frame (5 times per day)
   public buildCron(newInitialEpoch: number, newEpochsPerFrame: number) {
     const firstDate = this.genesisTimeService.getTimestampByEpoch(newInitialEpoch);
-    const eachSec = newEpochsPerFrame * this.genesisTimeService.getSlotsPerEpoch() * this.genesisTimeService.getSecondsPerSlot();
+    const eachSec =
+      newEpochsPerFrame * this.genesisTimeService.getSlotsPerEpoch() * this.genesisTimeService.getSecondsPerSlot();
     const secondsPerDay = 24 * 60 * 60;
 
     if (secondsPerDay % eachSec !== 0) {
