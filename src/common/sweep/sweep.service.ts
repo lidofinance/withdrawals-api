@@ -13,7 +13,7 @@ import {
 import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { parseGwei } from 'common/utils/parse-gwei';
 import { bigNumberMin } from 'common/utils/big-number-min';
-import { SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService } from 'common/genesis-time';
 import {
   MAX_PENDING_PARTIALS_PER_WITHDRAWALS_SWEEP,
   MAX_WITHDRAWALS_PER_PAYLOAD,
@@ -28,6 +28,7 @@ export class SweepService {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusClientService: ConsensusClientService,
+    protected readonly genesisTimeService: GenesisTimeService,
   ) {}
 
   public async getSweepDelayInEpochs(indexedValidators: IndexedValidator[], currentEpoch: number) {
@@ -46,7 +47,7 @@ export class SweepService {
       epoch,
     );
     const fullSweepCycleInEpochs = Math.ceil(
-      withdrawalsNumberInSweepCycle / MAX_WITHDRAWALS_PER_PAYLOAD / SLOTS_PER_EPOCH,
+      withdrawalsNumberInSweepCycle / MAX_WITHDRAWALS_PER_PAYLOAD / this.genesisTimeService.getSlotsPerEpoch(),
     );
 
     const result = Math.floor(fullSweepCycleInEpochs * 0.5);

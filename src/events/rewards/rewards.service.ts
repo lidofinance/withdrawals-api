@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { GenesisTimeService, SLOTS_PER_EPOCH } from '../../common/genesis-time';
+import { GenesisTimeService } from '../../common/genesis-time';
 import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { Lido, LIDO_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
 import { Interface } from 'ethers';
@@ -295,7 +295,9 @@ export class RewardsService {
       return {
         blockNumber: log.blockNumber,
         frames: BigNumber.from(parsedData.args.getValue('timeElapsed')).div(
-          this.genesisTimeService.getSecondsPerSlot() * SLOTS_PER_EPOCH * this.contractConfig.getEpochsPerFrame(),
+          this.genesisTimeService.getSecondsPerSlot() *
+            this.genesisTimeService.getSlotsPerEpoch() *
+            this.contractConfig.getEpochsPerFrame(),
         ),
       };
     });

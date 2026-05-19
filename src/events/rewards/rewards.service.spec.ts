@@ -16,7 +16,7 @@ describe('RewardsService.getMinLastTotalRewardsPerFrame', () => {
       {} as any,
       {} as any,
       {} as any,
-      { getSecondsPerSlot: jest.fn().mockReturnValue(12) } as any,
+      { getSecondsPerSlot: jest.fn().mockReturnValue(12), getSlotsPerEpoch: jest.fn().mockReturnValue(32) } as any,
     );
   });
 
