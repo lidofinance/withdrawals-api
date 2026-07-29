@@ -31,6 +31,7 @@ export class ConsensusClientService {
       'latest_withdrawals_root',
       'earliest_exit_epoch',
       'earliest_consolidation_epoch',
+      'builder_pending_withdrawals',
     ]);
 
     return result as BeaconStateSweepData;

@@ -2,7 +2,12 @@ import { CHAINS } from '@lido-nestjs/constants';
 
 export const ESTIMATE_ACCOUNT = '0x87c0e047F4e4D3e289A56a36570D4CB957A37Ef1';
 
-// fallback gas limits per 1 withdraw request
+// fallback gas limits per 1 withdraw request, measured under the pre-Amsterdam gas schedule.
+// Amsterdam vendors the gas-repricing tier (EIP-2780 base-cost cut; EIP-8038 cold-access /
+// storage-write / value-call increases), which moves the real cost of these storage-heavy
+// calls in both directions. A too-low fallback makes widget transactions run out of gas
+// whenever live estimateGas is unavailable — re-measure all three on a network running the
+// final Amsterdam client set and update before activation.
 export const WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT = 255350;
 export const WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT = 312626;
 export const WITHDRAWAL_QUEUE_CLAIM_GAS_LIMIT_DEFAULT = 89818;

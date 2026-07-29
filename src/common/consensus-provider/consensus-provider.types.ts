@@ -22,6 +22,8 @@ export interface BeaconStateSweepData {
   latest_withdrawals_root?: string;
   earliest_exit_epoch?: string;
   earliest_consolidation_epoch?: string;
+  // Gloas (EIP-7732) only — absent on pre-fork states
+  builder_pending_withdrawals?: unknown[];
 }
 
 /**

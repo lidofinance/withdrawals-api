@@ -15,6 +15,7 @@ import { WaitingTimeCalculationType } from './waiting-time.types';
 import { PrometheusService } from '../common/prometheus';
 import { BlockStateCacheService } from './block-state-cache.service';
 import { SpecService } from '../common/spec';
+import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
 
 jest.mock('common/config', () => ({}));
 
@@ -540,6 +541,50 @@ describe('WaitingTimeService', () => {
       );
 
       expect(frameWithExact8080Routing).toBeLessThan(frameWithExitQueueOnly);
+    });
+  });
+
+  // earliest_exit_epoch / earliest_consolidation_epoch only advance when the CL processes a
+  // request of that kind, so idle queues leave them in the past. The spec compares them
+  // clamped to compute_activation_exit_epoch(current_epoch); anchoring on raw past values
+  // shortens estimates (over-promising — the unsafe direction for this service).
+  describe('getExitRoutingState (stale queue-tail epochs)', () => {
+    const activationExitEpoch = currentEpoch + MAX_SEED_LOOKAHEAD + 1;
+
+    beforeEach(() => {
+      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
+    });
+
+    it('does not route through consolidation when both queue tails are in the past', () => {
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('100');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('50');
+
+      const routing = (service as any).getExitRoutingState('312321');
+
+      // clamped, both tails collapse to activationExitEpoch — no consolidation advantage
+      expect(routing.routeStartEpoch).toBe('312321');
+      expect(routing.effectiveExitChurnLimit).toBe(8);
+    });
+
+    it('anchors consolidation routing at the activation-exit epoch when the consolidation tail is stale', () => {
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('50');
+
+      const routing = (service as any).getExitRoutingState('312321');
+
+      expect(routing.routeStartEpoch).toBe(activationExitEpoch.toString());
+      expect(routing.effectiveExitChurnLimit).toBe(Math.floor((17 * 3) / 2));
+    });
+
+    it('keeps the consolidation tail as the anchor when both tails are in the future', () => {
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
+
+      const routing = (service as any).getExitRoutingState('312321');
+
+      expect(routing.routeStartEpoch).toBe('312000');
+      expect(routing.effectiveExitChurnLimit).toBe(Math.floor((17 * 3) / 2));
     });
   });
 });
