@@ -519,16 +519,23 @@ export class WaitingTimeService {
     const earliestConsolidationEpoch = this.validators.getEarliestConsolidationEpoch();
     const consolidationChurnLimit = this.validators.getConsolidationChurnLimit();
 
-    if (
-      earliestExitEpoch &&
-      earliestConsolidationEpoch &&
-      consolidationChurnLimit > 0 &&
-      BigNumber.from(earliestExitEpoch).gt(BigNumber.from(earliestConsolidationEpoch))
-    ) {
-      return {
-        routeStartEpoch: earliestConsolidationEpoch,
-        effectiveExitChurnLimit: Math.floor((consolidationChurnLimit * 3) / 2),
-      };
+    // earliest_exit_epoch / earliest_consolidation_epoch only advance when the CL processes
+    // a request of that kind, so an idle queue leaves them arbitrarily far in the past. The
+    // spec reads them clamped — compute_(exit|consolidation)_epoch_and_update_churn starts
+    // with max(state.earliest_*_epoch, compute_activation_exit_epoch(current_epoch)) — and
+    // comparing or anchoring on the raw values under-estimates finalization (over-promising).
+    const activationExitEpoch = currentEpoch + MAX_SEED_LOOKAHEAD + 1;
+
+    if (earliestExitEpoch && earliestConsolidationEpoch && consolidationChurnLimit > 0) {
+      const effectiveExitEpoch = Math.max(Number(earliestExitEpoch), activationExitEpoch);
+      const effectiveConsolidationEpoch = Math.max(Number(earliestConsolidationEpoch), activationExitEpoch);
+
+      if (effectiveExitEpoch > effectiveConsolidationEpoch) {
+        return {
+          routeStartEpoch: effectiveConsolidationEpoch.toString(),
+          effectiveExitChurnLimit: Math.floor((consolidationChurnLimit * 3) / 2),
+        };
+      }
     }
 
     return {

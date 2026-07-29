@@ -167,8 +167,13 @@ export class ValidatorsService {
         );
         this.logMemoryUsage('validators loaded from CL', { validatorsCount: indexedValidators.length });
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+        const state = await this.consensusClientService.getStateSweepData('head');
 
-        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(
+          indexedValidators,
+          currentEpoch,
+          state.builder_pending_withdrawals?.length ?? 0,
+        );
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
         const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
 
@@ -208,7 +213,6 @@ export class ValidatorsService {
         this.validatorsStorageService.setConsolidationChurnLimit(
           getConsolidationChurnLimit(totalActiveBalance).toNumber(),
         );
-        const state = await this.consensusClientService.getStateSweepData('head');
         this.validatorsStorageService.setEarliestExitEpoch(state.earliest_exit_epoch ?? null);
         this.validatorsStorageService.setEarliestConsolidationEpoch(state.earliest_consolidation_epoch ?? null);
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
