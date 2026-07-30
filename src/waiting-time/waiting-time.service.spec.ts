@@ -14,8 +14,6 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { WaitingTimeCalculationType } from './waiting-time.types';
 import { PrometheusService } from '../common/prometheus';
 import { BlockStateCacheService } from './block-state-cache.service';
-import { SpecService } from '../common/spec';
-import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
 
 jest.mock('common/config', () => ({}));
 
@@ -27,7 +25,6 @@ describe('WaitingTimeService', () => {
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
   let queueInfoStorageService: QueueInfoStorageService;
-  let specService: SpecService;
 
   // constants
   const genesisTime = 1606824023;
@@ -105,15 +102,7 @@ describe('WaitingTimeService', () => {
             getFrameBalances: jest.fn(),
             getSweepMeanEpochs: jest.fn(),
             getMaxExitEpoch: jest.fn(),
-            getEarliestExitEpoch: jest.fn(),
-            getEarliestConsolidationEpoch: jest.fn(),
             getLastUpdate: jest.fn(),
-          },
-        },
-        {
-          provide: SpecService,
-          useValue: {
-            isGlamsterdamReleasedAtEpoch: jest.fn(),
           },
         },
         {
@@ -147,7 +136,6 @@ describe('WaitingTimeService', () => {
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
     queueInfoStorageService = moduleRef.get<QueueInfoStorageService>(QueueInfoStorageService);
-    specService = moduleRef.get<SpecService>(SpecService);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
@@ -173,11 +161,8 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
     jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('312321');
-    jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue(null);
-    jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue(null);
     jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
     jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);
-    jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
   });
 
@@ -498,93 +483,6 @@ describe('WaitingTimeService', () => {
       const daysWithPost8061ExitChurn = service.calculateRequestTimeSimple(largeUnfinalizedETH);
 
       expect(daysWithPost8061ExitChurn).toBeLessThan(daysWithOldCappedStyleChurn);
-    });
-
-    it('uses consolidation queue routing when Glamsterdam is active and consolidation is earlier', () => {
-      const largeUnfinalizedETH = BigNumber.from('3200000000000000000000000'); // 3.2M ETH
-
-      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
-      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
-      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
-      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
-
-      const daysWithExact8080Routing = service.calculateRequestTimeSimple(largeUnfinalizedETH);
-
-      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
-      const daysWithExitQueueOnly = service.calculateRequestTimeSimple(largeUnfinalizedETH);
-
-      expect(daysWithExact8080Routing).toBeLessThan(daysWithExitQueueOnly);
-    });
-  });
-
-  describe('calculateFrameExitValidatorsCaseWithVEBO', () => {
-    it('uses consolidation queue routing when Glamsterdam is active and consolidation is earlier', async () => {
-      const unfinalizedETH = BigNumber.from('100000007748958196602737138');
-      const rewardsAvailableForWithdrawals = BigNumber.from(0);
-
-      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
-      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
-      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
-      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
-
-      const frameWithExact8080Routing = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
-        unfinalizedETH,
-        '312321',
-        rewardsAvailableForWithdrawals,
-      );
-
-      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
-      const frameWithExitQueueOnly = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
-        unfinalizedETH,
-        '312321',
-        rewardsAvailableForWithdrawals,
-      );
-
-      expect(frameWithExact8080Routing).toBeLessThan(frameWithExitQueueOnly);
-    });
-  });
-
-  // earliest_exit_epoch / earliest_consolidation_epoch only advance when the CL processes a
-  // request of that kind, so idle queues leave them in the past. The spec compares them
-  // clamped to compute_activation_exit_epoch(current_epoch); anchoring on raw past values
-  // shortens estimates (over-promising — the unsafe direction for this service).
-  describe('getExitRoutingState (stale queue-tail epochs)', () => {
-    const activationExitEpoch = currentEpoch + MAX_SEED_LOOKAHEAD + 1;
-
-    beforeEach(() => {
-      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
-      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
-    });
-
-    it('does not route through consolidation when both queue tails are in the past', () => {
-      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('100');
-      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('50');
-
-      const routing = (service as any).getExitRoutingState('312321');
-
-      // clamped, both tails collapse to activationExitEpoch — no consolidation advantage
-      expect(routing.routeStartEpoch).toBe('312321');
-      expect(routing.effectiveExitChurnLimit).toBe(8);
-    });
-
-    it('anchors consolidation routing at the activation-exit epoch when the consolidation tail is stale', () => {
-      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
-      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('50');
-
-      const routing = (service as any).getExitRoutingState('312321');
-
-      expect(routing.routeStartEpoch).toBe(activationExitEpoch.toString());
-      expect(routing.effectiveExitChurnLimit).toBe(Math.floor((17 * 3) / 2));
-    });
-
-    it('keeps the consolidation tail as the anchor when both tails are in the future', () => {
-      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
-      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
-
-      const routing = (service as any).getExitRoutingState('312321');
-
-      expect(routing.routeStartEpoch).toBe('312000');
-      expect(routing.effectiveExitChurnLimit).toBe(Math.floor((17 * 3) / 2));
     });
   });
 });

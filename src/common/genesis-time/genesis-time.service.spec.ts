@@ -216,12 +216,31 @@ describe('GenesisTimeService', () => {
         genesis_fork_version: STUB_GENESIS_FORK_VERSION,
       },
     });
-    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({ data: { SECONDS_PER_SLOT: '6', SLOTS_PER_EPOCH: '16' } } as any);
+    jest
+      .spyOn(consensusProvider, 'getSpec')
+      .mockResolvedValue({ data: { SECONDS_PER_SLOT: '6', SLOTS_PER_EPOCH: '16' } } as any);
 
     await moduleRef.init();
 
     expect(service.getSecondsPerSlot()).toBe(6);
     expect(service.getSlotsPerEpoch()).toBe(16);
+  });
+
+  it('derives SECONDS_PER_SLOT from SLOT_DURATION_MS when the legacy field is dropped', async () => {
+    jest.spyOn(consensusProvider, 'getGenesis').mockResolvedValue({
+      data: {
+        genesis_time: '1606824023',
+        genesis_validators_root: STUB_GENESIS_VALIDATORS_ROOT,
+        genesis_fork_version: STUB_GENESIS_FORK_VERSION,
+      },
+    });
+    jest.spyOn(consensusProvider, 'getSpec').mockResolvedValue({
+      data: { SLOT_DURATION_MS: '6000', SLOTS_PER_EPOCH: '32' },
+    } as any);
+
+    await moduleRef.init();
+
+    expect(service.getSecondsPerSlot()).toBe(6);
   });
 
   it('falls back to default timing values when consensus spec fetch fails', async () => {

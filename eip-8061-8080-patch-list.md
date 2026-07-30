@@ -27,13 +27,15 @@ Relevant tests:
 
 ## EIP-8080
 
-Detailed TODO moved here:
-- [eip-8080-todo.md](eip-8080-todo.md)
+**Declined for Inclusion in Glamsterdam** per Hardfork Meta [EIP-7773](https://eips.ethereum.org/EIPS/eip-7773).
 
-Most relevant paragraphs in that file:
-- [Scope](eip-8080-todo.md#scope)
-- [Recommended App Strategy](eip-8080-todo.md#recommended-app-strategy)
-- [Phase 1: Heuristic Support](eip-8080-todo.md#phase-1-heuristic-support)
-- [Code Changes](eip-8080-todo.md#code-changes)
-- [Tests](eip-8080-todo.md#tests)
-- [Phase 2: More Exact Support](eip-8080-todo.md#phase-2-more-exact-support)
+The consolidation-queue exit-routing implementation was removed: modelling behavior the
+chain will not have would shorten waiting-time estimates after the fork. The EIP-8061
+churn split (`exitChurnLimit` / `consolidationChurnLimit`) stays — it is part of the fork.
+
+If the EIP returns in a later fork, re-implement from its final pseudocode: the routing
+replaces both the churn budget (`floor(3 × consolidationChurnLimit / 2)`) and the anchor
+epoch, and the beacon-state queue tails (`earliest_exit_epoch` /
+`earliest_consolidation_epoch`) must be clamped to
+`compute_activation_exit_epoch(current_epoch)` before use — the raw fields go stale while
+the queues are idle.
