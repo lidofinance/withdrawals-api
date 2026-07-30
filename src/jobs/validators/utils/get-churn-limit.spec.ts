@@ -1,5 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
 import { getExitChurnLimit, getExitChurnLimitGwei, getConsolidationChurnLimit } from './get-churn-limit';
+import { MAINNET_CHURN_SPEC_PARAMS } from '../../../common/spec/churn-spec-params';
 
 describe('getExitChurnLimit', () => {
   it('keeps the minimum churn floor for small active balance', () => {
@@ -25,9 +26,22 @@ describe('getExitChurnLimit', () => {
     expect(getExitChurnLimitGwei(totalActiveBalanceGwei, true).toString()).toBe('1098632812500');
   });
 
-  it('returns a separate consolidation churn estimate for future EIP-8080 use', () => {
+  it('returns a separate consolidation churn estimate (EIP-8061 split)', () => {
     const totalActiveBalanceGwei = BigNumber.from('36000000000000000'); // 36M ETH in Gwei
 
     expect(getConsolidationChurnLimit(totalActiveBalanceGwei).toNumber()).toBe(17);
+  });
+
+  it('honors spec-provided quotient overrides (devnet configs)', () => {
+    const totalActiveBalanceGwei = BigNumber.from('32000000000').mul(100_000); // 100k validators
+
+    // glamsterdam devnet-8 style override: quotient 128 instead of 32768
+    const devnetParams = {
+      ...MAINNET_CHURN_SPEC_PARAMS,
+      churnLimitQuotientGloas: BigNumber.from(128),
+    };
+
+    expect(getExitChurnLimit(totalActiveBalanceGwei, true, devnetParams).toNumber()).toBe(781); // 100k/128
+    expect(getExitChurnLimit(totalActiveBalanceGwei, true).toNumber()).toBe(4); // mainnet quotient → floor
   });
 });

@@ -130,13 +130,32 @@ export class GenesisTimeService implements OnModuleInit {
   protected async initTimingValues() {
     try {
       const spec = await this.consensusService.getSpec();
-      this.secondsPerSlot = this.parseSpecTimingValue(spec.data.SECONDS_PER_SLOT, SECONDS_PER_SLOT, 'SECONDS_PER_SLOT');
+      this.secondsPerSlot = this.parseSecondsPerSlot(spec.data);
       this.slotsPerEpoch = this.parseSpecTimingValue(spec.data.SLOTS_PER_EPOCH, SLOTS_PER_EPOCH, 'SLOTS_PER_EPOCH');
     } catch (error) {
       this.logger.warn(`Failed to load timing values from consensus spec: ${error.message}`);
       this.secondsPerSlot = SECONDS_PER_SLOT;
       this.slotsPerEpoch = SLOTS_PER_EPOCH;
     }
+  }
+
+  // Gloas-era configs rename SECONDS_PER_SLOT to SLOT_DURATION_MS; clients keep the old
+  // field as a deprecated alias for now but may drop it in any release
+  protected parseSecondsPerSlot(specData: Record<string, unknown>): number {
+    const secondsPerSlot = Number(specData.SECONDS_PER_SLOT);
+    if (Number.isFinite(secondsPerSlot) && secondsPerSlot > 0) {
+      return secondsPerSlot;
+    }
+
+    const slotDurationMs = Number(specData.SLOT_DURATION_MS);
+    if (Number.isFinite(slotDurationMs) && slotDurationMs > 0) {
+      return slotDurationMs / 1000;
+    }
+
+    this.logger.warn(
+      `Failed to parse SECONDS_PER_SLOT / SLOT_DURATION_MS from consensus spec, fallback to ${SECONDS_PER_SLOT}`,
+    );
+    return SECONDS_PER_SLOT;
   }
 
   protected parseSpecTimingValue(value: unknown, fallback: number, fieldName: string): number {

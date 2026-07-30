@@ -27,11 +27,8 @@ export class ConsensusClientService {
     const result = await processJsonStreamBeaconState(stream, [
       'slot',
       'next_withdrawal_validator_index',
-      'latest_full_slot',
-      'latest_withdrawals_root',
-      'earliest_exit_epoch',
-      'earliest_consolidation_epoch',
       'builder_pending_withdrawals',
+      'execution_payload_availability',
     ]);
 
     return result as BeaconStateSweepData;

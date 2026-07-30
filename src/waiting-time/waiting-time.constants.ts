@@ -1,7 +1,5 @@
 import { parseEther } from '@ethersproject/units';
 
-export const MIN_PER_EPOCH_CHURN_LIMIT = 4;
-
 // note: currently all lido validators continues holding 32 eth,
 // but after electra upgrade maximum in network increased to 2048 eth
 export const MIN_ACTIVATION_BALANCE = parseEther('32'); // ETH
