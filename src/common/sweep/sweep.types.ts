@@ -10,6 +10,5 @@ export interface WithdrawalSweepState {
   hasDeferredWithdrawals: boolean;
   blockedByDeferredSlots: number;
   stateSlot?: string;
-  latestFullSlot?: string;
   source: 'consensus' | 'execution';
 }

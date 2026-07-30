@@ -20,6 +20,7 @@ import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
+import { countUnavailablePayloadSlots } from '../../common/consensus-provider/utils/count-unavailable-payload-slots';
 import {
   BeaconStateSweepData,
   IndexedValidator,
@@ -142,8 +143,13 @@ export class ValidatorsService {
         });
         const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+        const state = await this.consensusClientService.getStateSweepData('head');
 
-        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(
+          indexedValidators,
+          currentEpoch,
+          state.builder_pending_withdrawals?.length ?? 0,
+        );
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
         const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
 
@@ -177,15 +183,13 @@ export class ValidatorsService {
         );
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
+        const churnSpecParams = this.specService.getChurnSpecParams();
         this.validatorsStorageService.setExitChurnLimit(
-          getExitChurnLimit(totalActiveBalance, isGlamsterdam).toNumber(),
+          getExitChurnLimit(totalActiveBalance, isGlamsterdam, churnSpecParams).toNumber(),
         );
         this.validatorsStorageService.setConsolidationChurnLimit(
-          getConsolidationChurnLimit(totalActiveBalance).toNumber(),
+          getConsolidationChurnLimit(totalActiveBalance, churnSpecParams).toNumber(),
         );
-        const state = await this.consensusClientService.getStateSweepData('head');
-        this.validatorsStorageService.setEarliestExitEpoch(state.earliest_exit_epoch ?? null);
-        this.validatorsStorageService.setEarliestConsolidationEpoch(state.earliest_consolidation_epoch ?? null);
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
         await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators, state);
@@ -327,10 +331,10 @@ export class ValidatorsService {
       throw new Error(`Consensus state is missing next_withdrawal_validator_index`);
     }
 
-    const blockedByDeferredSlots =
-      state.latest_full_slot !== undefined
-        ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
-        : 0;
+    const blockedByDeferredSlots = countUnavailablePayloadSlots(
+      Number(state.slot),
+      state.execution_payload_availability,
+    );
     const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
 
     const sweepState: WithdrawalSweepState = {
@@ -338,7 +342,6 @@ export class ValidatorsService {
       hasDeferredWithdrawals,
       blockedByDeferredSlots,
       stateSlot: state.slot,
-      latestFullSlot: state.latest_full_slot,
       source: 'consensus',
     };
 
@@ -348,7 +351,6 @@ export class ValidatorsService {
       hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
       blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
       stateSlot: sweepState.stateSlot,
-      latestFullSlot: sweepState.latestFullSlot,
     });
 
     return sweepState;

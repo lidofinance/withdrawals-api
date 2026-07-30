@@ -18,10 +18,9 @@ export interface PendingPartialWithdrawal {
 export interface BeaconStateSweepData {
   slot: string;
   next_withdrawal_validator_index?: string;
-  latest_full_slot?: string;
-  latest_withdrawals_root?: string;
-  earliest_exit_epoch?: string;
-  earliest_consolidation_epoch?: string;
+  // Gloas (EIP-7732) only — absent on pre-fork states
+  builder_pending_withdrawals?: unknown[];
+  execution_payload_availability?: string;
 }
 
 /**

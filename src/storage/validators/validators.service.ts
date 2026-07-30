@@ -11,8 +11,6 @@ export class ValidatorsStorageService {
   protected sweepMeanEpochs: number;
   protected exitChurnLimit: number;
   protected consolidationChurnLimit: number;
-  protected earliestExitEpoch: string | null;
-  protected earliestConsolidationEpoch: string | null;
   protected withdrawableLidoValidatorIds: string[] = [];
 
   /**
@@ -109,22 +107,6 @@ export class ValidatorsStorageService {
 
   public getConsolidationChurnLimit() {
     return this.consolidationChurnLimit;
-  }
-
-  public setEarliestExitEpoch(earliestExitEpoch: string | null) {
-    this.earliestExitEpoch = earliestExitEpoch;
-  }
-
-  public getEarliestExitEpoch() {
-    return this.earliestExitEpoch;
-  }
-
-  public setEarliestConsolidationEpoch(earliestConsolidationEpoch: string | null) {
-    this.earliestConsolidationEpoch = earliestConsolidationEpoch;
-  }
-
-  public getEarliestConsolidationEpoch() {
-    return this.earliestConsolidationEpoch;
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {

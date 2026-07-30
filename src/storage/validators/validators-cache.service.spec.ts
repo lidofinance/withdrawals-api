@@ -17,8 +17,6 @@ describe('ValidatorsCacheService', () => {
     setSweepMeanEpochs: jest.fn(),
     setExitChurnLimit: jest.fn(),
     setConsolidationChurnLimit: jest.fn(),
-    setEarliestExitEpoch: jest.fn(),
-    setEarliestConsolidationEpoch: jest.fn(),
     getActiveValidatorsCount: jest.fn().mockReturnValue(10),
     getMaxExitEpoch: jest.fn().mockReturnValue('123'),
     getLastUpdate: jest.fn().mockReturnValue(456),
@@ -26,8 +24,6 @@ describe('ValidatorsCacheService', () => {
     getSweepMeanEpochs: jest.fn().mockReturnValue(7),
     getExitChurnLimit: jest.fn().mockReturnValue(8),
     getConsolidationChurnLimit: jest.fn().mockReturnValue(4),
-    getEarliestExitEpoch: jest.fn().mockReturnValue('789'),
-    getEarliestConsolidationEpoch: jest.fn().mockReturnValue('654'),
   });
 
   it('hydrates legacy cache data without consolidation churn', () => {
@@ -53,20 +49,10 @@ describe('ValidatorsCacheService', () => {
     expect(validatorsStorage.setConsolidationChurnLimit).toHaveBeenCalledWith(4);
   });
 
-  it('hydrates current cache data with exit-routing epochs', () => {
-    const validatorsStorage = createValidatorsStorage();
-    const service = new ValidatorsCacheService(logger as any, validatorsStorage as any);
-
-    (service as any).hydrateStorageFromCacheData(['10', '123', '456', '{"1":"2"}', '7', '8', '4', '789', '654']);
-
-    expect(validatorsStorage.setEarliestExitEpoch).toHaveBeenCalledWith('789');
-    expect(validatorsStorage.setEarliestConsolidationEpoch).toHaveBeenCalledWith('654');
-  });
-
   it('serializes consolidation churn into the current cache format', () => {
     const validatorsStorage = createValidatorsStorage();
     const service = new ValidatorsCacheService(logger as any, validatorsStorage as any);
 
-    expect((service as any).getCacheData()).toEqual([10, '123', 456, '{"1":"2"}', 7, 8, 4, '789', '654']);
+    expect((service as any).getCacheData()).toEqual([10, '123', 456, '{"1":"2"}', 7, 8, 4]);
   });
 });
