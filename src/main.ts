@@ -82,6 +82,8 @@ async function bootstrap() {
 
   setupServiceUnavailableMiddleware(app, configService);
 
+  // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
+  // restarts are file-based (no signal path from the injector sidecar).
   app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT]);
   registerSecretsRotationRestart(app, logger);
 
