@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
+import { ShutdownSignal, ValidationPipe, VersioningType } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { SWAGGER_URL } from 'http/common/swagger';
 import { ConfigService } from 'common/config';
+import { registerSecretsRotationRestart } from 'common/shutdown';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
 import { useContainer } from 'class-validator';
@@ -31,7 +32,8 @@ async function bootstrap() {
   app.enableVersioning({ type: VersioningType.URI });
 
   // logger
-  app.useLogger(app.get(LOGGER_PROVIDER));
+  const logger = app.get(LOGGER_PROVIDER);
+  app.useLogger(logger);
 
   // sentry
   const mask = satanizer([...commonPatterns, ...secrets]);
@@ -79,6 +81,9 @@ async function bootstrap() {
   SwaggerModule.setup(SWAGGER_URL, app, swaggerDocument);
 
   setupServiceUnavailableMiddleware(app, configService);
+
+  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT]);
+  registerSecretsRotationRestart(app, logger);
 
   // app
   await app.listen(appPort, '0.0.0.0');
