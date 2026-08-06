@@ -29,6 +29,8 @@ export class ConsensusClientService {
       'next_withdrawal_validator_index',
       'latest_full_slot',
       'latest_withdrawals_root',
+      'earliest_exit_epoch',
+      'earliest_consolidation_epoch',
     ]);
 
     return result as BeaconStateSweepData;

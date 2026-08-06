@@ -20,6 +20,8 @@ export interface BeaconStateSweepData {
   next_withdrawal_validator_index?: string;
   latest_full_slot?: string;
   latest_withdrawals_root?: string;
+  earliest_exit_epoch?: string;
+  earliest_consolidation_epoch?: string;
 }
 
 /**

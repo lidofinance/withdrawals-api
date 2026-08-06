@@ -14,6 +14,7 @@ import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { WaitingTimeCalculationType } from './waiting-time.types';
 import { PrometheusService } from '../common/prometheus';
 import { BlockStateCacheService } from './block-state-cache.service';
+import { SpecService } from '../common/spec';
 
 jest.mock('common/config', () => ({}));
 
@@ -25,6 +26,7 @@ describe('WaitingTimeService', () => {
   let genesisTimeService: GenesisTimeService;
   let validatorsStorage: ValidatorsStorageService;
   let queueInfoStorageService: QueueInfoStorageService;
+  let specService: SpecService;
 
   // constants
   const genesisTime = 1606824023;
@@ -97,17 +99,28 @@ describe('WaitingTimeService', () => {
           provide: ValidatorsStorageService,
           useValue: {
             getActiveValidatorsCount: jest.fn(),
-            getChurnLimit: jest.fn(),
+            getExitChurnLimit: jest.fn(),
+            getConsolidationChurnLimit: jest.fn(),
             getFrameBalances: jest.fn(),
             getSweepMeanEpochs: jest.fn(),
             getMaxExitEpoch: jest.fn(),
+            getEarliestExitEpoch: jest.fn(),
+            getEarliestConsolidationEpoch: jest.fn(),
             getLastUpdate: jest.fn(),
+          },
+        },
+        {
+          provide: SpecService,
+          useValue: {
+            isGlamsterdamReleasedAtEpoch: jest.fn(),
           },
         },
         {
           provide: GenesisTimeService,
           useValue: {
             getCurrentEpoch: jest.fn(),
+            getSecondsPerSlot: jest.fn(),
+            getSlotsPerEpoch: jest.fn(),
             getFrameOfEpoch: jest.fn(),
             getFrameByTimestamp: jest.fn(),
             timeToWithdrawalFrame: jest.fn(),
@@ -133,6 +146,7 @@ describe('WaitingTimeService', () => {
     genesisTimeService = moduleRef.get<GenesisTimeService>(GenesisTimeService);
     validatorsStorage = moduleRef.get<ValidatorsStorageService>(ValidatorsStorageService);
     queueInfoStorageService = moduleRef.get<QueueInfoStorageService>(QueueInfoStorageService);
+    specService = moduleRef.get<SpecService>(SpecService);
 
     // mocks
     jest.spyOn(contractConfig, 'getInitialEpoch').mockReturnValue(initialEpoch);
@@ -145,6 +159,8 @@ describe('WaitingTimeService', () => {
     jest.spyOn(contractConfig, 'getRequestTimestampMargin').mockReturnValue(7680000);
     jest.spyOn(contractConfig, 'getLastUpdate').mockReturnValue(1);
     jest.spyOn(genesisTimeService, 'getCurrentEpoch').mockReturnValue(currentEpoch);
+    jest.spyOn(genesisTimeService, 'getSecondsPerSlot').mockReturnValue(12);
+    jest.spyOn(genesisTimeService, 'getSlotsPerEpoch').mockReturnValue(32);
     jest.spyOn(genesisTimeService, 'getFrameOfEpoch').mockImplementation(getFrameOfEpochMock);
     jest.spyOn(genesisTimeService, 'getFrameByTimestamp').mockImplementation(getFrameByTimestampMock);
     jest.spyOn(genesisTimeService, 'timeToWithdrawalFrame').mockImplementation(timeToWithdrawalFrameMock);
@@ -152,10 +168,15 @@ describe('WaitingTimeService', () => {
     jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(10000);
     jest.spyOn(validatorsStorage, 'getFrameBalances').mockReturnValue({});
     jest.spyOn(validatorsStorage, 'getSweepMeanEpochs').mockReturnValue(1041);
-    jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+    jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
+    jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
     jest.spyOn(validatorsStorage, 'getLastUpdate').mockReturnValue(1);
+    jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('312321');
+    jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue(null);
+    jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue(null);
     jest.spyOn(queueInfoStorageService, 'getRequests').mockReturnValue([]);
     jest.spyOn(queueInfoStorageService, 'getLastUpdate').mockReturnValue(1);
+    jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
     jest.spyOn(service, 'getFrameIsBunker').mockReturnValue(null);
   });
 
@@ -437,16 +458,16 @@ describe('WaitingTimeService', () => {
 
   // Site C in the research note: `calculateRequestTimeSimple` previously recomputed a Phase-0
   // count-based churn limit locally (`max(4, totalValidators / 65536)`), ignoring the
-  // post-Electra 256 ETH/epoch cap. At mainnet validator scale that yielded ~768 ETH/epoch and
-  // estimates ~3× too short. Fix delegates to `validators.getChurnLimit()` which is balance-
-  // based and capped per spec.
+  // balance-based exit churn used by the protocol. At mainnet validator scale that yielded
+  // ~768 ETH/epoch and estimates ~3× too short. Fix delegates to `validators.getExitChurnLimit()`,
+  // which is fork-gated and uses the correct balance-based rule for the current chain state.
   describe('calculateRequestTimeSimple (Site C — post-Electra churn delegation)', () => {
     it(`uses balance-based churn from storage; estimate is longer than the pre-fix Phase-0 formula at mainnet scale`, () => {
       // mainnet-scale inputs: ~1.6M active validators (the pre-fix formula would have
-      // computed churnLimit = 24 from this); storage's getChurnLimit returns 8 because
+      // computed churnLimit = 24 from this); storage's getExitChurnLimit returns 8 because
       // 256 ETH/epoch / 32 ETH = 8 (post-Electra cap)
       jest.spyOn(validatorsStorage, 'getActiveValidatorsCount').mockReturnValue(1_600_000);
-      jest.spyOn(validatorsStorage, 'getChurnLimit').mockReturnValue(8);
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
       // anchor maxExitEpoch at currentEpoch + MAX_SEED_LOOKAHEAD + 1 floor (= 252030)
       jest.spyOn(validatorsStorage, 'getMaxExitEpoch').mockReturnValue('252030');
 
@@ -462,6 +483,63 @@ describe('WaitingTimeService', () => {
       // pre-fix at the same inputs would have computed churnLimit = 24 from
       // getActiveValidatorsCount = 1.6M, denominator = 32 * 24 = 768 ETH/epoch (above the
       // real 256 ETH/epoch cap), and returned 10 days — over-promising.
+    });
+  });
+
+  describe('calculateRequestTimeSimple', () => {
+    it('uses higher post-8061 exit churn for large queues instead of the old capped assumption', () => {
+      const largeUnfinalizedETH = BigNumber.from('3200000000000000000000000'); // 3.2M ETH
+
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(8);
+      const daysWithOldCappedStyleChurn = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      jest.spyOn(validatorsStorage, 'getExitChurnLimit').mockReturnValue(34);
+      const daysWithPost8061ExitChurn = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      expect(daysWithPost8061ExitChurn).toBeLessThan(daysWithOldCappedStyleChurn);
+    });
+
+    it('uses consolidation queue routing when Glamsterdam is active and consolidation is earlier', () => {
+      const largeUnfinalizedETH = BigNumber.from('3200000000000000000000000'); // 3.2M ETH
+
+      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
+
+      const daysWithExact8080Routing = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
+      const daysWithExitQueueOnly = service.calculateRequestTimeSimple(largeUnfinalizedETH);
+
+      expect(daysWithExact8080Routing).toBeLessThan(daysWithExitQueueOnly);
+    });
+  });
+
+  describe('calculateFrameExitValidatorsCaseWithVEBO', () => {
+    it('uses consolidation queue routing when Glamsterdam is active and consolidation is earlier', async () => {
+      const unfinalizedETH = BigNumber.from('100000007748958196602737138');
+      const rewardsAvailableForWithdrawals = BigNumber.from(0);
+
+      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(true);
+      jest.spyOn(validatorsStorage, 'getEarliestExitEpoch').mockReturnValue('312321');
+      jest.spyOn(validatorsStorage, 'getEarliestConsolidationEpoch').mockReturnValue('312000');
+      jest.spyOn(validatorsStorage, 'getConsolidationChurnLimit').mockReturnValue(17);
+
+      const frameWithExact8080Routing = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
+        unfinalizedETH,
+        '312321',
+        rewardsAvailableForWithdrawals,
+      );
+
+      jest.spyOn(specService, 'isGlamsterdamReleasedAtEpoch').mockReturnValue(false);
+      const frameWithExitQueueOnly = await (service as any).calculateFrameExitValidatorsCaseWithVEBO(
+        unfinalizedETH,
+        '312321',
+        rewardsAvailableForWithdrawals,
+      );
+
+      expect(frameWithExact8080Routing).toBeLessThan(frameWithExitQueueOnly);
     });
   });
 });
