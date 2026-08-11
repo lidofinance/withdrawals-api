@@ -248,51 +248,57 @@ export class ValidatorsService {
       async () => {
         this.logger.log('Start update lido withdrawable validators', { service: ValidatorsService.SERVICE_LOG_NAME });
 
-        const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
-        const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
-        const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
-        const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-        const now = Date.now();
-        const frameBalances = {};
-        const withdrawalSweepState = await this.getWithdrawalSweepState();
+        try {
+          const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
+          const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
+          const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
+          const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+          const now = Date.now();
+          const frameBalances = {};
+          const withdrawalSweepState = await this.getWithdrawalSweepState();
 
-        const batchSize = 20;
-        for (let i = 0; i < validatorIds.length; i += batchSize) {
-          const batch = validatorIds.slice(i, i + batchSize);
+          const batchSize = 20;
+          for (let i = 0; i < validatorIds.length; i += batchSize) {
+            const batch = validatorIds.slice(i, i + batchSize);
 
-          const stateValidators = await this.consensusProviderService.getStateValidators({
-            stateId: 'head',
-            id: batch,
-          });
-
-          for (let j = 0; j < batch.length; j++) {
-            const stateValidator = stateValidators.data[j];
-
-            const withdrawableEpoch = +stateValidator.validator.withdrawable_epoch.toString();
-            const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp({
-              validatorIndex: BigNumber.from(stateValidator.index),
-              totalValidatorsCount,
-              activeValidatorCount,
-              sweepCursorValidatorIndex: withdrawalSweepState.sweepCursorValidatorIndex,
-              currentEpoch,
-              withdrawableEpoch,
-              blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
-              nowMs: now,
+            const stateValidators = await this.consensusProviderService.getStateValidators({
+              stateId: 'head',
+              id: batch,
             });
 
-            const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
-            const prevBalance = frameBalances[frame];
-            const balance = parseGwei(stateValidator.balance);
-            frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
-          }
-        }
+            for (let j = 0; j < batch.length; j++) {
+              const stateValidator = stateValidators.data[j];
 
-        this.validatorsStorageService.setFrameBalances(frameBalances);
-        this.logger.log('End update lido withdrawable validators', {
-          service: ValidatorsService.SERVICE_LOG_NAME,
-          frameBalances: stringifyFrameBalances(frameBalances),
-        });
-        this.logAnalyticsAboutFrameBalances();
+              const withdrawableEpoch = +stateValidator.validator.withdrawable_epoch.toString();
+              const estimatedWithdrawalTimestamp = getValidatorWithdrawalTimestamp({
+                validatorIndex: BigNumber.from(stateValidator.index),
+                totalValidatorsCount,
+                activeValidatorCount,
+                sweepCursorValidatorIndex: withdrawalSweepState.sweepCursorValidatorIndex,
+                currentEpoch,
+                withdrawableEpoch,
+                blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
+                nowMs: now,
+              });
+
+              const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
+              const prevBalance = frameBalances[frame];
+              const balance = parseGwei(stateValidator.balance);
+              frameBalances[frame] = prevBalance ? prevBalance.add(balance) : BigNumber.from(balance);
+            }
+          }
+
+          this.validatorsStorageService.setFrameBalances(frameBalances);
+          this.logger.log('End update lido withdrawable validators', {
+            service: ValidatorsService.SERVICE_LOG_NAME,
+            frameBalances: stringifyFrameBalances(frameBalances),
+          });
+          this.logAnalyticsAboutFrameBalances();
+        } catch (error) {
+          this.logger.error('Failed to process updateLidoWithdrawableValidators');
+          this.logger.fatal(error);
+          throw error;
+        }
       },
     );
   }
