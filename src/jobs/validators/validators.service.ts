@@ -297,7 +297,7 @@ export class ValidatorsService {
           this.logAnalyticsAboutFrameBalances();
         } catch (error) {
           this.logger.error('Failed to process updateLidoWithdrawableValidators');
-          this.logger.fatal(error);
+          this.logger.error(error);
           throw error;
         }
       },
