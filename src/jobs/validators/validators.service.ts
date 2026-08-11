@@ -265,6 +265,7 @@ export class ValidatorsService {
               stateId: 'head',
               id: batch,
             });
+            this.logger.debug(`[updateLidoWithdrawableValidators] stateValidators=${stateValidators}`);
 
             for (let j = 0; j < batch.length; j++) {
               const stateValidator = stateValidators.data[j];
@@ -305,6 +306,7 @@ export class ValidatorsService {
 
   protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
     const state = await this.consensusClientService.getStateSweepData(stateId);
+    this.logger.debug(`[getWithdrawalSweepState] state=${state}`);
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
     if (nextWithdrawalValidatorIndex === undefined) {
