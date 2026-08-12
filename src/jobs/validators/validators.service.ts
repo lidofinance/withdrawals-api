@@ -26,11 +26,19 @@ import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
 import { getChurnLimit } from './utils/get-churn-limit';
 
+type WithdrawalSweepStateCaller = 'updateValidators' | 'updateLidoWithdrawableValidators';
+
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
   private cronJobs: CronJob[] = [];
   private validatorUpdateCronTimes: string[] = [];
   protected static readonly UPDATE_DELAY_MS = 30 * 60 * 1000;
+  private withdrawalSweepStateCallCount = 0;
+  private activeWithdrawalSweepStateCalls = new Map<number, WithdrawalSweepStateCaller>();
+  private withdrawalSweepStateCallCountByCaller: Record<WithdrawalSweepStateCaller, number> = {
+    updateValidators: 0,
+    updateLidoWithdrawableValidators: 0,
+  };
 
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
@@ -210,7 +218,7 @@ export class ValidatorsService {
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
     const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
     const now = Date.now();
-    const withdrawalSweepState = await this.getWithdrawalSweepState();
+    const withdrawalSweepState = await this.getWithdrawalSweepState('updateValidators');
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
@@ -255,20 +263,16 @@ export class ValidatorsService {
           const currentEpoch = this.genesisTimeService.getCurrentEpoch();
           const now = Date.now();
           const frameBalances = {};
-          const withdrawalSweepState = await this.getWithdrawalSweepState();
+          const withdrawalSweepState = await this.getWithdrawalSweepState('updateLidoWithdrawableValidators');
 
           const batchSize = 20;
           for (let i = 0; i < validatorIds.length; i += batchSize) {
             const batch = validatorIds.slice(i, i + batchSize);
 
-            this.logger.debug(
-              `[updateLidoWithdrawableValidators] before this.consensusProviderService.getStateValidators id=${batch}`,
-            );
             const stateValidators = await this.consensusProviderService.getStateValidators({
               stateId: 'head',
               id: batch,
             });
-            this.logger.debug(`[updateLidoWithdrawableValidators] stateValidators=${stateValidators}`);
 
             for (let j = 0; j < batch.length; j++) {
               const stateValidator = stateValidators.data[j];
@@ -299,51 +303,107 @@ export class ValidatorsService {
           });
           this.logAnalyticsAboutFrameBalances();
         } catch (error) {
-          this.logger.error('Failed to process updateLidoWithdrawableValidators');
-          this.logger.error(error);
+          this.logger.error('Failed to process validators batch', {
+            service: ValidatorsService.SERVICE_LOG_NAME,
+            error,
+          });
+
           throw error;
         }
       },
     );
   }
 
-  protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
-    this.logger.debug(
-      `[getWithdrawalSweepState] before this.consensusClientService.getStateSweepData stateId=${stateId}`,
+  protected async getWithdrawalSweepState(
+    caller: WithdrawalSweepStateCaller,
+    stateId = 'head',
+  ): Promise<WithdrawalSweepState> {
+    const callId = ++this.withdrawalSweepStateCallCount;
+    const callerCallCount = ++this.withdrawalSweepStateCallCountByCaller[caller];
+    const startedAt = Date.now();
+    const parallelWith = Array.from(this.activeWithdrawalSweepStateCalls.entries()).map(
+      ([activeCallId, activeCaller]) => ({
+        callId: activeCallId,
+        caller: activeCaller,
+      }),
     );
-    const state = await this.consensusClientService.getStateSweepData(stateId);
-    this.logger.debug(`[getWithdrawalSweepState] state=${state}`);
-    const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
-    if (nextWithdrawalValidatorIndex === undefined) {
-      throw new Error(`Consensus state ${stateId} is missing next_withdrawal_validator_index`);
-    }
+    this.activeWithdrawalSweepStateCalls.set(callId, caller);
 
-    const blockedByDeferredSlots =
-      state.latest_full_slot !== undefined
-        ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
-        : 0;
-    const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
-
-    const sweepState: WithdrawalSweepState = {
-      sweepCursorValidatorIndex: BigNumber.from(nextWithdrawalValidatorIndex),
-      hasDeferredWithdrawals,
-      blockedByDeferredSlots,
-      stateSlot: state.slot,
-      latestFullSlot: state.latest_full_slot,
-      source: 'consensus',
-    };
-
-    this.logger.log('Using withdrawal sweep state from consensus', {
+    this.logger.log('[getWithdrawalSweepState] started', {
       service: ValidatorsService.SERVICE_LOG_NAME,
-      sweepCursorValidatorIndex: sweepState.sweepCursorValidatorIndex.toString(),
-      hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
-      blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
-      stateSlot: sweepState.stateSlot,
-      latestFullSlot: sweepState.latestFullSlot,
+      caller,
+      callId,
+      callerCallCount,
+      totalCallCount: this.withdrawalSweepStateCallCount,
+      stateId,
+      activeCalls: this.activeWithdrawalSweepStateCalls.size,
+      isParallel: parallelWith.length > 0,
+      parallelWith,
     });
 
-    return sweepState;
+    try {
+      const state = await this.consensusClientService.getStateSweepData(stateId);
+      const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
+
+      if (nextWithdrawalValidatorIndex === undefined) {
+        throw new Error(`Consensus state ${stateId} is missing next_withdrawal_validator_index`);
+      }
+
+      const blockedByDeferredSlots =
+        state.latest_full_slot !== undefined
+          ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
+          : 0;
+      const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
+
+      const sweepState: WithdrawalSweepState = {
+        sweepCursorValidatorIndex: BigNumber.from(nextWithdrawalValidatorIndex),
+        hasDeferredWithdrawals,
+        blockedByDeferredSlots,
+        stateSlot: state.slot,
+        latestFullSlot: state.latest_full_slot,
+        source: 'consensus',
+      };
+
+      this.logger.log('[getWithdrawalSweepState] completed', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        caller,
+        callId,
+        callerCallCount,
+        totalCallCount: this.withdrawalSweepStateCallCount,
+        stateId,
+        durationMs: Date.now() - startedAt,
+        isParallel: parallelWith.length > 0,
+        parallelWith,
+        sweepCursorValidatorIndex: sweepState.sweepCursorValidatorIndex.toString(),
+        hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
+        blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
+        stateSlot: sweepState.stateSlot,
+        latestFullSlot: sweepState.latestFullSlot,
+      });
+
+      return sweepState;
+    } catch (error) {
+      this.logger.error(
+        `[getWithdrawalSweepState] failed caller=${caller} callId=${callId} callerCallCount=${callerCallCount} durationMs=${
+          Date.now() - startedAt
+        }`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      throw error;
+    } finally {
+      this.activeWithdrawalSweepStateCalls.delete(callId);
+
+      this.logger.debug('[getWithdrawalSweepState] finished', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        caller,
+        callId,
+        callerCallCount,
+        totalCallCount: this.withdrawalSweepStateCallCount,
+        activeCalls: this.activeWithdrawalSweepStateCalls.size,
+      });
+    }
   }
 
   protected logAnalyticsAboutFrameBalances() {
