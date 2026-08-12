@@ -28,6 +28,9 @@ import { getChurnLimit } from './utils/get-churn-limit';
 
 type WithdrawalSweepStateCaller = 'updateValidators' | 'updateLidoWithdrawableValidators';
 
+const GET_STATE_VALIDATORS_MAX_ATTEMPTS = 3;
+const GET_STATE_VALIDATORS_RETRY_DELAY_MS = 10_000;
+
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
   private cronJobs: CronJob[] = [];
@@ -140,10 +143,7 @@ export class ValidatorsService {
       async () => {
         this.logger.log('Start update validators', { service: ValidatorsService.SERVICE_LOG_NAME });
 
-        const stream = await this.consensusProviderService.getStateValidatorsStream({
-          stateId: 'head',
-        });
-        const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
+        const indexedValidators = await this.getStateValidatorsWithRetry('head');
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
@@ -312,6 +312,64 @@ export class ValidatorsService {
         }
       },
     );
+  }
+
+  protected async getStateValidatorsWithRetry(stateId: string): Promise<ResponseValidatorsData> {
+    for (let attempt = 1; attempt <= GET_STATE_VALIDATORS_MAX_ATTEMPTS; attempt++) {
+      const startedAt = Date.now();
+
+      this.logger.debug('[getStateValidatorsStream] attempt started', {
+        service: ValidatorsService.SERVICE_LOG_NAME,
+        stateId,
+        attempt,
+        maxAttempts: GET_STATE_VALIDATORS_MAX_ATTEMPTS,
+      });
+
+      try {
+        const stream = await this.consensusProviderService.getStateValidatorsStream({ stateId });
+        const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
+
+        this.logger.log('[getStateValidatorsStream] attempt completed', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          stateId,
+          attempt,
+          maxAttempts: GET_STATE_VALIDATORS_MAX_ATTEMPTS,
+          durationMs: Date.now() - startedAt,
+          validatorsCount: indexedValidators.length,
+        });
+
+        return indexedValidators;
+      } catch (error) {
+        const durationMs = Date.now() - startedAt;
+
+        this.logger.warn('[getStateValidatorsStream] attempt failed', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          stateId,
+          attempt,
+          maxAttempts: GET_STATE_VALIDATORS_MAX_ATTEMPTS,
+          durationMs,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        if (attempt === GET_STATE_VALIDATORS_MAX_ATTEMPTS) {
+          throw error;
+        }
+
+        const retryDelayMs = GET_STATE_VALIDATORS_RETRY_DELAY_MS * attempt;
+
+        this.logger.warn('[getStateValidatorsStream] retrying', {
+          service: ValidatorsService.SERVICE_LOG_NAME,
+          stateId,
+          attempt,
+          nextAttempt: attempt + 1,
+          retryDelayMs,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      }
+    }
+
+    throw new Error('Unreachable');
   }
 
   protected async getWithdrawalSweepState(
