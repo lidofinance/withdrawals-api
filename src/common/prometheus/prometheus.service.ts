@@ -62,6 +62,18 @@ export class PrometheusService {
     labelNames: ['result', 'status'],
   });
 
+  public clApiRetriesTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'cl_api_retries_total',
+    help: 'Number of CL API stream operation retries',
+    labelNames: ['operation'],
+  });
+
+  public clApiRetryExhaustedTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'cl_api_retry_exhausted_total',
+    help: 'Number of CL API stream operations that exhausted all retry attempts',
+    labelNames: ['operation'],
+  });
+
   public jobDuration = this.getOrCreateMetric('Histogram', {
     name: METRICS_PREFIX + 'job_duration_seconds',
     help: 'Job execution duration',
