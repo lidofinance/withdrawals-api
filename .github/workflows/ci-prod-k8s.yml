@@ -1,11 +1,10 @@
-name: [K8S] Build and push withdrawals-api to production
+name: "[K8S] Build and push withdrawals-api to production"
 
-run-name: [K8S] Build and push withdrawals-api:${{ github.event.release.tag_name }} to production
+run-name: "[K8S] Build and push withdrawals-api:${{ github.event.release.tag_name }} to production"
 
-# TODO: Uncomment once manual execution is no longer required
-#on:
-#  release:
-#    types: [released]
+on:
+  release:
+    types: [released]
 
 permissions:
   contents: read
