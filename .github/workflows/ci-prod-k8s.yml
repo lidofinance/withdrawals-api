@@ -1,0 +1,24 @@
+name: "[K8S] Build and push withdrawals-api to production"
+
+run-name: "[K8S] Build and push withdrawals-api:${{ github.event.release.tag_name }} to production"
+
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    uses: lidofinance/actions/.github/workflows/k8s-build-push-harbor.yml@c7b5b6c5d8013046347d728d748fa741eb214e28
+    with:
+      tag: ${{ github.event.release.tag_name }}
+      registry: registry.prod.k8s-prod.org
+      registry_username: ${{ vars.REGISTRY_USERNAME }}
+      image: team-si/withdrawals-api
+      environment: harbor_prod_release
+      # build_context: .
+      # dockerfile: Dockerfile
+    secrets:
+      registry_token: ${{ secrets.HARBOR_PROD_TOKEN }}
