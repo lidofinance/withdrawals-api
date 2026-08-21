@@ -2,7 +2,7 @@ import { getOrCreateMetric } from '@willsoto/nestjs-prometheus';
 import { Options, Metrics, Metric } from './interfaces';
 import { METRICS_PREFIX } from './prometheus.constants';
 import { RequestSourceType } from '../../http/request-time/headers/request-source-type';
-import { ENV_KEYS } from '../config';
+import { ENV_KEYS } from '../config/env.validation';
 
 export class PrometheusService {
   protected prefix = METRICS_PREFIX;

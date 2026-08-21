@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ConfigService } from 'common/config';
+import { LOGGER_PROVIDER, LoggerService } from '@lido-nestjs/logger';
+import { ConfigService } from 'common/config/config.service';
+import { PrometheusService } from 'common/prometheus/prometheus.service';
 import { sanitizeError } from 'common/errors';
-import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
-import { PrometheusService } from 'common/prometheus';
 
 @Injectable()
 export class ConsensusRetryService {
