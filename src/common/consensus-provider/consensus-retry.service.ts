@@ -27,7 +27,7 @@ export class ConsensusRetryService {
 
         this.prometheusService.clApiRetriesTotal.labels({ operation }).inc();
         this.logger.warn('Consensus stream operation failed, retrying', {
-          service: 'consensus',
+          service: 'consensus_retry_service',
           operation,
           attempt,
           nextAttempt: attempt + 1,
