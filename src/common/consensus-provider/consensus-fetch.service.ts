@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { LOGGER_PROVIDER, LoggerService } from '@lido-nestjs/logger';
 import { FetchModuleOptions, FetchService, RequestInfo } from '@lido-nestjs/fetch';
 import { MiddlewareService } from '@lido-nestjs/middleware';
 import { AbortController } from 'node-abort-controller';
@@ -8,7 +9,11 @@ import { CONSENSUS_REQUEST_TIMEOUT } from './consensus-provider.constants';
 
 @Injectable()
 export class ConsensusFetchService extends FetchService {
-  constructor(options: FetchModuleOptions, middlewareService: MiddlewareService<Promise<Response>>) {
+  constructor(
+    options: FetchModuleOptions,
+    middlewareService: MiddlewareService<Promise<Response>>,
+    @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
+  ) {
     super(options, middlewareService);
   }
 
@@ -23,6 +28,44 @@ export class ConsensusFetchService extends FetchService {
       controller.abort();
     }, CONSENSUS_REQUEST_TIMEOUT);
 
-    return super.request(url, { ...init, signal: signal as AbortSignal }, attempt);
+    const result = await super.request(
+      url,
+      {
+        ...init,
+        signal: signal as AbortSignal,
+      },
+      attempt,
+    );
+
+    const responseHeaders = Object.fromEntries(result.headers.entries());
+
+    this.logger.debug('Consensus request trace', {
+      requestUrl: String(url),
+      requestHeaders: init?.headers ?? {},
+      responseUrl: result.url, // safe here (logger removes secret api key)
+      responseStatus: result.status,
+      responseHeaders,
+    });
+
+    result.body.once('error', (error) => {
+      this.logger.warn('Consensus response stream error', {
+        requestUrl: String(url),
+        responseUrl: result.url, // safe here (logger removes secret api key)
+        responseStatus: result.status,
+        responseHeaders,
+        error,
+      });
+    });
+
+    result.body.once('end', () => {
+      this.logger.debug('Consensus response stream completed', {
+        requestUrl: String(url),
+        responseUrl: result.url, // safe here (logger removes secret api key)
+        responseStatus: result.status,
+        responseHeaders,
+      });
+    });
+
+    return result;
   }
 }
