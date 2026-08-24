@@ -48,7 +48,7 @@ export class ConsensusFetchService extends FetchService {
     });
 
     result.body.once('error', (error) => {
-      this.logger.warn('Consensus response stream error', {
+      this.logger.error('Consensus response stream error', {
         requestUrl: String(url),
         responseUrl: result.url, // safe here (logger removes secret api key)
         responseStatus: result.status,
