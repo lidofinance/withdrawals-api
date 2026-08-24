@@ -50,6 +50,7 @@ export class ConsensusFetchService extends FetchService {
     result.body.once('error', (error) => {
       this.logger.error('Consensus response stream error', {
         requestUrl: String(url),
+        requestHeaders: init?.headers ?? {},
         responseUrl: result.url, // safe here (logger removes secret api key)
         responseStatus: result.status,
         responseHeaders,
@@ -60,6 +61,7 @@ export class ConsensusFetchService extends FetchService {
     result.body.once('end', () => {
       this.logger.debug('Consensus response stream completed', {
         requestUrl: String(url),
+        requestHeaders: init?.headers ?? {},
         responseUrl: result.url, // safe here (logger removes secret api key)
         responseStatus: result.status,
         responseHeaders,
