@@ -99,7 +99,7 @@ describe('GenesisTimeService', () => {
       data: {} as any,
     });
 
-    await expect(moduleRef.init()).rejects.toEqual(new Error('Failed to get genesis time'));
+    await expect(service.onModuleInit()).rejects.toThrow('Failed to get genesis time');
   });
 
   it(`get current epoch`, async () => {
