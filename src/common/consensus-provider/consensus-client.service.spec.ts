@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { ConsensusClientService } from './consensus-client.service';
+import { ConsensusRetryService } from './consensus-retry.service';
 
 describe('ConsensusClientService', () => {
   let moduleRef: TestingModule;
@@ -16,6 +17,12 @@ describe('ConsensusClientService', () => {
           useValue: {
             fetch: jest.fn(),
             fetchStream: jest.fn(),
+          },
+        },
+        {
+          provide: ConsensusRetryService,
+          useValue: {
+            execute: jest.fn(),
           },
         },
       ],

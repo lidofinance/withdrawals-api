@@ -6,6 +6,7 @@ import { ConfigService } from 'common/config';
 import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
+import { ConsensusRetryService } from 'common/consensus-provider/consensus-retry.service';
 import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
@@ -43,6 +44,7 @@ export class ValidatorsService {
     protected readonly prometheusService: PrometheusService,
     protected readonly consensusProviderService: ConsensusProviderService,
     protected readonly consensusClientService: ConsensusClientService,
+    protected readonly consensusRetryService: ConsensusRetryService,
     protected readonly configService: ConfigService,
     protected readonly jobService: JobService,
     protected readonly validatorsStorageService: ValidatorsStorageService,
@@ -138,10 +140,15 @@ export class ValidatorsService {
       async () => {
         this.logger.log('Start update validators', { service: ValidatorsService.SERVICE_LOG_NAME });
 
-        const stream = await this.consensusProviderService.getStateValidatorsStream({
-          stateId: 'head',
-        });
-        const indexedValidators: ResponseValidatorsData = await processValidatorsStream(stream);
+        const indexedValidators = await this.consensusRetryService.execute<ResponseValidatorsData>(
+          'get_state_validators',
+          async () => {
+            const stream = await this.consensusProviderService.getStateValidatorsStream({
+              stateId: 'head',
+            });
+            return processValidatorsStream(stream);
+          },
+        );
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const state = await this.consensusClientService.getStateSweepData('head');
 

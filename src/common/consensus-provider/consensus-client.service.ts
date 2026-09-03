@@ -9,10 +9,14 @@ import {
 } from './consensus-provider.constants';
 import { ExecutionPayloadEnvelopeResponse } from './types/execution-payload-envelope-response';
 import { ExecutionPayload } from './types/execution-payload';
+import { ConsensusRetryService } from './consensus-retry.service';
 
 @Injectable()
 export class ConsensusClientService {
-  constructor(protected readonly consensusService: ConsensusProviderService) {}
+  constructor(
+    protected readonly consensusService: ConsensusProviderService,
+    protected readonly consensusRetryService: ConsensusRetryService,
+  ) {}
 
   public async getExecutionPayloadEnvelope(blockId: string): Promise<ExecutionPayload> {
     const result = await this.consensusService.fetch<ExecutionPayloadEnvelopeResponse>(
@@ -23,15 +27,19 @@ export class ConsensusClientService {
   }
 
   public async getStateSweepData(stateId: string): Promise<BeaconStateSweepData> {
-    const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
-    const result = await processJsonStreamBeaconState(stream, [
-      'slot',
-      'next_withdrawal_validator_index',
-      'builder_pending_withdrawals',
-      'execution_payload_availability',
-    ]);
+    return this.consensusRetryService.execute('get_state_sweep_data', async () => {
+      const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
+      const result = await processJsonStreamBeaconState(stream, [
+        'slot',
+        'next_withdrawal_validator_index',
+        'builder_pending_withdrawals',
+        'execution_payload_availability',
+        'latest_full_slot',
+        'latest_withdrawals_root',
+      ]);
 
-    return result as BeaconStateSweepData;
+      return result as BeaconStateSweepData;
+    });
   }
 
   public async getPendingPartialWithdrawals(stateId: string): Promise<PendingPartialWithdrawal[]> {

@@ -102,6 +102,18 @@ export class EnvironmentVariables {
   IS_SERVICE_UNAVAILABLE = false;
 
   @IsOptional()
+  @Transform(toNumber({ defaultValue: 5 }))
+  @IsNumber()
+  @Min(1)
+  CL_STREAM_RETRY_ATTEMPTS = 5;
+
+  @IsOptional()
+  @Transform(toNumber({ defaultValue: 10_000 }))
+  @IsNumber()
+  @Min(0)
+  CL_STREAM_RETRY_DELAY_MS = 10_000;
+
+  @IsOptional()
   @Transform(({ value }) => Number(value))
   @IsNumber()
   EL_RETRY_COUNT = 2;

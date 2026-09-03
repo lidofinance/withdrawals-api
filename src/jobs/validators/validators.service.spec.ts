@@ -35,6 +35,9 @@ describe('ValidatorsService.updateValidators', () => {
         builder_pending_withdrawals: [{}, {}],
       }),
     },
+    consensusRetry: {
+      execute: jest.fn(async (_operation, callback) => callback()),
+    },
     config: { get: jest.fn() },
     // mirrors JobService.wrapJob: errors are caught, never re-thrown
     jobService: {
@@ -85,6 +88,7 @@ describe('ValidatorsService.updateValidators', () => {
       mocks.prometheus as any,
       mocks.consensusProvider as any,
       mocks.consensusClient as any,
+      mocks.consensusRetry as any,
       mocks.config as any,
       mocks.jobService as any,
       mocks.storage as any,
