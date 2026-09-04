@@ -5,13 +5,12 @@ import { IsInt, IsNotEmpty, IsOptional, Min } from 'class-validator';
 export class NFTOptionsDto {
   @ApiProperty({
     type: 'string',
-    minimum: 0,
+    pattern: '^\\d+$', // minimum is 0,
     example: '25000000000000000000',
-    description: 'Requested token amount',
+    description: 'Requested token amount as BigInt',
     required: true,
   })
   @IsNotEmpty()
-  @Type(() => BigInt)
   readonly requested: string;
 
   @ApiProperty({
@@ -28,12 +27,11 @@ export class NFTOptionsDto {
   readonly created_at: number;
 
   @ApiPropertyOptional({
-    type: 'bigint',
+    type: 'string',
     minimum: 0,
     example: '25000000000000000000',
-    description: 'Claimable token amount',
+    description: 'Claimable token amount as BigInt',
   })
-  @Type(() => BigInt)
   @IsOptional()
   readonly finalized?: string;
 }

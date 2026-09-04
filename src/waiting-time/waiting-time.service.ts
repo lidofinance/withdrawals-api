@@ -33,7 +33,6 @@ import {
 import { toEth } from '../common/utils/to-eth';
 import { MAX_SEED_LOOKAHEAD } from '../jobs/validators';
 import { BlockStateCacheService } from './block-state-cache.service';
-import { SpecService } from '../common/spec';
 
 @Injectable()
 export class WaitingTimeService {
@@ -46,7 +45,6 @@ export class WaitingTimeService {
     protected readonly queueInfo: QueueInfoStorageService,
     protected readonly prometheusService: PrometheusService,
     protected readonly blockStateCache: BlockStateCacheService,
-    protected readonly specService: SpecService,
   ) {}
 
   // preparing all needed number for calculation withdrawal time
@@ -267,14 +265,14 @@ export class WaitingTimeService {
     latestEpoch: string,
     rewardsAvailableForWithdrawals: BigNumber,
   ): Promise<number | null> {
-    const exitRoutingState = this.getExitRoutingState(latestEpoch);
+    const exitChurnLimit = this.validators.getExitChurnLimit();
     const epochPerFrame = this.contractConfig.getEpochsPerFrame();
     const epochsPerFrameVEBO = this.contractConfig.getEpochsPerFrameVEBO();
     const rewardsPerEpoch = rewardsAvailableForWithdrawals.div(epochPerFrame);
 
     // ETH released by validator exits per epoch. Exit churn is stored in 32-ETH-equivalent
     // units, so multiplying by 32 ETH converts it back to wei throughput for the current fork.
-    const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(exitRoutingState.effectiveExitChurnLimit));
+    const exitChurnEthPerEpoch = MIN_ACTIVATION_BALANCE.mul(Math.floor(exitChurnLimit));
     const exitChurnEthPerVEBOFrame = exitChurnEthPerEpoch.mul(epochsPerFrameVEBO);
 
     // VEBO cap is governance-set in whole ETH per VEBO frame. Whichever is smaller — the
@@ -303,7 +301,7 @@ export class WaitingTimeService {
     const VEBOEpochs = VEBOFrames.mul(epochsPerFrameVEBO);
 
     const sweepingMean = this.validators.getSweepMeanEpochs();
-    const potentialExitEpoch = BigNumber.from(exitRoutingState.routeStartEpoch).add(VEBOEpochs).add(sweepingMean);
+    const potentialExitEpoch = BigNumber.from(latestEpoch).add(VEBOEpochs).add(sweepingMean);
 
     return this.genesisTimeService.getFrameOfEpoch(potentialExitEpoch.toNumber()) + 1;
   }
@@ -478,14 +476,14 @@ export class WaitingTimeService {
 
   public calculateRequestTimeSimple(unfinalizedETH: BigNumber): number {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-    const exitRoutingState = this.getExitRoutingState(this.getMaxExitEpoch().toString());
+    const maxExitEpoch = this.getMaxExitEpoch();
     // Exit churn is stored in 32-ETH-equivalent units. MIN_ACTIVATION_BALANCE × exitChurnLimit
     // converts that representation into ETH-per-epoch exit capacity in wei for the current fork.
-    const churnLimit = exitRoutingState.effectiveExitChurnLimit;
+    const churnLimit = this.validators.getExitChurnLimit();
 
     const lidoQueueInEpoch = unfinalizedETH.div(MIN_ACTIVATION_BALANCE.mul(Math.floor(churnLimit)));
     const sweepingMean = this.validators.getSweepMeanEpochs();
-    const potentialExitEpoch = BigNumber.from(exitRoutingState.routeStartEpoch).add(lidoQueueInEpoch).add(sweepingMean);
+    const potentialExitEpoch = BigNumber.from(maxExitEpoch).add(lidoQueueInEpoch).add(sweepingMean);
 
     const waitingTime = potentialExitEpoch
       .sub(currentEpoch)
@@ -502,38 +500,5 @@ export class WaitingTimeService {
     const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
     return Math.max(+maxExitEpoch, currentEpoch + MAX_SEED_LOOKAHEAD + 1);
-  }
-
-  protected getExitRoutingState(defaultExitEpoch: string) {
-    const exitChurnLimit = this.validators.getExitChurnLimit();
-    const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-
-    if (!this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch)) {
-      return {
-        routeStartEpoch: defaultExitEpoch,
-        effectiveExitChurnLimit: exitChurnLimit,
-      };
-    }
-
-    const earliestExitEpoch = this.validators.getEarliestExitEpoch();
-    const earliestConsolidationEpoch = this.validators.getEarliestConsolidationEpoch();
-    const consolidationChurnLimit = this.validators.getConsolidationChurnLimit();
-
-    if (
-      earliestExitEpoch &&
-      earliestConsolidationEpoch &&
-      consolidationChurnLimit > 0 &&
-      BigNumber.from(earliestExitEpoch).gt(BigNumber.from(earliestConsolidationEpoch))
-    ) {
-      return {
-        routeStartEpoch: earliestConsolidationEpoch,
-        effectiveExitChurnLimit: Math.floor((consolidationChurnLimit * 3) / 2),
-      };
-    }
-
-    return {
-      routeStartEpoch: defaultExitEpoch,
-      effectiveExitChurnLimit: exitChurnLimit,
-    };
   }
 }

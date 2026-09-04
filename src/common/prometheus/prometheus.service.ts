@@ -2,7 +2,8 @@ import { getOrCreateMetric } from '@willsoto/nestjs-prometheus';
 import { Options, Metrics, Metric } from './interfaces';
 import { METRICS_PREFIX } from './prometheus.constants';
 import { RequestSourceType } from '../../http/request-time/headers/request-source-type';
-import { ENV_KEYS } from '../config';
+// import directly to avoid loading ConfigModule and triggering env validation during tests
+import { ENV_KEYS } from '../config/env.validation';
 
 export class PrometheusService {
   protected prefix = METRICS_PREFIX;
@@ -60,6 +61,18 @@ export class PrometheusService {
     help: 'CL API request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
     labelNames: ['result', 'status'],
+  });
+
+  public clApiRetriesTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'cl_api_retries_total',
+    help: 'Number of CL API stream operation retries',
+    labelNames: ['operation'],
+  });
+
+  public clApiRetryExhaustedTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'cl_api_retry_exhausted_total',
+    help: 'Number of CL API stream operations that exhausted all retry attempts',
+    labelNames: ['operation'],
   });
 
   public jobDuration = this.getOrCreateMetric('Histogram', {
