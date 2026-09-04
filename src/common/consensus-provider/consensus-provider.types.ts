@@ -19,8 +19,20 @@ export interface BeaconStateSweepData {
   slot: string;
   next_withdrawal_validator_index?: string;
   // Gloas (EIP-7732) only — absent on pre-fork states
-  builder_pending_withdrawals?: unknown[];
+  builder_pending_withdrawals_count: number;
+  exited_builder_withdrawals_count: number;
   execution_payload_availability?: string;
+}
+
+export interface Builder {
+  balance: string;
+  withdrawable_epoch: string;
+}
+
+export interface IndexedBuilder {
+  index: string;
+  status: string;
+  builder: Builder;
 }
 
 /**
@@ -28,7 +40,11 @@ export interface BeaconStateSweepData {
  * https://github.com/ethereum/consensus-specs/blob/dev/specs/electra/beacon-chain.md#beaconstate
  * included only used properties
  */
-export interface BeaconState extends BeaconStateSweepData {
+export interface BeaconState {
+  slot: string;
+  next_withdrawal_validator_index?: string;
+  builder_pending_withdrawals?: unknown[];
+  execution_payload_availability?: string;
   pending_partial_withdrawals: PendingPartialWithdrawal[];
   validators: Validator[];
   balances: string[];

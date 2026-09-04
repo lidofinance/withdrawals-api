@@ -13,28 +13,23 @@ const defaultKeys = [
 ] as const;
 
 export async function processJsonStreamBeaconState(readableStream, keys: readonly string[] = defaultKeys) {
-  return new Promise((resolve, reject) => {
-    const pipeline = chain([
-      readableStream, // Incoming ReadableStream
-      parser(), // Parses JSON as a stream
-      pick({ filter: 'data' }),
-      // Discard unused fields before streamObject assembles their potentially large arrays.
-      filter({ filter: (path) => typeof path[0] === 'string' && keys.includes(path[0]) }),
-      streamObject(), // Streams key-value pairs { key, value }
-    ]);
+  const pipeline = chain([
+    readableStream,
+    parser(),
+    pick({ filter: 'data' }),
+    // Discard unused fields before assembling potentially large registry arrays.
+    filter({ filter: (path) => keys.includes(String(path[0])) }),
+    streamObject(),
+  ]);
+  const result = {} as BeaconState;
 
-    const result = {} as BeaconState;
-
-    pipeline.on('data', ({ key, value }) => {
-      if (keys.includes(key)) {
-        result[key] = value; // Store key-value pairs in an object
-      }
-    });
-
-    pipeline.on('end', () => {
-      resolve(result); // Resolve with the final object
-    });
-
-    pipeline.on('error', reject);
-  });
+  try {
+    for await (const { key, value } of pipeline) {
+      result[key] = value;
+    }
+    return result;
+  } finally {
+    pipeline.destroy();
+    pipeline.streams.forEach((stream) => stream.destroy());
+  }
 }
