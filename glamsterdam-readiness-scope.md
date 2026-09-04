@@ -17,7 +17,13 @@ Status checked against Plataberget / Glamsterdam Devnet-8 on 2026-09-03.
 
 ## To do
 
-- [ ] Re-measure the three WithdrawalQueue fallback gas limits after `EIP-2780`, `EIP-7708`, `EIP-7976`, `EIP-8037`, and `EIP-8038`.
+- [ ] Re-measure the two WithdrawalQueue request fallback gas limits after `EIP-2780`, `EIP-7708`, `EIP-7976`, `EIP-8037`, and `EIP-8038`.
+  - Prerequisite: obtain Glamsterdam-devnet addresses for `WithdrawalQueue`, `stETH`, and `wstETH`, plus a funded account that can produce valid permits for both tokens.
+  - Measure `requestWithdrawalsWithPermit` and `requestWithdrawalsWstETHWithPermit` with `requestCount` `1`, `2`, `16`, and `256` on a devnet running the final EL client set.
+  - Record `eth_estimateGas` and confirm the boundary cases with successful transactions using the proposed limit.
+  - For each method, choose a per-request constant that satisfies `fallback * requestCount >= measuredGas` for every successful scenario, with a safety margin.
+  - Update `WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT` and `WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT` in `src/http/estimate/estimate.constants.ts`; no `EstimateService` behavior change is expected.
+  - Record the devnet, EL client version, block number, inputs, measurements, and selected margin in the PR description.
 
 ## Out of scope
 
