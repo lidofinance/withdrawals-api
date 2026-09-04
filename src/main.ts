@@ -13,9 +13,14 @@ import { useContainer } from 'class-validator';
 import { setupServiceUnavailableMiddleware } from './common/middlewares/service-unavailable.middleware';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter({ trustProxy: true }), {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({ forceCloseConnections: true, trustProxy: true }),
+    {
+      bufferLogs: true,
+    },
+  );
+
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
@@ -80,7 +85,9 @@ async function bootstrap() {
 
   // TERM/INT are the orchestrator's normal stop signals; OpenBao secret-rotation
   // restarts are file-based (no signal path from the injector sidecar).
-  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT]);
+  app.enableShutdownHooks([ShutdownSignal.SIGTERM, ShutdownSignal.SIGINT], {
+    useProcessExit: true,
+  });
   registerSecretsRotationRestart(app, logger);
 
   // app
