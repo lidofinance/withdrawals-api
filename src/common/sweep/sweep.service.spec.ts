@@ -37,12 +37,14 @@ describe('SweepService', () => {
     await expect(service.getSweepDelayInEpochs(validators, currentEpoch)).resolves.toBe(16);
   });
 
-  it('lengthens the cycle by the Gloas builder payment queue running ahead of validators', async () => {
+  it('lengthens the cycle by Gloas builder payments and exited builders running ahead of validators', async () => {
     const consensusClientService = { getPendingPartialWithdrawals: jest.fn().mockResolvedValue([]) };
     const service = createService(consensusClientService);
 
-    // 16384 builder pending withdrawals double the entries in the shared budget
-    await expect(service.getSweepDelayInEpochs(validators, currentEpoch, 16384)).resolves.toBe(32);
+    // Together, 16384 builder withdrawals double the entries in the shared budget.
+    await expect(
+      service.getSweepDelayInEpochs(validators, currentEpoch, { pending: 8192, exited: 8192 }),
+    ).resolves.toBe(32);
   });
 
   it('treats an absent builder queue as empty', async () => {
@@ -50,7 +52,7 @@ describe('SweepService', () => {
     const service = createService(consensusClientService);
 
     const withDefault = await service.getSweepDelayInEpochs(validators, currentEpoch);
-    const withZero = await service.getSweepDelayInEpochs(validators, currentEpoch, 0);
+    const withZero = await service.getSweepDelayInEpochs(validators, currentEpoch, { pending: 0, exited: 0 });
 
     expect(withDefault).toBe(withZero);
   });

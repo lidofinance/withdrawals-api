@@ -19,7 +19,7 @@ import {
   MAX_WITHDRAWALS_PER_PAYLOAD,
   MIN_ACTIVATION_BALANCE,
 } from 'waiting-time/waiting-time.constants';
-import { Withdrawal } from './sweep.types';
+import { BuilderWithdrawalsStats, Withdrawal } from './sweep.types';
 
 @Injectable()
 export class SweepService {
@@ -34,14 +34,14 @@ export class SweepService {
   public async getSweepDelayInEpochs(
     indexedValidators: IndexedValidator[],
     currentEpoch: number,
-    builderPendingWithdrawalsNumber = 0,
+    builderWithdrawals: BuilderWithdrawalsStats = { pending: 0, exited: 0 },
   ) {
     const pendingPartialWithdrawals = await this.consensusClientService.getPendingPartialWithdrawals('head');
     return this.getSweepDelayInEpochsPostElectra(
       pendingPartialWithdrawals,
       indexedValidators,
       currentEpoch,
-      builderPendingWithdrawalsNumber,
+      builderWithdrawals,
     );
   }
 
@@ -49,13 +49,13 @@ export class SweepService {
     pendingPartialWithdrawals: PendingPartialWithdrawal[],
     indexedValidators: IndexedValidator[],
     epoch: number,
-    builderPendingWithdrawalsNumber: number,
+    builderWithdrawals: BuilderWithdrawalsStats,
   ): number {
     const withdrawalsNumberInSweepCycle = this.predictWithdrawalsNumberInSweepCycle(
       pendingPartialWithdrawals,
       indexedValidators,
       epoch,
-      builderPendingWithdrawalsNumber,
+      builderWithdrawals,
     );
     const fullSweepCycleInEpochs = Math.ceil(
       withdrawalsNumberInSweepCycle / MAX_WITHDRAWALS_PER_PAYLOAD / this.genesisTimeService.getSlotsPerEpoch(),
@@ -73,7 +73,7 @@ export class SweepService {
     pendingPartialWithdrawalsData: PendingPartialWithdrawal[],
     indexedValidators: IndexedValidator[],
     epoch: number,
-    builderPendingWithdrawalsNumber: number,
+    builderWithdrawals: BuilderWithdrawalsStats,
   ): number {
     const pendingPartialWithdrawals = this.getPendingPartialWithdrawals(
       pendingPartialWithdrawalsData,
@@ -100,13 +100,14 @@ export class SweepService {
       pendingPartialWithdrawalsMaxNumberInCycle,
     );
 
-    // Gloas (EIP-7732) get_expected_withdrawals runs 4 phases — builder payments, pending
-    // partials, exited-builder sweep, validator sweep — against the same per-payload budget,
-    // with builders ahead of validators. Phase 1 is mirrored here via the state's
-    // builder_pending_withdrawals queue (0 pre-fork: the field doesn't exist). Phase 3 is not
-    // modeled: the builder registry starts empty at the fork and the state carries no cheap
-    // exited-builder count; re-check the residual skew on a Gloas devnet.
-    return validatorsWithdrawalsNumber + pendingPartialWithdrawalsNumberInCycle + builderPendingWithdrawalsNumber;
+    // Gloas (EIP-7732) runs builder payments, pending partials, exited-builder sweep, and
+    // validator sweep against the same payload budget, with both builder phases first.
+    return (
+      validatorsWithdrawalsNumber +
+      pendingPartialWithdrawalsNumberInCycle +
+      builderWithdrawals.pending +
+      builderWithdrawals.exited
+    );
   }
 
   private getPendingPartialWithdrawals(

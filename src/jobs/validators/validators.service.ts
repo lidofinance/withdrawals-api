@@ -150,16 +150,14 @@ export class ValidatorsService {
           },
         );
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-        const state = await this.consensusClientService.getStateSweepData('head');
-
-        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(
-          indexedValidators,
-          currentEpoch,
-          state.builder_pending_withdrawals?.length ?? 0,
-        );
-        this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
         const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch, isGlamsterdam);
 
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch, {
+          pending: state.builder_pending_withdrawals_count,
+          exited: state.exited_builder_withdrawals_count,
+        });
+        this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
         let activeValidatorCount = 0;
         let maxExitEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
         let totalActiveBalance = BigNumber.from(0);
@@ -282,9 +280,10 @@ export class ValidatorsService {
         const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
         const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+        const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
         const now = Date.now();
         const frameBalances = {};
-        const state = await this.consensusClientService.getStateSweepData('head');
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch, isGlamsterdam);
 
         const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 

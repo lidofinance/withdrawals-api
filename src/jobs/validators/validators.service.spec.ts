@@ -32,7 +32,8 @@ describe('ValidatorsService.updateValidators', () => {
       getStateSweepData: jest.fn().mockResolvedValue({
         slot: '85206',
         next_withdrawal_validator_index: '148',
-        builder_pending_withdrawals: [{}, {}],
+        builder_pending_withdrawals_count: 2,
+        exited_builder_withdrawals_count: 1,
       }),
     },
     consensusRetry: {
@@ -103,14 +104,18 @@ describe('ValidatorsService.updateValidators', () => {
     jest.clearAllMocks();
   });
 
-  it('threads the builder queue length into the sweep estimate and updates storages', async () => {
+  it('threads builder payment and exited-builder counts into the sweep estimate', async () => {
     const mocks = createMocks();
     processValidatorsStream.mockResolvedValue([activeValidator]);
     const service = createService(mocks);
 
     await (service as any).updateValidators();
 
-    expect(mocks.sweep.getSweepDelayInEpochs).toHaveBeenCalledWith([activeValidator], 252025, 2);
+    expect(mocks.sweep.getSweepDelayInEpochs).toHaveBeenCalledWith([activeValidator], 252025, {
+      pending: 2,
+      exited: 1,
+    });
+    expect(mocks.consensusClient.getStateSweepData).toHaveBeenCalledWith('head', 252025, false);
     expect(mocks.storage.setSweepMeanEpochs).toHaveBeenCalledWith(7);
     expect(mocks.storage.setExitChurnLimit).toHaveBeenCalledWith(4);
     expect(mocks.storage.setConsolidationChurnLimit).toHaveBeenCalledWith(0);
