@@ -31,7 +31,7 @@ describe('BlockStateCacheService — depositsReserve handling', () => {
       getLidoSupportsDepositsReserve: jest.fn(),
     };
     rewardsService = { getVaultsBalance: jest.fn().mockResolvedValue(E18(50)) };
-    genesisTimeService = {};
+    genesisTimeService = { getSecondsPerSlot: jest.fn().mockReturnValue(12) };
     lidoExtensionReader = { getDepositsReserveAt: jest.fn() };
 
     service = new BlockStateCacheService(

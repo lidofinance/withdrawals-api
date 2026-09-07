@@ -41,3 +41,6 @@ lerna-debug.log*
 cache
 
 /src/common/contracts/generated
+
+ AGENTS.md
+ CLAUDE.md

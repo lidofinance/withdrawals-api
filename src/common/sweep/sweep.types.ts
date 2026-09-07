@@ -5,11 +5,15 @@ export interface Withdrawal {
   amount: BigNumber;
 }
 
+export interface BuilderWithdrawalsStats {
+  pending: number;
+  exited: number;
+}
+
 export interface WithdrawalSweepState {
   sweepCursorValidatorIndex: BigNumber;
   hasDeferredWithdrawals: boolean;
   blockedByDeferredSlots: number;
   stateSlot?: string;
-  latestFullSlot?: string;
   source: 'consensus' | 'execution';
 }

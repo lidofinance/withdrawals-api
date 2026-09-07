@@ -8,7 +8,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { CacheTTL } from '@nestjs/cache-manager';
-import { ApiHeader, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { HTTP_PATHS } from 'http/http.constants';
 
@@ -35,10 +35,15 @@ import { TrackRequestSourceInterceptor } from './interceptors/track-request-sour
 export class RequestTimeController {
   constructor(protected readonly requestTimeService: RequestTimeService) {}
 
+  /** @deprecated use v2 `/request-time/calculate` — v1 is scheduled for removal */
   @Version('1')
   @Get()
   @Throttle({ default: { limit: 30, ttl: 30000 } })
   @CacheTTL(10 * 1000)
+  @ApiOperation({
+    deprecated: true,
+    summary: 'Deprecated: use v2 /request-time/calculate. Scheduled for removal.',
+  })
   @ApiResponse({ status: HttpStatus.OK, type: RequestTimeDto })
   async requestTimeV1(@Query() requestTimeOptions: RequestTimeOptionsDto): Promise<RequestTimeDto | null> {
     return await this.requestTimeService.getRequestTime(requestTimeOptions);

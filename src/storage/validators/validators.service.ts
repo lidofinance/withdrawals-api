@@ -9,7 +9,8 @@ export class ValidatorsStorageService {
   protected lastUpdate: number;
   protected frameBalances: Record<string, BigNumber>;
   protected sweepMeanEpochs: number;
-  protected churnLimit: number;
+  protected exitChurnLimit: number;
+  protected consolidationChurnLimit: number;
   protected withdrawableLidoValidatorIds: string[] = [];
 
   /**
@@ -92,12 +93,20 @@ export class ValidatorsStorageService {
     return this.sweepMeanEpochs;
   }
 
-  public setChurnLimit(churnLimit: number) {
-    this.churnLimit = churnLimit;
+  public setExitChurnLimit(exitChurnLimit: number) {
+    this.exitChurnLimit = exitChurnLimit;
   }
 
-  public getChurnLimit() {
-    return this.churnLimit;
+  public getExitChurnLimit() {
+    return this.exitChurnLimit;
+  }
+
+  public setConsolidationChurnLimit(consolidationChurnLimit: number) {
+    this.consolidationChurnLimit = consolidationChurnLimit;
+  }
+
+  public getConsolidationChurnLimit() {
+    return this.consolidationChurnLimit;
   }
 
   public setWithdrawableLidoValidatorIds(withdrawableLidoValidators: string[]) {
