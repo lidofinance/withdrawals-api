@@ -50,6 +50,17 @@ $ yarn build
 $ yarn start:prod
 ```
 
+## Docker build
+
+```bash
+docker build -t withdrawals-api .
+```
+
+Dependency stages copy manifests and contract ABIs before installation so the existing
+TypeChain `postinstall` runs normally. The build stage copies generated contracts from
+`deps` and compiles the app. The final image uses a separate production-only dependency
+tree. Ordinary source edits reuse the install layers; manifest or ABI changes rebuild them.
+
 ## Health probes
 
 `GET /livez` returns 200 with `status: "ok"` and process uptime in seconds once the HTTP server is listening. It makes no
