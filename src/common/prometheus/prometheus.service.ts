@@ -63,6 +63,19 @@ export class PrometheusService {
     labelNames: ['result', 'status'],
   });
 
+  public outgoingApiRequestsTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'outgoing_api_requests_total',
+    help: 'Outgoing API requests by target and HTTP status; network_error means no response',
+    labelNames: ['target', 'status'],
+  });
+
+  public outgoingApiRequestDuration = this.getOrCreateMetric('Histogram', {
+    name: METRICS_PREFIX + 'outgoing_api_request_duration_seconds',
+    help: 'Outgoing API request duration including response body decoding',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
+    labelNames: ['target', 'status'],
+  });
+
   public clApiRetriesTotal = this.getOrCreateMetric('Counter', {
     name: METRICS_PREFIX + 'cl_api_retries_total',
     help: 'Number of CL API stream operation retries',

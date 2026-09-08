@@ -17,6 +17,10 @@ import { CacheControlHeadersData } from './cache.interface';
 export class CacheControlHeadersInterceptor implements NestInterceptor {
   constructor(protected readonly reflector: Reflector, protected readonly configService: ConfigService) {}
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+    if (context.switchToHttp().getResponse().getHeader('Cache-Control') === 'no-store') {
+      return next.handle();
+    }
+
     try {
       const ttlValueOrFactory = this.reflector.get(CACHE_TTL_METADATA, context.getHandler()) ?? null;
       const ttlMilliseconds = isFunction(ttlValueOrFactory) ? await ttlValueOrFactory(context) : ttlValueOrFactory;

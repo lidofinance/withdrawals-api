@@ -1,6 +1,7 @@
 import { Inject, LoggerService, Module, OnModuleInit } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health.controller';
+import { LivenessController } from './liveness.controller';
 import { ExecutionProviderHealthIndicator } from './execution-provider.indicator';
 import { ConsensusProviderIndicator } from './consensus-provider.indicator';
 import { GenesisTimeModule } from '../genesis-time';
@@ -8,7 +9,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 
 @Module({
   providers: [ExecutionProviderHealthIndicator, ConsensusProviderIndicator],
-  controllers: [HealthController],
+  controllers: [HealthController, LivenessController],
   imports: [TerminusModule, GenesisTimeModule],
 })
 export class HealthModule implements OnModuleInit {
