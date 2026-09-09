@@ -2,6 +2,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from '../../../common/logger';
 import { ConfigService } from '../../../common/config';
 import { PrometheusService } from '../../../common/prometheus/prometheus.service';
+import { APP_USER_AGENT } from '../../../app/app.constants';
 import { LidoKeysData } from './lido-keys.types';
 
 @Injectable()
@@ -31,6 +32,7 @@ export class LidoKeysClient implements OnModuleInit {
     try {
       const lidoKeysResponse = await fetch(url, {
         method: 'GET',
+        headers: { 'User-Agent': APP_USER_AGENT },
       });
       status = String(lidoKeysResponse.status);
       const lidoKeys: LidoKeysData = await lidoKeysResponse.json();

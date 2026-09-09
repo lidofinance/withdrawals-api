@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { ConfigService } from 'common/config';
 import { PrometheusService } from 'common/prometheus/prometheus.service';
+import { APP_USER_AGENT } from 'app/app.constants';
 import { LidoKeysClient } from './lido-keys.client';
 
 jest.mock('common/config', () => ({ ConfigService: class {} }));
@@ -60,7 +61,10 @@ describe('LidoKeysClient request metrics', () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify(data), { status: 200 }));
 
     await expect(client.getUsedKeys()).resolves.toEqual(data);
-    expect(fetchMock).toHaveBeenCalledWith('https://keys.example/v1/keys?used=true', { method: 'GET' });
+    expect(fetchMock).toHaveBeenCalledWith('https://keys.example/v1/keys?used=true', {
+      method: 'GET',
+      headers: { 'User-Agent': APP_USER_AGENT },
+    });
     await expectOneRequest('200');
   });
 
