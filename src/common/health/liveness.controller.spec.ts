@@ -13,6 +13,7 @@ import { ConsensusProviderIndicator } from './consensus-provider.indicator';
 import { CacheControlHeadersInterceptor } from 'http/common/cache/cache-control-headers.interceptor';
 import { HttpCacheInterceptor } from 'http/common/cache/http-cache.interceptor';
 import { ThrottlerBehindProxyGuard } from 'http/common/throttler/throttler.guard';
+import { SkipCache } from 'common/decorators';
 import { setupServiceUnavailableMiddleware } from '../middlewares/service-unavailable.middleware';
 import { LivenessController } from './liveness.controller';
 
@@ -30,6 +31,7 @@ class TestController {
 
 @Controller()
 @SkipThrottle()
+@SkipCache()
 class OperationalController {
   scrapes = 0;
 
