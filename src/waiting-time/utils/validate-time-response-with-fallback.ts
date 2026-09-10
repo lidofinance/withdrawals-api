@@ -1,6 +1,8 @@
-export const validateTimeResponseWithFallback = (ms: number) => {
+import { LoggerService } from '@nestjs/common';
+
+export const validateTimeResponseWithFallback = (ms: number, logger: Pick<LoggerService, 'error'>) => {
   if (ms < 0) {
-    console.error('Error: withdrawal time calculation less 0 days');
+    logger.error('Error: withdrawal time calculation less 0 days');
     return 5 * 3600 * 24 * 1000;
   }
 

@@ -50,6 +50,52 @@ $ yarn build
 $ yarn start:prod
 ```
 
+## Docker build
+
+```bash
+docker build -t withdrawals-api .
+```
+
+Dependency stages copy manifests and contract ABIs before installation so the existing
+TypeChain `postinstall` runs normally. The build stage copies generated contracts from
+`deps` and compiles the app. The final image uses a separate production-only dependency
+tree. Ordinary source edits reuse the install layers; manifest or ABI changes rebuild them.
+
+## Health probes
+
+`GET /livez` returns 200 with `status: "ok"` and process uptime in seconds once the HTTP server is listening. It makes no
+dependency calls and bypasses caching, rate limiting, and maintenance mode.
+
+`GET /health` checks memory and live EL/CL block freshness. Provider failures or stale
+blocks return 503 because the main API endpoints depend on EL/CL. The probe bypasses
+rate limiting. Provider checks intentionally remain part of readiness.
+
+The route list in `src/http/common/cache/http-cache.interceptor.ts` excludes `/health`,
+`/livez`, and `/metrics` from server caching. Their handlers set `Cache-Control: no-store`.
+
+This repository contains no Kubernetes deployment manifests. Configure the container's
+probes with the application's `PORT` value (shown below as `<app-port>`):
+
+```yaml
+livenessProbe:
+  httpGet:
+    path: /livez
+    port: <app-port>
+readinessProbe:
+  httpGet:
+    path: /health
+    port: <app-port>
+```
+
+The Docker `HEALTHCHECK` is separate and does not configure Kubernetes probes.
+
+## Outgoing API metrics
+
+Keys API calls emit `withdrawals_api_outgoing_api_requests_total` and
+`withdrawals_api_outgoing_api_request_duration_seconds` with `target="lido-keys-api"`
+and `status` labels. Status is the HTTP code, or `network_error` when no response is
+received. Duration includes body decoding; decoding failures retain the received HTTP status.
+
 ## Test
 
 ```bash

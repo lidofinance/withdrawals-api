@@ -1,6 +1,8 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER, LoggerService } from '../../../common/logger';
 import { ConfigService } from '../../../common/config';
+import { PrometheusService } from '../../../common/prometheus/prometheus.service';
+import { APP_USER_AGENT } from '../../../app/app.constants';
 import { LidoKeysData } from './lido-keys.types';
 
 @Injectable()
@@ -14,6 +16,7 @@ export class LidoKeysClient implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly configService: ConfigService,
+    protected readonly prometheusService: PrometheusService,
   ) {}
 
   async onModuleInit() {
@@ -22,10 +25,21 @@ export class LidoKeysClient implements OnModuleInit {
 
   public async getUsedKeys() {
     const url = this.basePath + this.endpoints.usedKeys;
-    const lidoKeysResponse = await fetch(url, {
-      method: 'GET',
-    });
-    const lidoKeys: LidoKeysData = await lidoKeysResponse.json();
-    return lidoKeys;
+    const target = 'lido-keys-api';
+    let status = 'network_error';
+    const endTimer = this.prometheusService.outgoingApiRequestDuration.startTimer({ target });
+
+    try {
+      const lidoKeysResponse = await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': APP_USER_AGENT },
+      });
+      status = String(lidoKeysResponse.status);
+      const lidoKeys: LidoKeysData = await lidoKeysResponse.json();
+      return lidoKeys;
+    } finally {
+      this.prometheusService.outgoingApiRequestsTotal.inc({ target, status });
+      endTimer({ status });
+    }
   }
 }
