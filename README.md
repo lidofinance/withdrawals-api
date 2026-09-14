@@ -70,8 +70,9 @@ dependency calls and bypasses caching, rate limiting, and maintenance mode.
 blocks return 503 because the main API endpoints depend on EL/CL. The probe bypasses
 rate limiting. Provider checks intentionally remain part of readiness.
 
-The route list in `src/http/common/cache/http-cache.interceptor.ts` excludes `/health`,
-`/livez`, and `/metrics` from server caching. Their handlers set `Cache-Control: no-store`.
+`/health`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
+(`src/common/decorators/skipCache.ts`), read by `HttpCacheInterceptor` in
+`src/http/common/cache/http-cache.interceptor.ts`. Their handlers set `Cache-Control: no-store`.
 
 This repository contains no Kubernetes deployment manifests. Configure the container's
 probes with the application's `PORT` value (shown below as `<app-port>`):

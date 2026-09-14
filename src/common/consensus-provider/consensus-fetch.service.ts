@@ -44,7 +44,7 @@ export class ConsensusFetchService extends FetchService {
     const headers = new Headers(init?.headers);
     headers.set('User-Agent', APP_USER_AGENT);
 
-    const rpcLabels = {
+    const apiLabels = {
       network: RPC_NETWORK_NAME,
       layer: 'cl',
       chain_id: String(this.configService.get('CHAIN_ID')),
@@ -67,7 +67,7 @@ export class ConsensusFetchService extends FetchService {
       );
     } catch (error) {
       const status = error instanceof HttpException ? error.getStatus() : undefined;
-      this.observeRpcMetrics(rpcLabels, method, requestPayloadBytes, startedAt, {
+      this.observeBeaconApiMetrics(apiLabels, method, requestPayloadBytes, startedAt, {
         result: 'fail',
         responseCode: toResponseCodeClass(status),
         responsePayloadBytes: 0,
@@ -75,7 +75,7 @@ export class ConsensusFetchService extends FetchService {
       throw error;
     }
 
-    this.observeRpcMetrics(rpcLabels, method, requestPayloadBytes, startedAt, {
+    this.observeBeaconApiMetrics(apiLabels, method, requestPayloadBytes, startedAt, {
       result: 'success',
       responseCode: toResponseCodeClass(result.status),
       responsePayloadBytes: Number(result.headers.get('content-length')) || 0,
@@ -123,27 +123,27 @@ export class ConsensusFetchService extends FetchService {
     return typeof fullUrl === 'string' ? fullUrl : '';
   }
 
-  private observeRpcMetrics(
-    rpcLabels: { network: string; layer: string; chain_id: string; provider: string },
+  private observeBeaconApiMetrics(
+    apiLabels: { network: string; layer: string; chain_id: string; provider: string },
     method: string,
     requestPayloadBytes: number,
     startedAt: number,
     outcome: { result: 'success' | 'fail'; responseCode: string; responsePayloadBytes: number },
   ): void {
     this.prometheusService.httpRpcRequestsTotal.inc({
-      ...rpcLabels,
+      ...apiLabels,
       batched: 'false',
       response_code: outcome.responseCode,
       result: outcome.result,
     });
-    this.prometheusService.httpRpcBatchSize.observe(rpcLabels, 1);
-    this.prometheusService.httpRpcResponseSeconds.observe(rpcLabels, (Date.now() - startedAt) / 1000);
-    this.prometheusService.httpRpcRequestPayloadBytes.observe(rpcLabels, requestPayloadBytes);
+    this.prometheusService.httpRpcBatchSize.observe(apiLabels, 1);
+    this.prometheusService.httpRpcResponseSeconds.observe(apiLabels, (Date.now() - startedAt) / 1000);
+    this.prometheusService.httpRpcRequestPayloadBytes.observe(apiLabels, requestPayloadBytes);
     if (outcome.responsePayloadBytes > 0) {
-      this.prometheusService.httpRpcResponsePayloadBytes.observe(rpcLabels, outcome.responsePayloadBytes);
+      this.prometheusService.httpRpcResponsePayloadBytes.observe(apiLabels, outcome.responsePayloadBytes);
     }
     this.prometheusService.rpcRequestTotal.inc({
-      ...rpcLabels,
+      ...apiLabels,
       method,
       result: outcome.result,
       rpc_error_code: '',
