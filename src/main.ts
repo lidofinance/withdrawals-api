@@ -7,6 +7,7 @@ import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { SWAGGER_URL } from 'http/common/swagger';
 import { swaggerCacheControlHook } from 'http/common/hooks';
 import { ConfigService } from 'common/config';
+import { redirectConsoleToLogger } from 'common/logger';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
@@ -40,6 +41,7 @@ async function bootstrap() {
   // logger
   const logger = app.get(LOGGER_PROVIDER);
   app.useLogger(logger);
+  redirectConsoleToLogger(logger);
 
   // sentry
   const mask = satanizer([...commonPatterns, ...secrets]);
