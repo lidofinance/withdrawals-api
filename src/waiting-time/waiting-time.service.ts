@@ -81,7 +81,7 @@ export class WaitingTimeService {
       latestEpoch: maxExitEpoch.toString(),
     });
     const ms = this.genesisTimeService.timeToWithdrawalFrame(frame, Date.now());
-    const finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
+    const finalizationIn = validateTimeResponseWithFallback(ms, this.logger) + GAP_AFTER_REPORT;
 
     return {
       requestInfo: {
@@ -332,7 +332,7 @@ export class WaitingTimeService {
 
     let currentType = type;
     let ms = this.genesisTimeService.timeToWithdrawalFrame(frame, requestTimestamp);
-    let finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
+    let finalizationIn = validateTimeResponseWithFallback(ms, this.logger) + GAP_AFTER_REPORT;
     const isInPast = requestTimestamp + finalizationIn - Date.now() < 0;
 
     if (isInPast) {
@@ -350,7 +350,7 @@ export class WaitingTimeService {
       });
 
       ms = this.genesisTimeService.timeToWithdrawalFrame(recalculatedResult.frame, requestTimestamp);
-      finalizationIn = validateTimeResponseWithFallback(ms) + GAP_AFTER_REPORT;
+      finalizationIn = validateTimeResponseWithFallback(ms, this.logger) + GAP_AFTER_REPORT;
       currentType = recalculatedResult.type;
     }
 

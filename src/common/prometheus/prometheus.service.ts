@@ -5,6 +5,10 @@ import { RequestSourceType } from '../../http/request-time/headers/request-sourc
 // import directly to avoid loading ConfigModule and triggering env validation during tests
 import { ENV_KEYS } from '../config/env.validation';
 
+// Unprefixed on purpose: these follow the org-wide "Policy for standardizing blockchain
+// RPC metrics" so dashboards/alerts are shared across apps by metric name, not per-app.
+const RPC_LABEL_NAMES = ['network', 'layer', 'chain_id', 'provider'] as const;
+
 export class PrometheusService {
   protected prefix = METRICS_PREFIX;
 
@@ -63,6 +67,19 @@ export class PrometheusService {
     labelNames: ['result', 'status'],
   });
 
+  public outgoingApiRequestsTotal = this.getOrCreateMetric('Counter', {
+    name: METRICS_PREFIX + 'outgoing_api_requests_total',
+    help: 'Outgoing API requests by target and HTTP status; network_error means no response',
+    labelNames: ['target', 'status'],
+  });
+
+  public outgoingApiRequestDuration = this.getOrCreateMetric('Histogram', {
+    name: METRICS_PREFIX + 'outgoing_api_request_duration_seconds',
+    help: 'Outgoing API request duration including response body decoding',
+    buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5, 10],
+    labelNames: ['target', 'status'],
+  });
+
   public clApiRetriesTotal = this.getOrCreateMetric('Counter', {
     name: METRICS_PREFIX + 'cl_api_retries_total',
     help: 'Number of CL API stream operation retries',
@@ -87,6 +104,50 @@ export class PrometheusService {
     help: 'EL RPC request duration',
     buckets: [0.1, 0.2, 0.3, 0.6, 1, 1.5, 2, 5],
     labelNames: ['result'],
+  });
+
+  /**
+   * Standard RPC metrics policy set. Kept alongside `elRpcRequestDuration` /
+   * `clApiRequestDuration` (not a replacement) so existing dashboards keep working.
+   */
+  public httpRpcRequestsTotal = this.getOrCreateMetric('Counter', {
+    name: 'http_rpc_requests_total',
+    help: 'Counts total HTTP requests used by any layer (EL, CL, or other)',
+    labelNames: [...RPC_LABEL_NAMES, 'batched', 'response_code', 'result'],
+  });
+
+  public httpRpcBatchSize = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_batch_size',
+    help: 'Distribution of how many JSON-RPC calls are bundled in each HTTP request',
+    buckets: [1, 2, 5, 10, 20, 50, 100],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcResponseSeconds = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_response_seconds',
+    help: 'Distribution of RPC response times',
+    buckets: [0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcRequestPayloadBytes = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_request_payload_bytes',
+    help: 'Distribution of RPC request payload sizes',
+    buckets: [256, 512, 1024, 4096, 16384, 65536, 262144],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public httpRpcResponsePayloadBytes = this.getOrCreateMetric('Histogram', {
+    name: 'http_rpc_response_payload_bytes',
+    help: 'Distribution of RPC response payload sizes',
+    buckets: [256, 1024, 4096, 16384, 65536, 262144, 1048576],
+    labelNames: RPC_LABEL_NAMES,
+  });
+
+  public rpcRequestTotal = this.getOrCreateMetric('Counter', {
+    name: 'rpc_request_total',
+    help: 'Total number of RPC requests made by the application',
+    labelNames: [...RPC_LABEL_NAMES, 'method', 'result', 'rpc_error_code'],
   });
 
   public requestSource = this.getOrCreateMetric('Gauge', {

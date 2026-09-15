@@ -21,5 +21,9 @@ module.exports = {
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-empty-interface': 'off',
+    // All application logging must go through the central logger (`LOGGER_PROVIDER`), which
+    // masks secrets and emits structured JSON. Bootstrap code that runs before the logger
+    // exists is the only exception and disables this rule inline.
+    'no-console': 'error',
   },
 };
