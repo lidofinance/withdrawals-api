@@ -5,7 +5,9 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import { SWAGGER_URL } from 'http/common/swagger';
+import { swaggerCacheControlHook } from 'http/common/hooks';
 import { ConfigService } from 'common/config';
+import { redirectConsoleToLogger } from 'common/logger';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
@@ -39,6 +41,7 @@ async function bootstrap() {
   // logger
   const logger = app.get(LOGGER_PROVIDER);
   app.useLogger(logger);
+  redirectConsoleToLogger(logger);
 
   // sentry
   const mask = satanizer([...commonPatterns, ...secrets]);
@@ -84,6 +87,12 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder().setTitle(APP_DESCRIPTION).setVersion(APP_VERSION).build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(SWAGGER_URL, app, swaggerDocument);
+
+  // Swagger registers its routes directly on the Fastify adapter, so they bypass
+  // CacheControlHeadersInterceptor: the UI, swagger-ui-init.js, -json and -yaml go
+  // out with no Cache-Control at all, while the static assets get `public, max-age=0`
+  // from @fastify/static. The hook sets a single explicit policy for all of them.
+  app.getHttpAdapter().getInstance().addHook('onSend', swaggerCacheControlHook);
 
   setupServiceUnavailableMiddleware(app, configService);
 

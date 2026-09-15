@@ -24,7 +24,9 @@ export class EstimateController {
   @Version('1')
   @Get('/')
   @Throttle({ default: { limit: 30, ttl: 30000 } })
-  @CacheTTL(3600 * 1000) // 1 hour
+  // Cache the gas-limit estimate for 1 hour: fixed simulation inputs, no gas-price data.
+  // This avoids repeated RPC simulations; contract-state changes may take 1 hour to appear.
+  @CacheTTL(3600 * 1000)
   @ApiResponse({ status: HttpStatus.OK, type: EstimateDto })
   async requestTimeV1(@Query() estimateOptions: EstimateOptionsDto): Promise<EstimateDto | null> {
     return await this.estimateService.getEstimate(estimateOptions);

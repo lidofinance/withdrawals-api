@@ -136,6 +136,9 @@ export function validate(config: Record<string, unknown>) {
   const errors = validateSync(validatedConfig, validatorOptions);
 
   if (errors.length > 0) {
+    // Runs while the DI container is still booting, so the central logger does not exist yet.
+    // Safe to print: class-validator only reports property names and failed constraints, never values.
+    // eslint-disable-next-line no-console
     console.error(errors.toString());
     process.exit(1);
   }

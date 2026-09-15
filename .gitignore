@@ -38,6 +38,6 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # cache
-cache
+/cache
 
 /src/common/contracts/generated
