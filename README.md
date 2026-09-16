@@ -66,14 +66,9 @@ tree. Ordinary source edits reuse the install layers; manifest or ABI changes re
 `GET /livez` returns 200 with `status: "ok"` and process uptime in seconds once the HTTP server is listening. It makes no
 dependency calls and bypasses caching, rate limiting, and maintenance mode.
 
-`GET /health` checks only the app's own essentials (memory). It does not check EL/CL
-freshness: `/v1/request-time` (the main product surface) serves from job-computed
-in-memory state and stays correct through a provider outage, so gating readiness on
-EL/CL would pull that working endpoint out of rotation along with the ones that do need
-a live provider (`/v2/request-time*`, `/estimate-gas`) — which gains nothing, since every
-replica shares the same upstream outage. Those endpoints surface their own errors per
-request instead; provider health is tracked via the `rpc_request_total` /
-`http_rpc_requests_total` metrics. The probe bypasses rate limiting.
+`GET /health` checks memory and live EL/CL block freshness. Provider failures or stale
+blocks return 503 because the main API endpoints depend on EL/CL. The probe bypasses
+rate limiting. Provider checks intentionally remain part of readiness.
 
 `/health`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
 (`src/common/decorators/skipCache.ts`), read by `HttpCacheInterceptor` in
