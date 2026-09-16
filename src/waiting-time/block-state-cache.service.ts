@@ -5,7 +5,7 @@ import { SimpleFallbackJsonRpcBatchProvider } from '@lido-nestjs/execution';
 import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ContractConfigStorageService } from 'storage';
 import { RewardsService } from 'events/rewards';
-import { GenesisTimeService, SECONDS_PER_SLOT } from 'common/genesis-time';
+import { GenesisTimeService } from 'common/genesis-time';
 import { OracleV2__factory } from '../common/contracts/generated';
 import { LidoExtensionReader } from '../jobs/contract-config/lido-extension-reader';
 
@@ -18,8 +18,6 @@ export interface BlockState {
 
 @Injectable()
 export class BlockStateCacheService {
-  private static readonly BLOCK_NUMBER_TTL_MS = SECONDS_PER_SLOT * 1000;
-
   private cachedBlockNumber: number | null = null;
   private blockNumberCachedAt: number | null = null;
   private stateCache: BlockState | null = null;
@@ -71,7 +69,7 @@ export class BlockStateCacheService {
     if (
       this.cachedBlockNumber !== null &&
       this.blockNumberCachedAt !== null &&
-      now - this.blockNumberCachedAt < BlockStateCacheService.BLOCK_NUMBER_TTL_MS
+      now - this.blockNumberCachedAt < this.getBlockNumberTtlMs()
     ) {
       return this.cachedBlockNumber;
     }
@@ -80,6 +78,10 @@ export class BlockStateCacheService {
     this.cachedBlockNumber = blockNumber;
     this.blockNumberCachedAt = now;
     return blockNumber;
+  }
+
+  private getBlockNumberTtlMs() {
+    return this.genesisTimeService.getSecondsPerSlot() * 1000;
   }
 
   private async resolveBlockNumber(): Promise<number> {

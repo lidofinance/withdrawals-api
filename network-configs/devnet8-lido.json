@@ -1,0 +1,13 @@
+{
+  "contracts": {
+    "withdrawalQueue": "0xaDe68b4b6410aDB1578896dcFba75283477b6b01",
+    "lido": "0xDFB23e97fD89590D6D1A9BcC9384877FCC50b3E3",
+    "oracleReportSanityChecker": "0xc5092f6c1f30C8970dc835F0F754057f79b89CC6",
+    "accountingOracleHashConsensus": "0x05cE5c99898b2a4376381C3c39217833ED0E15a4",
+    "validatorsExitBusOracleHashConsensus": "0xdFb2fAc1519eDA2b3ee1Edf578ee0509DC8633f7",
+    "lidoLocator": "0x2694cfcc47aAbC5C042dea104b6ac37e9924a4B1"
+  },
+  "apis": {
+    "keysApiBasePath": "http://hr6vb82d1ndsx-keys-api.devnet8-lido.valset-02.testnet.fi"
+  }
+}

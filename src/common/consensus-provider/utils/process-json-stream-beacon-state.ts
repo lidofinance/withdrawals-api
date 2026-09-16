@@ -1,32 +1,35 @@
 import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
+import { filter } from 'stream-json/filters/Filter';
 import { streamObject } from 'stream-json/streamers/StreamObject';
 import { chain } from 'stream-chain';
 import { BeaconState } from '../consensus-provider.types';
 
-const defaultKeys = ['slot', 'next_withdrawal_validator_index', 'latest_full_slot', 'latest_withdrawals_root'] as const;
+const defaultKeys = [
+  'slot',
+  'next_withdrawal_validator_index',
+  'builder_pending_withdrawals',
+  'execution_payload_availability',
+] as const;
 
 export async function processJsonStreamBeaconState(readableStream, keys: readonly string[] = defaultKeys) {
-  return new Promise((resolve, reject) => {
-    const pipeline = chain([
-      readableStream, // Incoming ReadableStream
-      parser(), // Parses JSON as a stream
-      pick({ filter: 'data' }),
-      streamObject(), // Streams key-value pairs { key, value }
-    ]);
+  const pipeline = chain([
+    readableStream,
+    parser(),
+    pick({ filter: 'data' }),
+    // Discard unused fields before assembling potentially large registry arrays.
+    filter({ filter: (path) => keys.includes(String(path[0])) }),
+    streamObject(),
+  ]);
+  const result = {} as BeaconState;
 
-    const result = {} as BeaconState;
-
-    pipeline.on('data', ({ key, value }) => {
-      if (keys.includes(key)) {
-        result[key] = value; // Store key-value pairs in an object
-      }
-    });
-
-    pipeline.on('end', () => {
-      resolve(result); // Resolve with the final object
-    });
-
-    pipeline.on('error', reject);
-  });
+  try {
+    for await (const { key, value } of pipeline) {
+      result[key] = value;
+    }
+    return result;
+  } finally {
+    pipeline.destroy();
+    pipeline.streams.forEach((stream) => stream.destroy());
+  }
 }
