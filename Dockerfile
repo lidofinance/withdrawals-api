@@ -11,15 +11,13 @@ COPY ./src/common/contracts/abi ./src/common/contracts/abi
 RUN yarn install --frozen-lockfile --non-interactive \
     && yarn cache clean
 
-# Production install also needs ABIs for the existing postinstall hook.
 FROM node:24-alpine${ALPINE_VERSION} AS prod-deps
 
 WORKDIR /app
 
 COPY package.json yarn.lock ./
-COPY ./src/common/contracts/abi ./src/common/contracts/abi
 
-RUN yarn install --frozen-lockfile --non-interactive --production \
+RUN yarn install --frozen-lockfile --non-interactive --production --ignore-scripts \
     && yarn cache clean
 
 FROM node:24-alpine${ALPINE_VERSION} AS building
