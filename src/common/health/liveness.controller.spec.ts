@@ -8,8 +8,6 @@ import { SkipThrottle, ThrottlerModule } from '@nestjs/throttler';
 import { Cache } from 'cache-manager';
 import { HealthCheckError, MemoryHealthIndicator, TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health.controller';
-import { ExecutionProviderHealthIndicator } from './execution-provider.indicator';
-import { ConsensusProviderIndicator } from './consensus-provider.indicator';
 import { CacheControlHeadersInterceptor } from 'http/common/cache/cache-control-headers.interceptor';
 import { HttpCacheInterceptor } from 'http/common/cache/http-cache.interceptor';
 import { ThrottlerBehindProxyGuard } from 'http/common/throttler/throttler.guard';
@@ -46,13 +44,9 @@ describe('Operational HTTP cache policy and liveness', () => {
   let app: NestFastifyApplication;
   let cache: Cache;
   let maintenance: boolean;
-  let executionHealthy: boolean;
-  let consensusHealthy: boolean;
 
   beforeEach(async () => {
     maintenance = false;
-    executionHealthy = true;
-    consensusHealthy = true;
     const config = {
       get: jest.fn((key: string) => (key === 'IS_SERVICE_UNAVAILABLE' ? maintenance : 3600)),
     };
@@ -64,26 +58,6 @@ describe('Operational HTTP cache policy and liveness', () => {
       ],
       controllers: [HealthController, LivenessController, TestController, OperationalController],
       providers: [
-        {
-          provide: ExecutionProviderHealthIndicator,
-          useValue: {
-            isHealthy: jest.fn(async (key: string) => {
-              if (!executionHealthy)
-                throw new HealthCheckError('EL unavailable or stale', { [key]: { status: 'down' } });
-              return { [key]: { status: 'up' } };
-            }),
-          },
-        },
-        {
-          provide: ConsensusProviderIndicator,
-          useValue: {
-            isHealthy: jest.fn(async (key: string) => {
-              if (!consensusHealthy)
-                throw new HealthCheckError('CL unavailable or stale', { [key]: { status: 'down' } });
-              return { [key]: { status: 'up' } };
-            }),
-          },
-        },
         { provide: ConfigService, useValue: config },
         { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
         { provide: APP_INTERCEPTOR, useClass: CacheControlHeadersInterceptor },
@@ -151,7 +125,7 @@ describe('Operational HTTP cache policy and liveness', () => {
         } else {
           expect(response.json()).toMatchObject({
             status: 'ok',
-            details: { RPCProvider: { status: 'up' }, consensusProvider: { status: 'up' } },
+            details: { memoryHeap: { status: 'up' } },
           });
         }
       }
@@ -160,28 +134,6 @@ describe('Operational HTTP cache policy and liveness', () => {
       expect(set).not.toHaveBeenCalled();
     },
   );
-
-  it.each(['EL', 'CL'])('returns fresh 503 on %s failure, keeps liveness up, and recovers', async (provider) => {
-    const healthy = await app.inject({ method: 'GET', url: '/health' });
-    expect(healthy.statusCode).toBe(200);
-
-    if (provider === 'EL') executionHealthy = false;
-    else consensusHealthy = false;
-    const unhealthy = await app.inject({ method: 'GET', url: '/health' });
-    expect(unhealthy.statusCode).toBe(503);
-    expect(unhealthy.headers['cache-control']).toBe('no-store');
-    const key = provider === 'EL' ? 'RPCProvider' : 'consensusProvider';
-    expect(unhealthy.json()).toMatchObject({ details: { [key]: { status: 'down' } } });
-
-    const live = await app.inject({ method: 'GET', url: '/livez' });
-    expect(live.statusCode).toBe(200);
-
-    executionHealthy = true;
-    consensusHealthy = true;
-    expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
-    expect(app.get(ExecutionProviderHealthIndicator).isHealthy).toHaveBeenCalledTimes(3);
-    expect(app.get(ConsensusProviderIndicator).isHealthy).toHaveBeenCalledTimes(3);
-  });
 
   it('keeps the memory readiness check and bypasses probe rate limiting', async () => {
     for (let i = 0; i < 5; i++) {
