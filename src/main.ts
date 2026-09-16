@@ -8,6 +8,7 @@ import { SWAGGER_URL } from 'http/common/swagger';
 import { swaggerCacheControlHook } from 'http/common/hooks';
 import { ConfigService } from 'common/config';
 import { redirectConsoleToLogger } from 'common/logger';
+import { buildBeforeSend } from 'common/sentry';
 import { registerSecretsRotationRestart } from 'common/shutdown';
 import { AppModule, APP_DESCRIPTION, APP_NAME, APP_VERSION } from 'app';
 import { satanizer, commonPatterns } from '@lidofinance/satanizer';
@@ -52,19 +53,7 @@ async function bootstrap() {
       dsn: sentryDsn,
       release,
       environment,
-      beforeSend: (event) => {
-        /*
-         * We can only mask exact properties,
-         * because there are circular references in event,
-         * which breaks satanizer.
-         */
-        return {
-          ...event,
-          exception: mask(event.exception),
-          breadcrumbs: mask(event.breadcrumbs),
-          tags: mask(event.tags),
-        };
-      },
+      beforeSend: buildBeforeSend(mask),
     });
   }
 
