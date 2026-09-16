@@ -42,6 +42,7 @@ async function bootstrap() {
   // logger
   const logger = app.get(LOGGER_PROVIDER);
   app.useLogger(logger);
+  app.flushLogs();
   redirectConsoleToLogger(logger);
 
   // sentry
