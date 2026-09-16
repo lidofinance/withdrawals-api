@@ -4,13 +4,13 @@ import { HealthController } from './health.controller';
 import { LivenessController } from './liveness.controller';
 import { ExecutionProviderHealthIndicator } from './execution-provider.indicator';
 import { ConsensusProviderIndicator } from './consensus-provider.indicator';
-import { GenesisTimeModule } from '../genesis-time';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
+import { ValidatorsStorageModule } from 'storage/validators/validators.module';
 
 @Module({
   providers: [ExecutionProviderHealthIndicator, ConsensusProviderIndicator],
   controllers: [HealthController, LivenessController],
-  imports: [TerminusModule, GenesisTimeModule],
+  imports: [TerminusModule, ValidatorsStorageModule],
 })
 export class HealthModule implements OnModuleInit {
   constructor(
