@@ -10,7 +10,7 @@ import { ConsensusRetryService } from 'common/consensus-provider/consensus-retry
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { ORACLE_REPORTS_CRON_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import { FALLBACK_VALIDATOR_UPDATE_CRONS_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
@@ -61,8 +61,12 @@ export class ValidatorsService {
 
     const envCronTime = this.configService.get('JOB_INTERVAL_VALIDATORS');
     const chainId = this.configService.get('CHAIN_ID');
-    const cronByChainId = ORACLE_REPORTS_CRON_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
-    const cronTimes = envCronTime ? [envCronTime] : Array.isArray(cronByChainId) ? cronByChainId : [cronByChainId];
+    const fallbackCronTimes = FALLBACK_VALIDATOR_UPDATE_CRONS_BY_CHAIN_ID[chainId] ?? CronExpression.EVERY_3_HOURS;
+    const cronTimes = envCronTime
+      ? [envCronTime]
+      : Array.isArray(fallbackCronTimes)
+      ? fallbackCronTimes
+      : [fallbackCronTimes];
     this.validatorUpdateCronTimes = cronTimes;
 
     try {
@@ -295,6 +299,7 @@ export class ValidatorsService {
         }
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
+        this.validatorsStorageService.setWithdrawableLidoValidatorsLastUpdate(Math.floor(Date.now() / 1000));
         this.logger.log('End update lido withdrawable validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           frameBalances: stringifyFrameBalances(frameBalances),

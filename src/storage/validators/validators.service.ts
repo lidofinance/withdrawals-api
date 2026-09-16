@@ -11,6 +11,7 @@ export class ValidatorsStorageService {
   protected sweepMeanEpochs: number;
   protected churnLimit: number;
   protected withdrawableLidoValidatorIds: string[] = [];
+  protected withdrawableLidoValidatorsLastUpdate: number;
 
   /**
    * Get max exit epoch for all validators
@@ -106,5 +107,19 @@ export class ValidatorsStorageService {
 
   public getWithdrawableLidoValidatorIds() {
     return this.withdrawableLidoValidatorIds;
+  }
+
+  /**
+   * Get the timestamp of the last successful refresh of withdrawable Lido validators.
+   */
+  public getWithdrawableLidoValidatorsLastUpdate(): number | null {
+    return this.withdrawableLidoValidatorsLastUpdate;
+  }
+
+  /**
+   * Set the timestamp of the last successful refresh of withdrawable Lido validators.
+   */
+  public setWithdrawableLidoValidatorsLastUpdate(lastUpdate: number): void {
+    this.withdrawableLidoValidatorsLastUpdate = lastUpdate;
   }
 }

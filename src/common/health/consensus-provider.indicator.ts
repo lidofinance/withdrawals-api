@@ -1,40 +1,42 @@
 import { Injectable } from '@nestjs/common';
 import { HealthIndicator, HealthIndicatorResult, HealthCheckError } from '@nestjs/terminus';
-import { MAX_BLOCK_DELAY_SECONDS } from './health.constants';
-import { ConsensusProviderService } from '../consensus-provider';
-import { GenesisTimeService } from '../genesis-time';
+import { ValidatorsStorageService } from 'storage/validators/validators.service';
+import {
+  MAX_VALIDATORS_DATA_DELAY_SECONDS,
+  MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS,
+} from './health.constants';
 
 @Injectable()
 export class ConsensusProviderIndicator extends HealthIndicator {
-  constructor(
-    private readonly consensusProviderService: ConsensusProviderService,
-    private readonly genesisTimeService: GenesisTimeService,
-  ) {
+  constructor(private readonly validatorsStorage: ValidatorsStorageService) {
     super();
   }
 
   public async isHealthy(key: string): Promise<HealthIndicatorResult> {
-    const blockTimestamp = await this.getBlockTimestamp();
+    const validatorsLastUpdate = this.validatorsStorage.getLastUpdate();
+    const withdrawableLidoValidatorsLastUpdate = this.validatorsStorage.getWithdrawableLidoValidatorsLastUpdate();
     const nowTimestamp = this.getNowTimestamp();
-    const deltaTimestamp = Math.abs(nowTimestamp - blockTimestamp);
+    const validatorsAgeSeconds = validatorsLastUpdate === null ? null : Math.abs(nowTimestamp - validatorsLastUpdate);
+    const withdrawableLidoValidatorsAgeSeconds =
+      withdrawableLidoValidatorsLastUpdate === null
+        ? null
+        : Math.abs(nowTimestamp - withdrawableLidoValidatorsLastUpdate);
 
-    const isHealthy = deltaTimestamp < MAX_BLOCK_DELAY_SECONDS;
+    const isHealthy =
+      validatorsAgeSeconds !== null &&
+      validatorsAgeSeconds < MAX_VALIDATORS_DATA_DELAY_SECONDS &&
+      withdrawableLidoValidatorsAgeSeconds !== null &&
+      withdrawableLidoValidatorsAgeSeconds < MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS;
     const result = this.getStatus(key, isHealthy, {
-      blockTimestamp,
+      validatorsLastUpdate,
+      withdrawableLidoValidatorsLastUpdate,
       nowTimestamp,
+      validatorsAgeSeconds,
+      withdrawableLidoValidatorsAgeSeconds,
     });
 
     if (isHealthy) return result;
-    throw new HealthCheckError('Provider check failed', result);
-  }
-
-  protected async getBlockTimestamp() {
-    try {
-      const head = await this.consensusProviderService.getBlockHeader({ blockId: 'head' });
-      return this.genesisTimeService.getSlotTime(Number(head.data.header.message.slot));
-    } catch (error) {
-      return -1;
-    }
+    throw new HealthCheckError('Cached consensus data is stale', result);
   }
 
   protected getNowTimestamp() {
