@@ -19,17 +19,10 @@ export class HealthController {
     protected readonly consensusProvider: ConsensusProviderIndicator,
   ) {}
 
-  // Readiness dependencies:
+  // Existing infrastructure and the Docker HEALTHCHECK use /health, so keep the
+  // direct EL and CL provider checks here.
   //
-  // - GET /v1/request-time uses job-updated in-memory data only.
-  // - GET /v2/request-time, GET /v2/request-time/calculate, and request-ID lookups
-  //   read current withdrawal state from EL and use cached CL validator data.
-  //
-  // Keep readiness fail-closed when EL is unavailable or CL data is stale.
-  // Otherwise, v2 endpoints can return failed or outdated withdrawal estimates.
-  //
-  // GET /v1/estimate-gas also calls EL, but returns a fallback value on failure.
-  // NFT endpoints do not call EL.
+  // use GET /readyz in new infra as readiness endpoint which has stale cache checking instead of EL/CL provider checks
   @Get()
   @Header('Cache-Control', 'no-store')
   @HealthCheck()

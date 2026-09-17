@@ -34,7 +34,7 @@ export class ValidatorsStorageService {
    * @returns last update timestamp
    */
   public getLastUpdate(): number | null {
-    return this.lastUpdate;
+    return this.lastUpdate ?? null;
   }
 
   /**
@@ -109,16 +109,10 @@ export class ValidatorsStorageService {
     return this.withdrawableLidoValidatorIds;
   }
 
-  /**
-   * Get the timestamp of the last successful refresh of withdrawable Lido validators.
-   */
   public getWithdrawableLidoValidatorsLastUpdate(): number | null {
-    return this.withdrawableLidoValidatorsLastUpdate;
+    return this.withdrawableLidoValidatorsLastUpdate ?? null;
   }
 
-  /**
-   * Set the timestamp of the last successful refresh of withdrawable Lido validators.
-   */
   public setWithdrawableLidoValidatorsLastUpdate(lastUpdate: number): void {
     this.withdrawableLidoValidatorsLastUpdate = lastUpdate;
   }
