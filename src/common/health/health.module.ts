@@ -9,11 +9,12 @@ import { GenesisTimeModule } from '../genesis-time';
 import { ValidatorsStorageModule } from 'storage/validators/validators.module';
 import { ConsensusDataHealthIndicator } from './consensus-data.indicator';
 import { ReadinessController } from './readiness.controller';
+import { WaitingTimeModule } from 'waiting-time';
 
 @Module({
   providers: [ExecutionProviderHealthIndicator, ConsensusProviderIndicator, ConsensusDataHealthIndicator],
   controllers: [HealthController, LivenessController, ReadinessController],
-  imports: [TerminusModule, GenesisTimeModule, ValidatorsStorageModule],
+  imports: [TerminusModule, GenesisTimeModule, ValidatorsStorageModule, WaitingTimeModule],
 })
 export class HealthModule implements OnModuleInit {
   constructor(

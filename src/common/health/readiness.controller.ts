@@ -17,7 +17,7 @@ export class ReadinessController {
     protected readonly consensusData: ConsensusDataHealthIndicator,
   ) {}
 
-  // /readyz checks the job-computed data used by request-time endpoints.
+  // /readyz checks that request-time data has finished initializing and remains fresh.
   // It does not call EL or CL: temporary provider outages do not remove a pod
   // while its cached data remains fresh.
   @Get()

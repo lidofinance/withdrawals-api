@@ -1,9 +1,13 @@
 import { HealthCheckError } from '@nestjs/terminus';
 import { ValidatorsStorageService } from 'storage/validators/validators.service';
+import type { WaitingTimeService } from 'waiting-time';
 import {
   MAX_VALIDATORS_DATA_DELAY_SECONDS,
   MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS,
 } from './health.constants';
+
+jest.mock('waiting-time', () => ({ WaitingTimeService: class {} }));
+
 import { ConsensusDataHealthIndicator } from './consensus-data.indicator';
 
 describe('ConsensusDataHealthIndicator', () => {
@@ -11,6 +15,7 @@ describe('ConsensusDataHealthIndicator', () => {
   let validatorsStorage: jest.Mocked<
     Pick<ValidatorsStorageService, 'getLastUpdate' | 'getWithdrawableLidoValidatorsLastUpdate'>
   >;
+  let waitingTime: jest.Mocked<Pick<WaitingTimeService, 'checkIsInitializing'>>;
   let indicator: ConsensusDataHealthIndicator;
 
   beforeEach(() => {
@@ -18,7 +23,11 @@ describe('ConsensusDataHealthIndicator', () => {
       getLastUpdate: jest.fn(),
       getWithdrawableLidoValidatorsLastUpdate: jest.fn(),
     };
-    indicator = new ConsensusDataHealthIndicator(validatorsStorage as unknown as ValidatorsStorageService);
+    waitingTime = { checkIsInitializing: jest.fn().mockReturnValue(null) };
+    indicator = new ConsensusDataHealthIndicator(
+      validatorsStorage as unknown as ValidatorsStorageService,
+      waitingTime as unknown as WaitingTimeService,
+    );
     jest.spyOn(indicator as any, 'getNowTimestamp').mockReturnValue(nowTimestamp);
   });
 
@@ -42,6 +51,16 @@ describe('ConsensusDataHealthIndicator', () => {
     validatorsStorage.getWithdrawableLidoValidatorsLastUpdate.mockReturnValue(
       nowTimestamp - MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS,
     );
+    await expect(indicator.isHealthy('cachedConsensusData')).rejects.toBeInstanceOf(HealthCheckError);
+  });
+
+  it('reports unready while request-time data is initializing', async () => {
+    validatorsStorage.getLastUpdate.mockReturnValue(nowTimestamp);
+    validatorsStorage.getWithdrawableLidoValidatorsLastUpdate.mockReturnValue(nowTimestamp);
+    waitingTime.checkIsInitializing.mockReturnValue(
+      {} as NonNullable<ReturnType<WaitingTimeService['checkIsInitializing']>>,
+    );
+
     await expect(indicator.isHealthy('cachedConsensusData')).rejects.toBeInstanceOf(HealthCheckError);
   });
 });

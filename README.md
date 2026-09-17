@@ -33,10 +33,7 @@ $ yarn install
 $ cp sample.env .env
 ```
 
-
-
 ## Running the app
-
 
 ```bash
 # development
@@ -68,7 +65,8 @@ dependency calls and bypasses caching, rate limiting, and maintenance mode.
 
 See `/health` for checking service memory storage and provider health.
 
-`GET /readyz` checks that the job-updated CL validator data used for withdrawal estimates is fresh.
+`GET /readyz` checks that request-time data has finished initializing and that the job-updated
+CL validator data used for withdrawal estimates is fresh.
 It does not call EL or CL.
 
 `/health`, `/readyz`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
