@@ -19,6 +19,10 @@ export class HealthController {
     protected readonly consensusProvider: ConsensusProviderIndicator,
   ) {}
 
+  // Existing infrastructure and the Docker HEALTHCHECK use /health, so keep the
+  // direct EL and CL provider checks here.
+  //
+  // use GET /readyz in new infra as readiness endpoint which has stale cache checking instead of EL/CL provider checks
   @Get()
   @Header('Cache-Control', 'no-store')
   @HealthCheck()
