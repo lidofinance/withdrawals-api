@@ -66,9 +66,7 @@ tree. Ordinary source edits reuse the install layers; manifest or ABI changes re
 `GET /livez` returns 200 with `status: "ok"` and process uptime in seconds once the HTTP server is listening. It makes no
 dependency calls and bypasses caching, rate limiting, and maintenance mode.
 
-`GET /health` checks memory and live EL/CL block freshness. Provider failures or stale
-blocks return 503 because the main API endpoints depend on EL/CL. The probe bypasses
-rate limiting. Provider checks intentionally remain part of readiness.
+See `/health` for checking service memory storage and provider health.
 
 `/health`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
 (`src/common/decorators/skipCache.ts`), read by `HttpCacheInterceptor` in
@@ -88,7 +86,7 @@ readinessProbe:
     port: <app-port>
 ```
 
-The Docker `HEALTHCHECK` is separate and does not configure Kubernetes probes.
+The Docker `HEALTHCHECK` uses `/health`. It is separate and does not configure Kubernetes probes.
 
 ## Outgoing API metrics
 

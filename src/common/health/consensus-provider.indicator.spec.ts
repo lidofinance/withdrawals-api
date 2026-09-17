@@ -1,51 +1,40 @@
 import { HealthCheckError } from '@nestjs/terminus';
-import { ValidatorsStorageService } from 'storage/validators/validators.service';
-import {
-  MAX_VALIDATORS_DATA_DELAY_SECONDS,
-  MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS,
-} from './health.constants';
+import { MAX_BLOCK_DELAY_SECONDS } from './health.constants';
+
+jest.mock('../consensus-provider', () => ({ ConsensusProviderService: class {} }));
+jest.mock('../genesis-time', () => ({ GenesisTimeService: class {} }));
+
 import { ConsensusProviderIndicator } from './consensus-provider.indicator';
 
 describe('ConsensusProviderIndicator', () => {
   const nowTimestamp = 1_000_000;
-  let validatorsStorage: jest.Mocked<
-    Pick<ValidatorsStorageService, 'getLastUpdate' | 'getWithdrawableLidoValidatorsLastUpdate'>
-  >;
+  let consensusProvider: { getBlockHeader: jest.Mock };
+  let genesisTime: { getSlotTime: jest.Mock };
   let indicator: ConsensusProviderIndicator;
 
   beforeEach(() => {
-    validatorsStorage = {
-      getLastUpdate: jest.fn(),
-      getWithdrawableLidoValidatorsLastUpdate: jest.fn(),
-    };
-    indicator = new ConsensusProviderIndicator(validatorsStorage as unknown as ValidatorsStorageService);
+    consensusProvider = { getBlockHeader: jest.fn() };
+    genesisTime = { getSlotTime: jest.fn() };
+    indicator = new ConsensusProviderIndicator(consensusProvider as any, genesisTime as any);
     jest.spyOn(indicator as any, 'getNowTimestamp').mockReturnValue(nowTimestamp);
   });
 
-  it('reports ready from fresh cached validator data without calling CL', async () => {
-    validatorsStorage.getLastUpdate.mockReturnValue(nowTimestamp - MAX_VALIDATORS_DATA_DELAY_SECONDS + 1);
-    validatorsStorage.getWithdrawableLidoValidatorsLastUpdate.mockReturnValue(
-      nowTimestamp - MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS + 1,
-    );
+  it('reports ready from a fresh CL head block', async () => {
+    consensusProvider.getBlockHeader.mockResolvedValue({ data: { header: { message: { slot: '1' } } } });
+    genesisTime.getSlotTime.mockReturnValue(nowTimestamp - MAX_BLOCK_DELAY_SECONDS + 1);
 
     await expect(indicator.isHealthy('consensusProvider')).resolves.toMatchObject({
-      consensusProvider: {
-        status: 'up',
-        validatorsLastUpdate: nowTimestamp - MAX_VALIDATORS_DATA_DELAY_SECONDS + 1,
-        withdrawableLidoValidatorsLastUpdate: nowTimestamp - MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS + 1,
-      },
+      consensusProvider: { status: 'up' },
     });
+    expect(consensusProvider.getBlockHeader).toHaveBeenCalledWith({ blockId: 'head' });
   });
 
-  it('reports unready when cached validator data is missing or stale', async () => {
-    validatorsStorage.getLastUpdate.mockReturnValue(null);
-    validatorsStorage.getWithdrawableLidoValidatorsLastUpdate.mockReturnValue(nowTimestamp);
+  it('reports unready when CL is unavailable or stale', async () => {
+    consensusProvider.getBlockHeader.mockRejectedValue(new Error('CL unavailable'));
     await expect(indicator.isHealthy('consensusProvider')).rejects.toBeInstanceOf(HealthCheckError);
 
-    validatorsStorage.getLastUpdate.mockReturnValue(nowTimestamp);
-    validatorsStorage.getWithdrawableLidoValidatorsLastUpdate.mockReturnValue(
-      nowTimestamp - MAX_WITHDRAWABLE_LIDO_VALIDATORS_DATA_DELAY_SECONDS,
-    );
+    consensusProvider.getBlockHeader.mockResolvedValue({ data: { header: { message: { slot: '1' } } } });
+    genesisTime.getSlotTime.mockReturnValue(nowTimestamp - MAX_BLOCK_DELAY_SECONDS);
     await expect(indicator.isHealthy('consensusProvider')).rejects.toBeInstanceOf(HealthCheckError);
   });
 });
