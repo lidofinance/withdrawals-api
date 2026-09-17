@@ -68,7 +68,10 @@ dependency calls and bypasses caching, rate limiting, and maintenance mode.
 
 See `/health` for checking service memory storage and provider health.
 
-`/health`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
+`GET /readyz` checks that the job-updated CL validator data used for withdrawal estimates is fresh.
+It does not call EL or CL.
+
+`/health`, `/readyz`, `/livez`, and `/metrics` are excluded from server caching via `@SkipCache()`
 (`src/common/decorators/skipCache.ts`), read by `HttpCacheInterceptor` in
 `src/http/common/cache/http-cache.interceptor.ts`. Their handlers set `Cache-Control: no-store`.
 
@@ -82,7 +85,7 @@ livenessProbe:
     port: <app-port>
 readinessProbe:
   httpGet:
-    path: /health
+    path: /readyz
     port: <app-port>
 ```
 

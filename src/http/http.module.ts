@@ -1,7 +1,7 @@
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 
-import { HEALTH_URL, LIVEZ_URL } from 'common/health';
+import { HEALTH_URL, LIVEZ_URL, READYZ_URL } from 'common/health';
 import { METRICS_URL } from 'common/prometheus';
 
 import { SWAGGER_URL } from './common/swagger';
@@ -25,7 +25,7 @@ export class HTTPModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(MetricsMiddleware, LoggerMiddleware)
-      .exclude(`${SWAGGER_URL}/(.*)`, SWAGGER_URL, METRICS_URL, HEALTH_URL, LIVEZ_URL)
+      .exclude(`${SWAGGER_URL}/(.*)`, SWAGGER_URL, METRICS_URL, HEALTH_URL, LIVEZ_URL, READYZ_URL)
       // https://docs.nestjs.com/middleware?utm_source=chatgpt.com#route-wildcards
       .forRoutes('*splat');
   }

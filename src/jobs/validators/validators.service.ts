@@ -299,6 +299,7 @@ export class ValidatorsService {
         }
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
+        this.validatorsStorageService.setWithdrawableLidoValidatorsLastUpdate(Math.floor(Date.now() / 1000));
         this.logger.log('End update lido withdrawable validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           frameBalances: stringifyFrameBalances(frameBalances),
