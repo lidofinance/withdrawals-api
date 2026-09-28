@@ -8,4 +8,6 @@ export const FALLBACK_VALIDATOR_UPDATE_CRONS_BY_CHAIN_ID = {
   [CHAINS.Hoodi]: ['57 2 * * *', '45 7 * * *', '33 12 * * *', '21 17 * * *', '9 22 * * *'],
 };
 
+export const LIDO_WITHDRAWABLE_VALIDATORS_CRON = '5 */30 * * * *';
+
 export const WITHDRAWALS_VALIDATORS_PER_SLOT = 16;

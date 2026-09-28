@@ -37,7 +37,7 @@ export class ConsensusFetchService extends FetchService {
     const controller = new AbortController();
     const { signal } = controller;
 
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       controller.abort();
     }, CONSENSUS_REQUEST_TIMEOUT);
 
@@ -66,6 +66,7 @@ export class ConsensusFetchService extends FetchService {
         attempt,
       );
     } catch (error) {
+      clearTimeout(timeout);
       const status = error instanceof HttpException ? error.getStatus() : undefined;
       this.observeBeaconApiMetrics(apiLabels, method, requestPayloadBytes, startedAt, {
         result: 'fail',
@@ -92,6 +93,7 @@ export class ConsensusFetchService extends FetchService {
     });
 
     result.body.once('error', (error) => {
+      clearTimeout(timeout);
       this.logger.error('Consensus response stream error', {
         requestUrl: String(url),
         requestHeaders: Object.fromEntries(headers.entries()),
@@ -103,6 +105,7 @@ export class ConsensusFetchService extends FetchService {
     });
 
     result.body.once('end', () => {
+      clearTimeout(timeout);
       this.logger.debug('Consensus response stream completed', {
         requestUrl: String(url),
         requestHeaders: Object.fromEntries(headers.entries()),
@@ -111,6 +114,7 @@ export class ConsensusFetchService extends FetchService {
         responseHeaders,
       });
     });
+    result.body.once('close', () => clearTimeout(timeout));
 
     return result;
   }
