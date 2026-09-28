@@ -1,3 +1,5 @@
+jest.mock('common/config', () => ({ ConfigService: class {} }));
+
 import { FetchService } from '@lido-nestjs/fetch';
 import { PassThrough } from 'node:stream';
 import { ConsensusFetchService } from './consensus-fetch.service';

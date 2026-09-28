@@ -1,3 +1,5 @@
+jest.mock('common/config', () => ({ ConfigService: class {} }));
+
 import { ValidatorsService } from './validators.service';
 
 type JobMethod = 'updateValidators' | 'updateLidoWithdrawableValidators';
