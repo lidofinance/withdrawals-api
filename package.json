@@ -48,7 +48,6 @@
     "@nestjs/terminus": "^11.1.1",
     "@nestjs/throttler": "^6.5.0",
     "@sentry/node": "^7.29.0",
-    "@typechain/ethers-v6": "^0.5.1",
     "@types/stream-json": "^1.7.8",
     "@willsoto/nestjs-prometheus": "^6.1.0",
     "cache-manager": "^7.2.9",
@@ -62,13 +61,13 @@
     "rimraf": "^3.0.2",
     "rxjs": "^7.8.2",
     "stream-chain": "^2.2.5",
-    "stream-json": "^1.9.1",
-    "typechain": "^8.3.2"
+    "stream-json": "^1.9.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^11.2.3",
+    "@typechain/ethers-v6": "^0.5.1",
     "@types/jest": "^29.2.5",
     "@types/node": "^24.10.11",
     "@types/supertest": "^2.0.11",
@@ -84,6 +83,7 @@
     "ts-loader": "^9.2.6",
     "ts-node": "^10.4.0",
     "tsconfig-paths": "^4.1.2",
+    "typechain": "^8.3.2",
     "typescript": "^5.1.0"
   },
   "jest": {

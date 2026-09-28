@@ -3,7 +3,7 @@ import { HttpStatus } from '@nestjs/common';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { NestFastifyApplication } from '@nestjs/platform-fastify';
 
-const excludedRoutes = ['/api', '/health', '/metrics', '/livez'];
+const excludedRoutes = ['/api', '/health', '/metrics', '/livez', '/readyz'];
 
 export const setupServiceUnavailableMiddleware = (app: NestFastifyApplication, configService: ConfigService) => {
   app

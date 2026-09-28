@@ -10,12 +10,14 @@ import { HealthCheckError, MemoryHealthIndicator, TerminusModule } from '@nestjs
 import { HealthController } from './health.controller';
 import { ExecutionProviderHealthIndicator } from './execution-provider.indicator';
 import { ConsensusProviderIndicator } from './consensus-provider.indicator';
+import { ConsensusDataHealthIndicator } from './consensus-data.indicator';
 import { CacheControlHeadersInterceptor } from 'http/common/cache/cache-control-headers.interceptor';
 import { HttpCacheInterceptor } from 'http/common/cache/http-cache.interceptor';
 import { ThrottlerBehindProxyGuard } from 'http/common/throttler/throttler.guard';
 import { SkipCache } from 'common/decorators';
 import { setupServiceUnavailableMiddleware } from '../middlewares/service-unavailable.middleware';
 import { LivenessController } from './liveness.controller';
+import { ReadinessController } from './readiness.controller';
 
 jest.mock('common/config', () => ({}));
 
@@ -48,11 +50,13 @@ describe('Operational HTTP cache policy and liveness', () => {
   let maintenance: boolean;
   let executionHealthy: boolean;
   let consensusHealthy: boolean;
+  let consensusDataHealthy: boolean;
 
   beforeEach(async () => {
     maintenance = false;
     executionHealthy = true;
     consensusHealthy = true;
+    consensusDataHealthy = true;
     const config = {
       get: jest.fn((key: string) => (key === 'IS_SERVICE_UNAVAILABLE' ? maintenance : 3600)),
     };
@@ -62,7 +66,7 @@ describe('Operational HTTP cache policy and liveness', () => {
         CacheModule.register({ ttl: 3_600_000 }),
         ThrottlerModule.forRoot([{ ttl: 60_000, limit: 2 }]),
       ],
-      controllers: [HealthController, LivenessController, TestController, OperationalController],
+      controllers: [HealthController, LivenessController, ReadinessController, TestController, OperationalController],
       providers: [
         {
           provide: ExecutionProviderHealthIndicator,
@@ -80,6 +84,16 @@ describe('Operational HTTP cache policy and liveness', () => {
             isHealthy: jest.fn(async (key: string) => {
               if (!consensusHealthy)
                 throw new HealthCheckError('CL unavailable or stale', { [key]: { status: 'down' } });
+              return { [key]: { status: 'up' } };
+            }),
+          },
+        },
+        {
+          provide: ConsensusDataHealthIndicator,
+          useValue: {
+            isHealthy: jest.fn(async (key: string) => {
+              if (!consensusDataHealthy)
+                throw new HealthCheckError('Cached CL data is stale', { [key]: { status: 'down' } });
               return { [key]: { status: 'up' } };
             }),
           },
@@ -132,34 +146,45 @@ describe('Operational HTTP cache policy and liveness', () => {
     expect(response.statusCode).toBe(503);
   });
 
-  it.each(['/livez', '/livez?full=1', '/health', '/health?full=1', '/metrics', '/metrics?full=1'])(
-    'bypasses cache reads and writes and sends no-store for %s',
-    async (url) => {
-      await cache.set(url, { status: 'stale' });
-      const get = jest.spyOn(cache, 'get');
-      const set = jest.spyOn(cache, 'set');
+  it.each([
+    '/livez',
+    '/livez?full=1',
+    '/health',
+    '/health?full=1',
+    '/readyz',
+    '/readyz?full=1',
+    '/metrics',
+    '/metrics?full=1',
+  ])('bypasses cache reads and writes and sends no-store for %s', async (url) => {
+    await cache.set(url, { status: 'stale' });
+    const get = jest.spyOn(cache, 'get');
+    const set = jest.spyOn(cache, 'set');
 
-      for (let i = 0; i < 2; i++) {
-        const response = await app.inject({ method: 'GET', url });
-        expect(response.statusCode).toBe(200);
-        expect(response.headers['cache-control']).toBe('no-store');
-        expect(response.headers['x-cache']).toBeUndefined();
-        if (url.startsWith('/metrics')) {
-          expect(response.body).toBe(`scrapes_total ${i + 1}\n`);
-        } else if (url.startsWith('/livez')) {
-          expect(response.json()).toEqual({ status: 'ok', uptime: expect.any(Number) });
-        } else {
-          expect(response.json()).toMatchObject({
-            status: 'ok',
-            details: { RPCProvider: { status: 'up' }, consensusProvider: { status: 'up' } },
-          });
-        }
+    for (let i = 0; i < 2; i++) {
+      const response = await app.inject({ method: 'GET', url });
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['x-cache']).toBeUndefined();
+      if (url.startsWith('/metrics')) {
+        expect(response.body).toBe(`scrapes_total ${i + 1}\n`);
+      } else if (url.startsWith('/livez')) {
+        expect(response.json()).toEqual({ status: 'ok', uptime: expect.any(Number) });
+      } else if (url.startsWith('/readyz')) {
+        expect(response.json()).toMatchObject({
+          status: 'ok',
+          details: { cachedConsensusData: { status: 'up' } },
+        });
+      } else {
+        expect(response.json()).toMatchObject({
+          status: 'ok',
+          details: { RPCProvider: { status: 'up' }, consensusProvider: { status: 'up' } },
+        });
       }
+    }
 
-      expect(get).not.toHaveBeenCalled();
-      expect(set).not.toHaveBeenCalled();
-    },
-  );
+    expect(get).not.toHaveBeenCalled();
+    expect(set).not.toHaveBeenCalled();
+  });
 
   it.each(['EL', 'CL'])('returns fresh 503 on %s failure, keeps liveness up, and recovers', async (provider) => {
     const healthy = await app.inject({ method: 'GET', url: '/health' });
@@ -181,6 +206,18 @@ describe('Operational HTTP cache policy and liveness', () => {
     expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
     expect(app.get(ExecutionProviderHealthIndicator).isHealthy).toHaveBeenCalledTimes(3);
     expect(app.get(ConsensusProviderIndicator).isHealthy).toHaveBeenCalledTimes(3);
+  });
+
+  it('returns 503 from readiness when cached CL data is stale', async () => {
+    expect((await app.inject({ method: 'GET', url: '/readyz' })).statusCode).toBe(200);
+
+    consensusDataHealthy = false;
+    const response = await app.inject({ method: 'GET', url: '/readyz' });
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toMatchObject({ details: { cachedConsensusData: { status: 'down' } } });
+
+    expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/livez' })).statusCode).toBe(200);
   });
 
   it('keeps the memory readiness check and bypasses probe rate limiting', async () => {

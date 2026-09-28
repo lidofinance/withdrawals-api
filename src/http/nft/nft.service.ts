@@ -1,5 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { WithdrawalQueue, WITHDRAWAL_QUEUE_CONTRACT_TOKEN } from '@lido-nestjs/contracts';
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from 'common/config';
 
 import { phrase, bgTwo, bgOne, lidoGray, ethColor } from './assets/nft.parts';
@@ -16,10 +15,7 @@ import { NFTDto, NFTParamsDto, NFTOptionsDto } from './dto';
 
 @Injectable()
 export class NFTService {
-  constructor(
-    protected readonly configService: ConfigService,
-    @Inject(WITHDRAWAL_QUEUE_CONTRACT_TOKEN) protected readonly contract: WithdrawalQueue,
-  ) {}
+  constructor(protected readonly configService: ConfigService) {}
 
   async getNftMeta(params: NFTParamsDto, query: NFTOptionsDto): Promise<NFTDto | null> {
     const { tokenId } = params;
