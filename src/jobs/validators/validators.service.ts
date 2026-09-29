@@ -10,7 +10,11 @@ import { ConsensusRetryService } from 'common/consensus-provider/consensus-retry
 import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
-import { FALLBACK_VALIDATOR_UPDATE_CRONS_BY_CHAIN_ID, MAX_SEED_LOOKAHEAD } from './validators.constants';
+import {
+  FALLBACK_VALIDATOR_UPDATE_CRONS_BY_CHAIN_ID,
+  LIDO_WITHDRAWABLE_VALIDATORS_CRON,
+  MAX_SEED_LOOKAHEAD,
+} from './validators.constants';
 import { BigNumber } from '@ethersproject/bignumber';
 import { processValidatorsStream } from 'jobs/validators/utils/validators-stream';
 import { unblock } from 'common/utils/unblock';
@@ -21,7 +25,6 @@ import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
-import { hasCompoundingWithdrawalCredential, hasEth1WithdrawalCredential } from './utils/validator-state-utils';
 import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
@@ -31,6 +34,8 @@ export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
   private cronJobs: CronJob[] = [];
   private validatorUpdateCronTimes: string[] = [];
+  // Both jobs use the same validator state and must not run together.
+  private validatorsJobQueue: Promise<void> = Promise.resolve();
   protected static readonly UPDATE_DELAY_MS = 30 * 60 * 1000;
 
   constructor(
@@ -88,7 +93,9 @@ export class ValidatorsService {
       this.logger.error(error);
     }
 
-    const lidoWithdrawableJob = new CronJob(CronExpression.EVERY_30_MINUTES, () =>
+    // Full validator updates can start on the half-hour. Run the dependent job
+    // five seconds later so it queues after the full update at those times.
+    const lidoWithdrawableJob = new CronJob(LIDO_WITHDRAWABLE_VALIDATORS_CRON, () =>
       this.updateLidoWithdrawableValidators(),
     );
     lidoWithdrawableJob.start();
@@ -133,6 +140,10 @@ export class ValidatorsService {
 
   @OneAtTime()
   protected async updateValidators(): Promise<void> {
+    await this.enqueueValidatorsJob(() => this.runUpdateValidators());
+  }
+
+  private async runUpdateValidators(): Promise<void> {
     await this.jobService.wrapJob(
       { name: 'update validators', service: ValidatorsService.SERVICE_LOG_NAME },
       async () => {
@@ -251,9 +262,19 @@ export class ValidatorsService {
     this.validatorsStorageService.setWithdrawableLidoValidatorIds(withdrawableLidoValidatorIds);
   }
 
+  private enqueueValidatorsJob(job: () => Promise<void>): Promise<void> {
+    const nextJob = this.validatorsJobQueue.then(job);
+    this.validatorsJobQueue = nextJob.catch(() => undefined);
+    return nextJob;
+  }
+
   // updates withdrawable lido validators based on previously identified IDs
   @OneAtTime()
   protected async updateLidoWithdrawableValidators() {
+    await this.enqueueValidatorsJob(() => this.runUpdateLidoWithdrawableValidators());
+  }
+
+  private async runUpdateLidoWithdrawableValidators(): Promise<void> {
     await this.jobService.wrapJob(
       { name: 'update lido withdrawable validators', service: ValidatorsService.SERVICE_LOG_NAME },
       async () => {
