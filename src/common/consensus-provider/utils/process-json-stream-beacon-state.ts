@@ -1,5 +1,6 @@
 import { parser } from 'stream-json';
 import { pick } from 'stream-json/filters/Pick';
+import { filter } from 'stream-json/filters/Filter';
 import { streamObject } from 'stream-json/streamers/StreamObject';
 import { chain } from 'stream-chain';
 import { BeaconState } from '../consensus-provider.types';
@@ -12,6 +13,8 @@ export async function processJsonStreamBeaconState(readableStream, keys: readonl
       readableStream, // Incoming ReadableStream
       parser(), // Parses JSON as a stream
       pick({ filter: 'data' }),
+      // Discard unused fields before streamObject assembles their potentially large arrays.
+      filter({ filter: (path) => typeof path[0] === 'string' && keys.includes(path[0]) }),
       streamObject(), // Streams key-value pairs { key, value }
     ]);
 
