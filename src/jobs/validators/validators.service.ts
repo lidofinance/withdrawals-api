@@ -148,6 +148,7 @@ export class ValidatorsService {
       { name: 'update validators', service: ValidatorsService.SERVICE_LOG_NAME },
       async () => {
         this.logger.log('Start update validators', { service: ValidatorsService.SERVICE_LOG_NAME });
+        this.logMemoryUsage('validators update started');
 
         const indexedValidators = await this.consensusRetryService.execute<ResponseValidatorsData>(
           'get_state_validators',
@@ -158,6 +159,7 @@ export class ValidatorsService {
             return processValidatorsStream(stream);
           },
         );
+        this.logMemoryUsage('validators loaded from CL', { validatorsCount: indexedValidators.length });
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
 
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
@@ -201,6 +203,7 @@ export class ValidatorsService {
         await this.validatorsCacheService.saveDataToCache();
 
         this.logAnalyticsAboutFrameBalances();
+        this.logMemoryUsage('validators update completed', { validatorsCount: indexedValidators.length });
 
         const currentFrame = this.genesisTimeService.getFrameOfEpoch(this.genesisTimeService.getCurrentEpoch());
         const frameBalances = this.validatorsStorageService.getFrameBalances();
@@ -222,6 +225,10 @@ export class ValidatorsService {
       service: ValidatorsService.SERVICE_LOG_NAME,
     });
     const lidoValidators = await this.lidoKeys.getLidoValidatorsByKeys(keysData.data, validators);
+    this.logMemoryUsage('Lido keys and validators loaded', {
+      keysCount: keysData.data.length,
+      lidoValidatorsCount: lidoValidators.length,
+    });
     this.logger.debug('lidoValidators', {
       lidoValidatorsLength: lidoValidators.length,
       service: ValidatorsService.SERVICE_LOG_NAME,
@@ -268,6 +275,23 @@ export class ValidatorsService {
     return nextJob;
   }
 
+  private logMemoryUsage(stage: string, counts: Record<string, number> = {}): void {
+    const { rss, heapUsed, heapTotal, external, arrayBuffers } = process.memoryUsage();
+    const toMiB = (bytes: number) => Math.round(bytes / 1024 / 1024);
+
+    this.logger.log('Validators memory usage', {
+      service: ValidatorsService.SERVICE_LOG_NAME,
+      stage,
+      ...counts,
+      rssMiB: toMiB(rss),
+      heapUsedMiB: toMiB(heapUsed),
+      heapTotalMiB: toMiB(heapTotal),
+      externalMiB: toMiB(external),
+      arrayBuffersMiB: toMiB(arrayBuffers),
+      maxRssMiB: Math.round(process.resourceUsage().maxRSS / 1024),
+    });
+  }
+
   // updates withdrawable lido validators based on previously identified IDs
   @OneAtTime()
   protected async updateLidoWithdrawableValidators() {
@@ -279,6 +303,7 @@ export class ValidatorsService {
       { name: 'update lido withdrawable validators', service: ValidatorsService.SERVICE_LOG_NAME },
       async () => {
         this.logger.log('Start update lido withdrawable validators', { service: ValidatorsService.SERVICE_LOG_NAME });
+        this.logMemoryUsage('lido withdrawable validators update started');
 
         const validatorIds = this.validatorsStorageService.getWithdrawableLidoValidatorIds();
         const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
@@ -321,6 +346,9 @@ export class ValidatorsService {
 
         this.validatorsStorageService.setFrameBalances(frameBalances);
         this.validatorsStorageService.setWithdrawableLidoValidatorsLastUpdate(Math.floor(Date.now() / 1000));
+        this.logMemoryUsage('lido withdrawable validators update completed', {
+          withdrawableLidoValidatorsCount: validatorIds.length,
+        });
         this.logger.log('End update lido withdrawable validators', {
           service: ValidatorsService.SERVICE_LOG_NAME,
           frameBalances: stringifyFrameBalances(frameBalances),
@@ -331,7 +359,9 @@ export class ValidatorsService {
   }
 
   protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
+    this.logMemoryUsage('beacon state read started');
     const state = await this.consensusClientService.getStateSweepData(stateId);
+    this.logMemoryUsage('beacon state read completed');
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
     if (nextWithdrawalValidatorIndex === undefined) {
