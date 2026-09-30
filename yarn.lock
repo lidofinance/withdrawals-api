@@ -1657,10 +1657,10 @@
   resolved "https://registry.yarnpkg.com/@lido-nestjs/decorators/-/decorators-1.0.0.tgz#def4d0192b032c0d522de1b9bf38d1bec3c63077"
   integrity sha512-6k2eeLV7tFjKiqk26LWZHWfLowVuUbKC6+NunHHZIqEtO4xRWeOwMg6ntm0AEMdZ0WL0F6KDrFV+g7bhWB4cWA==
 
-"@lido-nestjs/execution@^1.23.0":
-  version "1.23.0"
-  resolved "https://registry.yarnpkg.com/@lido-nestjs/execution/-/execution-1.23.0.tgz#f8bbc35129a5ef7a648c2b988fa8b340c1d8d6c8"
-  integrity sha512-s+8sd7SELesfdMa6bPoqgo0pIY/DOcj5ONvQqdSemIDsm5mOTi3bC2bfi8eMwRvSbShkqekgHUCqMaFlyP+FIA==
+"@lido-nestjs/execution@^1.23.1":
+  version "1.23.1"
+  resolved "https://registry.yarnpkg.com/@lido-nestjs/execution/-/execution-1.23.1.tgz#24c50fda2ae7ff61cb2248374e8835ccd1a4078f"
+  integrity sha512-903mAtjUk+W9sNg0/UirF5sgYdkj3A+RDkqZlXi7xPYQ9ufR48hkpF+izE+CApWYm//7qS6Qj1k4cgNfNPOhBQ==
   dependencies:
     "@ethersproject/bignumber" "5.8.0"
     "@ethersproject/bytes" "5.8.0"
