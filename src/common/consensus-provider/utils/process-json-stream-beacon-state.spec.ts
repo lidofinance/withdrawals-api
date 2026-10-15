@@ -56,7 +56,6 @@ describe('processJsonStreamBeaconState', () => {
   });
 });
 
-
 describe('processJsonStreamBeaconState', () => {
   it('keeps only sweep fields selected by default', async () => {
     const stream = Readable.from([

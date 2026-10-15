@@ -2,11 +2,13 @@ import { CHAINS } from '@lido-nestjs/constants';
 
 export const ESTIMATE_ACCOUNT = '0x87c0e047F4e4D3e289A56a36570D4CB957A37Ef1';
 
-// TODO(Glamsterdam): re-measure both request fallbacks on a final-fork devnet.
+// Baseline: ~481k gas observed on devnet; stETH gets ~25% headroom.
+// wstETH provisionally keeps an additional 25% allowance for unwrapping.
+// TODO(Glamsterdam): validate both permit paths and batches on a final-fork devnet.
 // Reason: EIP-2780, EIP-7708, EIP-7976, EIP-8037, and EIP-8038 reprice gas.
-// Update: replace both values with conservative per-request limits; see glamsterdam-readiness-scope.md.
-export const WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT = 255350;
-export const WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT = 312626;
+// Update: calibrate these per-request limits; see glamsterdam-readiness-scope.md.
+export const WITHDRAWAL_QUEUE_REQUEST_STETH_PERMIT_GAS_LIMIT_DEFAULT = 600000;
+export const WITHDRAWAL_QUEUE_REQUEST_WSTETH_PERMIT_GAS_LIMIT_DEFAULT = 750000;
 
 type PermitData = {
   r: string;

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
 import { Readable } from 'stream';
 import { ConsensusClientService } from './consensus-client.service';
+import { ConsensusRetryService } from './consensus-retry.service';
+import { SpecService } from 'common/spec/spec.service';
 
 describe('ConsensusClientService', () => {
   let moduleRef: TestingModule;
@@ -12,6 +14,14 @@ describe('ConsensusClientService', () => {
     moduleRef = await Test.createTestingModule({
       providers: [
         ConsensusClientService,
+        {
+          provide: ConsensusRetryService,
+          useValue: { execute: jest.fn(async (_operation, callback) => callback()) },
+        },
+        {
+          provide: SpecService,
+          useValue: { isGlamsterdamReleasedAtSlot: jest.fn((slot: number) => slot >= 3200) },
+        },
         {
           provide: ConsensusProviderService,
           useValue: {
@@ -73,24 +83,24 @@ describe('ConsensusClientService', () => {
     const retryService = moduleRef.get<ConsensusRetryService>(ConsensusRetryService);
     jest.spyOn(retryService, 'execute').mockImplementation(async (_operation, callback) => callback() as any);
 
-    await expect(service.getStateSweepData('head', 100, true)).resolves.toEqual({
+    await expect(service.getStateSweepData('head', 100)).resolves.toEqual({
       slot: '3200',
       builder_pending_withdrawals_count: 2,
       exited_builder_withdrawals_count: 1,
     });
-    expect(consensusProviderService.fetchStream).toHaveBeenNthCalledWith(2, '/eth/v1/beacon/states/head/builders', {
+    expect(consensusProviderService.fetchStream).toHaveBeenNthCalledWith(2, '/eth/v1/beacon/states/3200/builders', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: '{}',
     });
   });
 
-  it('does not request builders before Glamsterdam', async () => {
+  it.each([99, 100, 101])('does not request builders for a pre-fork state at wall-clock epoch %i', async (epoch) => {
     const fetchStreamSpy = jest.spyOn(consensusProviderService, 'fetchStream').mockResolvedValue(
       Readable.from([
         JSON.stringify({
           data: {
-            slot: '3200',
+            slot: '3199',
             next_withdrawal_validator_index: '42',
           },
         }),
@@ -99,13 +109,14 @@ describe('ConsensusClientService', () => {
     const retryService = moduleRef.get<ConsensusRetryService>(ConsensusRetryService);
     jest.spyOn(retryService, 'execute').mockImplementation(async (_operation, callback) => callback() as any);
 
-    await expect(service.getStateSweepData('head', 100, false)).resolves.toEqual({
-      slot: '3200',
+    await expect(service.getStateSweepData('head', epoch)).resolves.toEqual({
+      slot: '3199',
       next_withdrawal_validator_index: '42',
       builder_pending_withdrawals_count: 0,
       exited_builder_withdrawals_count: 0,
     });
     expect(fetchStreamSpy).toHaveBeenCalledTimes(1);
+    expect(moduleRef.get(SpecService).isGlamsterdamReleasedAtSlot).toHaveBeenCalledWith(3199);
   });
 
   it.each([
@@ -121,7 +132,7 @@ describe('ConsensusClientService', () => {
     const retryService = moduleRef.get<ConsensusRetryService>(ConsensusRetryService);
     jest.spyOn(retryService, 'execute').mockImplementation(async (_operation, callback) => callback() as any);
 
-    await expect(service.getStateSweepData('head', 100, true)).rejects.toThrow();
+    await expect(service.getStateSweepData('head', 100)).rejects.toThrow();
     expect(buildersStream.destroyed).toBe(true);
   });
 });

@@ -169,7 +169,7 @@ export class ValidatorsService {
         this.logMemoryUsage('validators loaded from CL', { validatorsCount: indexedValidators.length });
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
-        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch, isGlamsterdam);
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch);
 
         const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch, {
           pending: state.builder_pending_withdrawals_count,
@@ -331,10 +331,9 @@ export class ValidatorsService {
         const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
         const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
-        const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
         const now = Date.now();
         const frameBalances = {};
-        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch, isGlamsterdam);
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch);
 
         const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 

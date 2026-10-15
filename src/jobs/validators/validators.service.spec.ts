@@ -37,6 +37,7 @@ describe('ValidatorsService.updateValidators', () => {
       }),
     },
     config: { get: jest.fn() },
+    consensusRetry: { execute: jest.fn(async (_operation, callback) => callback()) },
     // mirrors JobService.wrapJob: errors are caught, never re-thrown
     jobService: {
       wrapJob: jest.fn(async (_meta, cb) => {
@@ -86,6 +87,7 @@ describe('ValidatorsService.updateValidators', () => {
       mocks.prometheus as any,
       mocks.consensusProvider as any,
       mocks.consensusClient as any,
+      mocks.consensusRetry as any,
       mocks.config as any,
       mocks.jobService as any,
       mocks.storage as any,
@@ -111,7 +113,7 @@ describe('ValidatorsService.updateValidators', () => {
       pending: 2,
       exited: 1,
     });
-    expect(mocks.consensusClient.getStateSweepData).toHaveBeenCalledWith('head', 252025, false);
+    expect(mocks.consensusClient.getStateSweepData).toHaveBeenCalledWith('head', 252025);
     expect(mocks.storage.setSweepMeanEpochs).toHaveBeenCalledWith(7);
     expect(mocks.storage.setExitChurnLimit).toHaveBeenCalledWith(4);
     expect(mocks.storage.setConsolidationChurnLimit).toHaveBeenCalledWith(0);
@@ -133,7 +135,6 @@ describe('ValidatorsService.updateValidators', () => {
     expect(mocks.storage.setMaxExitEpoch).not.toHaveBeenCalled();
     expect(mocks.storage.setLastUpdate).not.toHaveBeenCalled();
     expect(mocks.cache.saveDataToCache).not.toHaveBeenCalled();
-
   });
 });
 
@@ -166,6 +167,7 @@ describe('ValidatorsService jobs', () => {
       {} as never,
       {} as never,
       jobService as never,
+      {} as never,
       {} as never,
       {} as never,
       {} as never,

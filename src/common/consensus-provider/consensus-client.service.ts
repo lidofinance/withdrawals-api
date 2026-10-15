@@ -16,12 +16,14 @@ import {
 import { ExecutionPayloadEnvelopeResponse } from './types/execution-payload-envelope-response';
 import { ExecutionPayload } from './types/execution-payload';
 import { ConsensusRetryService } from './consensus-retry.service';
+import { SpecService } from 'common/spec/spec.service';
 
 @Injectable()
 export class ConsensusClientService {
   constructor(
     protected readonly consensusService: ConsensusProviderService,
     protected readonly consensusRetryService: ConsensusRetryService,
+    protected readonly specService: SpecService,
   ) {}
 
   public async getExecutionPayloadEnvelope(blockId: string): Promise<ExecutionPayload> {
@@ -32,21 +34,19 @@ export class ConsensusClientService {
     return result.data.message.payload;
   }
 
-  public async getStateSweepData(
-    stateId: string,
-    currentEpoch: number,
-    isGlamsterdam: boolean,
-  ): Promise<BeaconStateSweepData> {
+  public async getStateSweepData(stateId: string, currentEpoch: number): Promise<BeaconStateSweepData> {
     return this.consensusRetryService.execute('get_state_sweep_data', async () => {
       const stream = await this.consensusService.fetchStream(API_GET_STATE_URL(stateId));
       const result = await processJsonStreamBeaconState(stream);
 
       const builder_pending_withdrawals_count = result.builder_pending_withdrawals?.length ?? 0;
-      const exited_builder_withdrawals_count = isGlamsterdam
-        ? await this.getExitedBuilderWithdrawalsCount(stateId, currentEpoch)
-        : 0;
-
       delete result.builder_pending_withdrawals;
+
+      // Head can still be pre-fork after the wall-clock fork epoch has started.
+      const isGlamsterdam = this.specService.isGlamsterdamReleasedAtSlot(Number(result.slot));
+      const exited_builder_withdrawals_count = isGlamsterdam
+        ? await this.getExitedBuilderWithdrawalsCount(result.slot, currentEpoch)
+        : 0;
 
       return {
         ...result,
