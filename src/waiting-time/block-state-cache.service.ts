@@ -6,6 +6,7 @@ import { LOGGER_PROVIDER, LoggerService } from 'common/logger';
 import { ContractConfigStorageService } from 'storage';
 import { RewardsService } from 'events/rewards';
 import { GenesisTimeService } from 'common/genesis-time';
+import { ConsensusExecutionPayloadService } from 'common/consensus-provider';
 import { OracleV2__factory } from '../common/contracts/generated';
 import { LidoExtensionReader } from '../jobs/contract-config/lido-extension-reader';
 
@@ -31,6 +32,7 @@ export class BlockStateCacheService {
     protected readonly rewardsService: RewardsService,
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoExtensionReader: LidoExtensionReader,
+    protected readonly consensusExecutionPayloadService: ConsensusExecutionPayloadService,
   ) {}
 
   async getBlockState(): Promise<BlockState> {
@@ -97,7 +99,7 @@ export class BlockStateCacheService {
 
     try {
       const currentFrameRefSlot = Number(processingState.currentFrameRefSlot);
-      const processingRefBlockNumber = await this.genesisTimeService.getBlockBySlot(currentFrameRefSlot);
+      const processingRefBlockNumber = await this.getReportAnchorBlockNumber(currentFrameRefSlot);
       this.logger.debug(`using processing ref slot of block ${processingRefBlockNumber}`);
       return processingRefBlockNumber;
     } catch (e) {
@@ -107,5 +109,19 @@ export class BlockStateCacheService {
       );
       return blockNumber;
     }
+  }
+
+  private async getReportAnchorBlockNumber(refSlot: number): Promise<number> {
+    const blockHash = await this.consensusExecutionPayloadService.getReportAnchorBlockHash(
+      refSlot,
+      this.genesisTimeService.getCurrentSlot(),
+    );
+    const block = await this.provider.getBlock(blockHash);
+
+    if (!block) {
+      throw new Error(`Execution block ${blockHash} for ref slot ${refSlot} not found`);
+    }
+
+    return block.number;
   }
 }

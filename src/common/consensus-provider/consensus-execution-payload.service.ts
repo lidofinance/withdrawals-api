@@ -1,27 +1,56 @@
 import { ConsensusService as ConsensusProviderService } from '@lido-nestjs/consensus';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { SpecService } from 'common/spec/spec.service';
-import { ConsensusClientService } from './consensus-client.service';
 import { ResponseBlockV2 } from './consensus-provider.types';
 import { ExecutionPayload } from './types/execution-payload';
+
+type GloasBlockBody = {
+  signed_execution_payload_bid?: { message?: { parent_block_hash?: string } };
+};
 
 @Injectable()
 export class ConsensusExecutionPayloadService {
   constructor(
     protected readonly consensusProviderService: ConsensusProviderService,
-    protected readonly consensusClientService: ConsensusClientService,
     protected readonly specService: SpecService,
   ) {}
 
-  public async getExecutionPayload(blockId: string): Promise<ExecutionPayload> {
-    const clBlock = await this.consensusProviderService.getBlockV2({ blockId });
-    const clSlot = Number(clBlock.data.message.slot);
-
-    if (this.specService.isGlamsterdamReleasedAtSlot(clSlot)) {
-      return this.consensusClientService.getExecutionPayloadEnvelope(blockId);
+  /**
+   * Hash of the EL block whose state the accounting oracle reports for `refSlot`.
+   *
+   * Pre-Gloas the ref slot block embeds that payload. Post-Gloas (EIP-7732) a slot's payload is
+   * applied only when a later block builds on it, so the oracle anchors to the first block after
+   * the ref slot and takes the EL parent committed in its bid. A withheld or late ref slot payload
+   * therefore keeps the anchor on the previous EL block, which this mirrors.
+   */
+  public async getReportAnchorBlockHash(refSlot: number, headSlot: number): Promise<string> {
+    if (!this.specService.isGlamsterdamReleasedAtSlot(refSlot)) {
+      const refBlock = await this.consensusProviderService.getBlockV2({ blockId: String(refSlot) });
+      return this.getLegacyExecutionPayload(refBlock).block_hash;
     }
 
-    return this.getLegacyExecutionPayload(clBlock);
+    const childBlock = await this.getFirstBlockAfter(refSlot, headSlot);
+    const body = childBlock.data?.message?.body as GloasBlockBody | undefined;
+    const parentBlockHash = body?.signed_execution_payload_bid?.message?.parent_block_hash;
+
+    if (!parentBlockHash) {
+      throw new Error(`Block at slot ${childBlock.data?.message?.slot} has no execution payload bid`);
+    }
+
+    return parentBlockHash;
+  }
+
+  private async getFirstBlockAfter(slot: number, headSlot: number): Promise<ResponseBlockV2> {
+    for (let candidate = slot + 1; candidate <= headSlot; candidate++) {
+      try {
+        return await this.consensusProviderService.getBlockV2({ blockId: String(candidate) });
+      } catch (error) {
+        const isMissedSlot = error instanceof HttpException && error.getStatus() === HttpStatus.NOT_FOUND;
+        if (!isMissedSlot) throw error;
+      }
+    }
+
+    throw new Error(`No block after slot ${slot} up to slot ${headSlot}`);
   }
 
   private getLegacyExecutionPayload(block: ResponseBlockV2): ExecutionPayload {

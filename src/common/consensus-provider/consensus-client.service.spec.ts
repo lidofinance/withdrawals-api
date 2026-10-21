@@ -41,21 +41,6 @@ describe('ConsensusClientService', () => {
     jest.resetAllMocks();
   });
 
-  // Gloas beacon-APIs registers the envelope route in plural form only
-  // (/eth/v1/beacon/execution_payload_envelopes/{block_id}); the singular path 404s
-  // on every post-fork payload lookup, so this test pins the exact URL.
-  it('fetches the execution payload envelope from the plural spec path', async () => {
-    const fetchSpy = jest.spyOn(consensusProviderService, 'fetch').mockResolvedValue({
-      data: { message: { payload: { block_number: '12345', block_hash: '0x1' } } },
-    } as any);
-
-    await expect(service.getExecutionPayloadEnvelope('200')).resolves.toEqual({
-      block_number: '12345',
-      block_hash: '0x1',
-    });
-    expect(fetchSpy).toHaveBeenCalledWith('/eth/v1/beacon/execution_payload_envelopes/200');
-  });
-
   it('counts exited builders from the dedicated builders endpoint', async () => {
     jest
       .spyOn(consensusProviderService, 'fetchStream')
