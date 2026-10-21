@@ -8,13 +8,10 @@ import { streamArray } from 'stream-json/streamers/StreamArray';
 import { processJsonStreamBeaconState } from './utils/process-json-stream-beacon-state';
 import { BeaconStateSweepData, IndexedBuilder, PendingPartialWithdrawal } from './consensus-provider.types';
 import {
-  API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL,
   API_GET_PENDING_PARTIAL_WITHDRAWALS_URL,
   API_GET_STATE_BUILDERS_URL,
   API_GET_STATE_URL,
 } from './consensus-provider.constants';
-import { ExecutionPayloadEnvelopeResponse } from './types/execution-payload-envelope-response';
-import { ExecutionPayload } from './types/execution-payload';
 import { ConsensusRetryService } from './consensus-retry.service';
 import { SpecService } from 'common/spec/spec.service';
 
@@ -25,14 +22,6 @@ export class ConsensusClientService {
     protected readonly consensusRetryService: ConsensusRetryService,
     protected readonly specService: SpecService,
   ) {}
-
-  public async getExecutionPayloadEnvelope(blockId: string): Promise<ExecutionPayload> {
-    const result = await this.consensusService.fetch<ExecutionPayloadEnvelopeResponse>(
-      API_GET_EXECUTION_PAYLOAD_ENVELOPE_URL(blockId),
-    );
-
-    return result.data.message.payload;
-  }
 
   public async getStateSweepData(stateId: string, currentEpoch: number): Promise<BeaconStateSweepData> {
     return this.consensusRetryService.execute('get_state_sweep_data', async () => {

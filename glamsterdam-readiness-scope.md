@@ -9,7 +9,7 @@ Status checked against Plataberget / Glamsterdam Devnet-8 on 2026-09-03.
 ## Done
 
 - [x] **EIP-8061:** fork-gated exit/consolidation churn split and live CL-spec parameters with mainnet fallbacks.
-- [x] **EIP-7732 / Gloas:** `GLOAS_FORK_EPOCH` detection and post-fork execution-payload envelope endpoint.
+- [x] **EIP-7732 / Gloas:** `GLOAS_FORK_EPOCH` detection; the pending-report EL block follows the accounting oracle anchor (bid `parent_block_hash` of the first block after the ref slot).
 - [x] **EIP-7732 / Gloas:** payload-availability delay and `builder_pending_withdrawals` included in sweep ETA.
 - [x] **EIP-8282:** include exited-builder withdrawals in `sweepMeanEpochs`.
 - [x] Read `SLOTS_PER_EPOCH` from the CL spec and support `SLOT_DURATION_MS` when `SECONDS_PER_SLOT` is absent.

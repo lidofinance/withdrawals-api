@@ -1,6 +1,6 @@
 import { Inject, Injectable, LoggerService, OnModuleInit } from '@nestjs/common';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
-import { ConsensusExecutionPayloadService, ConsensusProviderService } from 'common/consensus-provider';
+import { ConsensusProviderService } from 'common/consensus-provider';
 import { SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from './genesis-time.constants';
 import { ContractConfigStorageService } from '../../storage';
 
@@ -13,7 +13,6 @@ export class GenesisTimeService implements OnModuleInit {
   constructor(
     @Inject(LOGGER_PROVIDER) protected readonly logger: LoggerService,
     protected readonly consensusService: ConsensusProviderService,
-    protected readonly consensusExecutionPayloadService: ConsensusExecutionPayloadService,
     protected readonly contractConfig: ContractConfigStorageService,
   ) {}
 
@@ -104,12 +103,6 @@ export class GenesisTimeService implements OnModuleInit {
 
   getEpochByTimestamp(timestamp: number): number {
     return Math.floor(this.getSlotByTimestamp(timestamp) / this.getSlotsPerEpoch());
-  }
-
-  async getBlockBySlot(slot: number) {
-    const blockId = `${slot}`;
-    const executionPayload = await this.consensusExecutionPayloadService.getExecutionPayload(blockId);
-    return Number(executionPayload.block_number);
   }
 
   getTimestampByEpoch(epoch: number) {
