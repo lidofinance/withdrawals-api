@@ -23,7 +23,6 @@ async function bootstrap() {
       bufferLogs: true,
     },
   );
-
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
