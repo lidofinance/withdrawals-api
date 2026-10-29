@@ -1,4 +1,5 @@
 import { Inject, Injectable, LoggerService } from '@nestjs/common';
+import { BigNumber } from '@ethersproject/bignumber';
 import { LOGGER_PROVIDER } from '@lido-nestjs/logger';
 import {
   isFullyWithdrawableValidator,
@@ -128,18 +129,19 @@ export class SweepService {
     indexedValidators: IndexedValidator[],
     epoch: number,
   ): number {
-    const partiallyWithdrawnMap: Record<number, number> = {};
+    const partiallyWithdrawnMap: Record<string, BigNumber> = {};
     let withdrawalsNumber = 0;
 
     for (const withdrawal of partialWithdrawals) {
-      partiallyWithdrawnMap[withdrawal.validatorIndex] =
-        (partiallyWithdrawnMap[withdrawal.validatorIndex] || 0) + withdrawal.amount;
+      partiallyWithdrawnMap[withdrawal.validatorIndex] = (
+        partiallyWithdrawnMap[withdrawal.validatorIndex] ?? BigNumber.from(0)
+      ).add(withdrawal.amount);
     }
 
     for (const indexedValidator of indexedValidators) {
       const validatorIndex = indexedValidator.index;
       const validator = indexedValidator.validator;
-      const partiallyWithdrawnBalance = partiallyWithdrawnMap[validatorIndex] || 0;
+      const partiallyWithdrawnBalance = partiallyWithdrawnMap[validatorIndex] ?? BigNumber.from(0);
       const balance = parseGwei(indexedValidator.balance).sub(partiallyWithdrawnBalance);
 
       if (isFullyWithdrawableValidator(validator, balance, epoch)) {
