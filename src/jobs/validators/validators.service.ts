@@ -7,7 +7,7 @@ import { FAR_FUTURE_EPOCH } from 'common/constants';
 import { ConsensusProviderService } from 'common/consensus-provider';
 import { ConsensusClientService } from 'common/consensus-provider/consensus-client.service';
 import { ConsensusRetryService } from 'common/consensus-provider/consensus-retry.service';
-import { GenesisTimeService, SECONDS_PER_SLOT, SLOTS_PER_EPOCH } from 'common/genesis-time';
+import { GenesisTimeService } from 'common/genesis-time';
 import { OneAtTime } from '@lido-nestjs/decorators';
 import { ValidatorsStorageService } from 'storage';
 import {
@@ -25,10 +25,16 @@ import { CronExpression } from '@nestjs/schedule';
 import { PrometheusService } from 'common/prometheus';
 import { stringifyFrameBalances } from 'common/validators/strigify-frame-balances';
 import { getValidatorWithdrawalTimestamp } from './utils/get-validator-withdrawal-timestamp';
-import { IndexedValidator, ResponseValidatorsData } from '../../common/consensus-provider/consensus-provider.types';
+import { countUnavailablePayloadSlots } from '../../common/consensus-provider/utils/count-unavailable-payload-slots';
+import {
+  BeaconStateSweepData,
+  IndexedValidator,
+  ResponseValidatorsData,
+} from '../../common/consensus-provider/consensus-provider.types';
 import { SweepService, WithdrawalSweepState } from '../../common/sweep';
 import { toEth } from '../../common/utils/to-eth';
-import { getChurnLimit } from './utils/get-churn-limit';
+import { getConsolidationChurnLimit, getExitChurnLimit } from './utils/get-churn-limit';
+import { SpecService } from '../../common/spec';
 
 export class ValidatorsService {
   static SERVICE_LOG_NAME = 'validators';
@@ -52,6 +58,7 @@ export class ValidatorsService {
     protected readonly genesisTimeService: GenesisTimeService,
     protected readonly lidoKeys: LidoKeysService,
     protected readonly sweepService: SweepService,
+    protected readonly specService: SpecService,
   ) {}
 
   /**
@@ -161,10 +168,14 @@ export class ValidatorsService {
         );
         this.logMemoryUsage('validators loaded from CL', { validatorsCount: indexedValidators.length });
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
+        const isGlamsterdam = this.specService.isGlamsterdamReleasedAtEpoch(currentEpoch);
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch);
 
-        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch);
+        const sweepMeanEpochs = await this.sweepService.getSweepDelayInEpochs(indexedValidators, currentEpoch, {
+          pending: state.builder_pending_withdrawals_count,
+          exited: state.exited_builder_withdrawals_count,
+        });
         this.validatorsStorageService.setSweepMeanEpochs(sweepMeanEpochs);
-
         let activeValidatorCount = 0;
         let maxExitEpoch = `${currentEpoch + MAX_SEED_LOOKAHEAD + 1}`;
         let totalActiveBalance = BigNumber.from(0);
@@ -195,10 +206,16 @@ export class ValidatorsService {
         );
 
         this.validatorsStorageService.setActiveValidatorsCount(activeValidatorCount);
-        this.validatorsStorageService.setChurnLimit(getChurnLimit(totalActiveBalance).toNumber());
+        const churnSpecParams = this.specService.getChurnSpecParams();
+        this.validatorsStorageService.setExitChurnLimit(
+          getExitChurnLimit(totalActiveBalance, isGlamsterdam, churnSpecParams).toNumber(),
+        );
+        this.validatorsStorageService.setConsolidationChurnLimit(
+          getConsolidationChurnLimit(totalActiveBalance, churnSpecParams).toNumber(),
+        );
         this.validatorsStorageService.setTotalValidatorsCount(indexedValidators.length);
         this.validatorsStorageService.setMaxExitEpoch(maxExitEpoch);
-        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators);
+        await this.findAndSetLidoValidatorsWithdrawableBalances(indexedValidators, state);
         this.validatorsStorageService.setLastUpdate(Math.floor(Date.now() / 1000));
         await this.validatorsCacheService.saveDataToCache();
 
@@ -218,7 +235,10 @@ export class ValidatorsService {
     );
   }
 
-  protected async findAndSetLidoValidatorsWithdrawableBalances(validators: IndexedValidator[]) {
+  protected async findAndSetLidoValidatorsWithdrawableBalances(
+    validators: IndexedValidator[],
+    state: BeaconStateSweepData,
+  ) {
     const keysData = await this.lidoKeys.fetchLidoKeysData();
     this.logger.debug('fetchLidoKeysData', {
       keysDataLength: keysData.data.length,
@@ -239,7 +259,7 @@ export class ValidatorsService {
     const totalValidatorsCount = this.validatorsStorageService.getTotalValidatorsCount();
     const activeValidatorCount = this.validatorsStorageService.getActiveValidatorsCount();
     const now = Date.now();
-    const withdrawalSweepState = await this.getWithdrawalSweepState();
+    const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 
     const withdrawableLidoValidatorIds: string[] = [];
     for (const item of lidoValidators) {
@@ -254,6 +274,8 @@ export class ValidatorsService {
           withdrawableEpoch,
           blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
           nowMs: now,
+          slotsPerEpoch: this.genesisTimeService.getSlotsPerEpoch(),
+          secondsPerSlot: this.genesisTimeService.getSecondsPerSlot(),
         });
         const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
         const prevBalance = frameBalances[frame];
@@ -311,7 +333,9 @@ export class ValidatorsService {
         const currentEpoch = this.genesisTimeService.getCurrentEpoch();
         const now = Date.now();
         const frameBalances = {};
-        const withdrawalSweepState = await this.getWithdrawalSweepState();
+        const state = await this.consensusClientService.getStateSweepData('head', currentEpoch);
+
+        const withdrawalSweepState = await this.getWithdrawalSweepState(state);
 
         const batchSize = 20;
         for (let i = 0; i < validatorIds.length; i += batchSize) {
@@ -335,6 +359,8 @@ export class ValidatorsService {
               withdrawableEpoch,
               blockedByDeferredSlots: withdrawalSweepState.blockedByDeferredSlots,
               nowMs: now,
+              slotsPerEpoch: this.genesisTimeService.getSlotsPerEpoch(),
+              secondsPerSlot: this.genesisTimeService.getSecondsPerSlot(),
             });
 
             const frame = this.genesisTimeService.getFrameByTimestamp(estimatedWithdrawalTimestamp) + 1;
@@ -358,20 +384,17 @@ export class ValidatorsService {
     );
   }
 
-  protected async getWithdrawalSweepState(stateId = 'head'): Promise<WithdrawalSweepState> {
-    this.logMemoryUsage('beacon state read started');
-    const state = await this.consensusClientService.getStateSweepData(stateId);
-    this.logMemoryUsage('beacon state read completed');
+  protected async getWithdrawalSweepState(state: BeaconStateSweepData): Promise<WithdrawalSweepState> {
     const nextWithdrawalValidatorIndex = state.next_withdrawal_validator_index;
 
     if (nextWithdrawalValidatorIndex === undefined) {
-      throw new Error(`Consensus state ${stateId} is missing next_withdrawal_validator_index`);
+      throw new Error(`Consensus state is missing next_withdrawal_validator_index`);
     }
 
-    const blockedByDeferredSlots =
-      state.latest_full_slot !== undefined
-        ? Math.max(0, BigNumber.from(state.slot).sub(BigNumber.from(state.latest_full_slot)).toNumber())
-        : 0;
+    const blockedByDeferredSlots = countUnavailablePayloadSlots(
+      Number(state.slot),
+      state.execution_payload_availability,
+    );
     const hasDeferredWithdrawals = blockedByDeferredSlots > 0;
 
     const sweepState: WithdrawalSweepState = {
@@ -379,7 +402,6 @@ export class ValidatorsService {
       hasDeferredWithdrawals,
       blockedByDeferredSlots,
       stateSlot: state.slot,
-      latestFullSlot: state.latest_full_slot,
       source: 'consensus',
     };
 
@@ -389,7 +411,6 @@ export class ValidatorsService {
       hasDeferredWithdrawals: sweepState.hasDeferredWithdrawals,
       blockedByDeferredSlots: sweepState.blockedByDeferredSlots,
       stateSlot: sweepState.stateSlot,
-      latestFullSlot: sweepState.latestFullSlot,
     });
 
     return sweepState;
@@ -421,7 +442,8 @@ export class ValidatorsService {
   // 45 * 32 * 12 / 3600 = 4.8 hours each frame (5 times per day)
   public buildCron(newInitialEpoch: number, newEpochsPerFrame: number) {
     const firstDate = this.genesisTimeService.getTimestampByEpoch(newInitialEpoch);
-    const eachSec = newEpochsPerFrame * SLOTS_PER_EPOCH * SECONDS_PER_SLOT;
+    const eachSec =
+      newEpochsPerFrame * this.genesisTimeService.getSlotsPerEpoch() * this.genesisTimeService.getSecondsPerSlot();
     const secondsPerDay = 24 * 60 * 60;
 
     if (secondsPerDay % eachSec !== 0) {
