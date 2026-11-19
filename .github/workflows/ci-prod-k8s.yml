@@ -1,24 +1,48 @@
 name: "[K8S] Build and push withdrawals-api to production"
 
-run-name: "[K8S] Build and push withdrawals-api:${{ github.event.release.tag_name }} to production"
+run-name: "[K8S] Build and push withdrawals-api:${{ inputs.tag }} to production"
 
 on:
-  release:
-    types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable release tag
+        required: true
+        type: string
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
+  release-tag:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+
+    steps:
+      - name: Validate release tag
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use stable SemVer such as v1.2.3 or 1.2.3"
+            exit 1
+          fi
+
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
   build-and-push:
-    uses: lidofinance/actions/.github/workflows/k8s-build-push-harbor.yml@c7b5b6c5d8013046347d728d748fa741eb214e28
+    needs: release-tag
+    permissions:
+      contents: read
+    uses: lidofinance/actions/.github/workflows/k8s-build-push-harbor.yml@main
     with:
-      tag: ${{ github.event.release.tag_name }}
-      registry: registry.prod.k8s-prod.org
-      registry_username: ${{ vars.REGISTRY_USERNAME }}
-      image: team-si/withdrawals-api
-      environment: harbor_prod_release
-      # build_context: .
-      # dockerfile: Dockerfile
-    secrets:
-      registry_token: ${{ secrets.HARBOR_PROD_TOKEN }}
+      target: prod
+      tag: ${{ needs.release-tag.outputs.tag }}
+      harbor_project: team-si
+      image: withdrawals-api
+      # dockerfile: path/to/Dockerfile
+    secrets: inherit
