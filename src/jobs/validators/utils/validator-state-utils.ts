@@ -32,7 +32,7 @@ export function hasExecutionWithdrawalCredential(validator: Validator): boolean 
 export function isPartiallyWithdrawableValidator(validator: Validator, balance: BigNumber): boolean {
   const maxEffectiveBalance = getMaxEffectiveBalance(validator);
   const hasMaxEffectiveBalance = parseGwei(validator.effective_balance).eq(maxEffectiveBalance);
-  const hasExcessBalance = balance > maxEffectiveBalance;
+  const hasExcessBalance = balance.gt(maxEffectiveBalance);
 
   return hasExecutionWithdrawalCredential(validator) && hasMaxEffectiveBalance && hasExcessBalance;
 }
